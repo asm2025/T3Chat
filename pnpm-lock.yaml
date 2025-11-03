@@ -11,6 +11,9 @@ importers:
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
+      embedded-postgres:
+        specifier: 17.5.0-beta.15
+        version: 17.5.0-beta.15
       firebase-tools:
         specifier: ^13.0.0
         version: 13.35.1(encoding@0.1.13)
