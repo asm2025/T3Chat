@@ -21,19 +21,19 @@ function log(message, color = 'reset') {
 }
 
 function logError(message) {
-  log(`❌ ${message}`, 'red');
+  log(`${message}`, 'red');
 }
 
 function logSuccess(message) {
-  log(`✅ ${message}`, 'green');
+  log(`${message}`, 'green');
 }
 
 function logWarning(message) {
-  log(`⚠️  ${message}`, 'yellow');
+  log(`${message}`, 'yellow');
 }
 
 function logInfo(message) {
-  log(`ℹ️  ${message}`, 'blue');
+  log(`${message}`, 'blue');
 }
 
 async function checkWranglerCli() {
@@ -191,7 +191,7 @@ async function deployToCloudflare() {
 }
 
 async function main() {
-  log('🚀 Starting Cloudflare Workers deployment...', 'bold');
+  log('Starting Cloudflare Workers deployment...', 'bold');
   
   try {
     // Step 1: Check prerequisites
@@ -225,7 +225,7 @@ async function main() {
       process.exit(1);
     }
 
-    log('🎉 Deployment completed successfully!', 'green');
+    log('Deployment completed successfully!', 'green');
     
   } catch (error) {
     logError(`Deployment failed: ${error.message}`);

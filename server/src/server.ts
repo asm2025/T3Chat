@@ -28,12 +28,12 @@ const getPostgresPortFromDatabaseUrl = (): number => {
 };
 
 const startServer = async () => {
-  console.log(`🚀 Starting backend server on port ${port}`);
+  console.log(`Starting backend server on port ${port}`);
   
   if (!getDatabaseUrl() || isLocalEmbeddedPostgres()) {
-    console.log('🔗 Using local database connection (expecting database server on dynamic port)');
+    console.log('Using local database connection (expecting database server on dynamic port)');
   } else {
-    console.log('🔗 Using external database connection');
+    console.log('Using external database connection');
   }
 
   serve({
@@ -44,7 +44,7 @@ const startServer = async () => {
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log('🛑 Shutting down server...');
+  console.log('Shutting down server...');
   process.exit(0);
 };
 

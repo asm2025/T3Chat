@@ -20,7 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = dirname(__dirname);
 
-console.log('🔧 Running post-setup configuration...');
+console.log('Running post-setup configuration...');
 
 /**
  * Execute pnpm command with proper PATH resolution and npm fallback
@@ -105,7 +105,7 @@ function execPnpm(command, options = {}) {
  * Debug function to show detailed PATH and pnpm information
  */
 function debugPnpmEnvironment() {
-  console.log('🔍 Debugging pnpm environment...');
+  console.log('Debugging pnpm environment...');
   console.log(`Platform: ${process.platform}`);
   console.log(`Current PATH: ${process.env.PATH}`);
   console.log(`Shell: ${process.env.SHELL || 'unknown'}`);
@@ -132,7 +132,7 @@ function debugPnpmEnvironment() {
   for (const location of commonLocations) {
     try {
       if (existsSync(location)) {
-        console.log(`✅ Found pnpm at: ${location}`);
+        console.log(`Found pnpm at: ${location}`);
         const version = execSync(`"${location}" --version`, { stdio: 'pipe', encoding: 'utf8' });
         console.log(`   Version: ${version.trim()}`);
       }
@@ -148,14 +148,14 @@ function debugPnpmEnvironment() {
 async function testPnpmAvailability() {
   try {
     const version = execPnpm('pnpm --version', { stdio: 'pipe' });
-    console.log(`✅ pnpm ${version.toString().trim()} detected`);
+    console.log(`pnpm ${version.toString().trim()} detected`);
     return true;
   } catch (error) {
-    console.log('⚠️ pnpm not found, running diagnostics...');
+    console.log('pnpm not found, running diagnostics...');
     debugPnpmEnvironment();
     
     console.log('');
-    console.log('💡 To fix pnpm issues:');
+    console.log('To fix pnpm issues:');
     console.log('   • Install: npm install -g pnpm');
     console.log('   • Or install via Homebrew: brew install pnpm');
     console.log('   • Or visit: https://pnpm.io/installation');
@@ -165,11 +165,11 @@ async function testPnpmAvailability() {
     // Test if npm is available as fallback
     try {
       const npmVersion = execSync('npm --version', { stdio: 'pipe' });
-      console.log(`✅ npm ${npmVersion.toString().trim()} will be used as fallback`);
+      console.log(`npm ${npmVersion.toString().trim()} will be used as fallback`);
       return true;
     } catch (npmError) {
-      console.error('❌ Neither pnpm nor npm is available');
-      console.error('💡 Please install Node.js and npm first');
+      console.error('Neither pnpm nor npm is available');
+      console.error('Please install Node.js and npm first');
       return false;
     }
   }
@@ -233,7 +233,7 @@ function detectConfiguration() {
 async function setupLocalDatabase() {
   try {
     // Add embedded-postgres dependency dynamically
-    console.log('📦 Installing embedded PostgreSQL dependency...');
+    console.log('Installing embedded PostgreSQL dependency...');
     
     const packageJsonPath = join(projectRoot, 'package.json');
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
@@ -244,22 +244,22 @@ async function setupLocalDatabase() {
       packageJson.devDependencies['embedded-postgres'] = '17.5.0-beta.15';
       
       writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-      console.log('✅ Added embedded-postgres dependency');
+      console.log('Added embedded-postgres dependency');
       
       // Install the new dependency
-      console.log('📦 Running pnpm install for embedded-postgres...');
+      console.log('Running pnpm install for embedded-postgres...');
       execPnpm('pnpm install', { cwd: projectRoot, stdio: 'inherit' });
-      console.log('✅ Embedded-postgres installed');
+      console.log('Embedded-postgres installed');
     }
     
     // Now dynamically import and run the embedded postgres setup
-    console.log('🗄️ Setting up embedded PostgreSQL...');
+    console.log('Setting up embedded PostgreSQL...');
     const { setupEmbeddedPostgres } = await import('./post-setup-embedded-pg.js');
     return await setupEmbeddedPostgres();
   } catch (error) {
     // Handle embedded PostgreSQL setup failures
     console.log('');
-    console.log('❌ Local database setup failed');
+    console.log('Local database setup failed');
     console.log('');
     console.log('The embedded PostgreSQL database could not be started on your system.');
     console.log('');
@@ -283,7 +283,7 @@ async function setupLocalDatabase() {
  * Test production database connectivity
  */
 async function testProductionDatabase(config) {
-  console.log('🔍 Testing production database connectivity...');
+  console.log('Testing production database connectivity...');
   
   try {
     execSync(`npx dotenv-cli -e .env -- node scripts/db-connectivity-test.mjs`, {
@@ -291,38 +291,32 @@ async function testProductionDatabase(config) {
       timeout: 15000,
       stdio: 'pipe'
     });
-    console.log('✅ Production database connectivity verified');
+    console.log('Production database connectivity verified');
     return true;
   } catch (error) {
-    console.log('⚠️ Database connectivity test failed, will retry schema setup...');
+    console.log('Database connectivity test failed, will retry schema setup...');
     return false;
   }
 }
 
 /**
- * Setup production database schema
+ * Setup production database schema with auto-migration
  */
 async function setupProductionDatabaseSchema(config) {
-  console.log('🔒 Setting up production database schema...');
+  console.log('Setting up production database with auto-migration...');
   
   try {
-    // Setup private schema
-    execSync('npx dotenv-cli -e .env -- node scripts/setup-private-schema.mjs', {
+    // Run auto-migration (creates database and applies migrations)
+    execPnpm('npx dotenv-cli -e .env -- pnpm db:migrate', {
       cwd: join(projectRoot, 'server'),
       stdio: 'inherit'
     });
     
-    // Push schema with Drizzle
-    execPnpm('npx dotenv-cli -e .env -- pnpm db:push', {
-      cwd: join(projectRoot, 'server'),
-      stdio: 'inherit'
-    });
-    
-    console.log('✅ Production database schema created successfully!');
+    console.log('Production database created and migrated successfully!');
   } catch (error) {
-    console.error('❌ Failed to setup database schema');
-    console.log('💡 You can complete this manually:');
-    console.log('   cd server && npx dotenv-cli -e .env -- pnpm db:push');
+    console.error('Failed to setup database');
+    console.log('You can complete this manually:');
+    console.log('   cd server && npx dotenv-cli -e .env -- pnpm db:migrate');
     throw error;
   }
 }
@@ -332,7 +326,7 @@ async function setupProductionDatabaseSchema(config) {
  */
 async function setupFirebaseConfig(config) {
   if (config.auth.mode === 'local') {
-    console.log('🔥 Setting up Firebase emulator configuration...');
+    console.log('Setting up Firebase emulator configuration...');
     
     const firebaseConfigPath = join(projectRoot, 'ui', 'src', 'lib', 'firebase-config.json');
     
@@ -348,12 +342,12 @@ async function setupFirebaseConfig(config) {
       };
       
       writeFileSync(firebaseConfigPath, JSON.stringify(demoConfig, null, 2));
-      console.log('✅ Created demo Firebase configuration');
+      console.log('Created demo Firebase configuration');
     } else {
-      console.log('✅ Firebase configuration already exists');
+      console.log('Firebase configuration already exists');
     }
   } else {
-    console.log('✅ Production Firebase configuration detected');
+    console.log('Production Firebase configuration detected');
   }
 }
 
@@ -369,13 +363,13 @@ async function runPostSetup() {
     }
 
     // Install dependencies
-    console.log('📦 Installing dependencies...');
+    console.log('Installing dependencies...');
     execPnpm('pnpm install', { cwd: projectRoot, stdio: 'inherit' });
-    console.log('✅ Dependencies installed');
+    console.log('Dependencies installed');
 
     // Detect configuration
     const config = detectConfiguration();
-    console.log('🔍 Detected configuration:');
+    console.log('Detected configuration:');
     console.log(`   Database: ${config.database.mode}${config.database.provider ? ` (${config.database.provider})` : ''}`);
     console.log(`   Auth: ${config.auth.mode} (${config.auth.projectId})`);
     console.log(`   Deploy: ${config.deploy.mode}`);
@@ -390,8 +384,8 @@ async function runPostSetup() {
       if (isConnected) {
         await setupProductionDatabaseSchema(config);
       } else {
-        console.log('⚠️ Skipping schema setup due to connectivity issues');
-        console.log('💡 Run manually when database is ready: cd server && pnpm db:push');
+        console.log('Skipping schema setup due to connectivity issues');
+        console.log('Run manually when database is ready: cd server && pnpm db:push');
       }
     }
 
@@ -400,16 +394,16 @@ async function runPostSetup() {
 
     // Success message
     console.log('');
-    console.log('🎉 Post-setup complete!');
+    console.log('Post-setup complete!');
     console.log('');
     
     if (config.database.mode === 'local') {
-      console.log('💡 Local development ready:');
+      console.log('Local development ready:');
       console.log('   • Embedded PostgreSQL database running');
       console.log('   • Firebase Auth emulator ready');
       console.log('   • Run `pnpm dev` to start all services');
     } else {
-      console.log('💡 Production services connected:');
+      console.log('Production services connected:');
       console.log(`   • Database: ${config.database.provider} (${config.database.mode})`);
       console.log(`   • Auth: Firebase (${config.auth.mode})`);
       if (config.deploy.hasWrangler) {
@@ -425,9 +419,9 @@ async function runPostSetup() {
     }
     
     // For other errors, show the generic error message
-    console.error('❌ Post-setup failed:', error.message);
+    console.error('Post-setup failed:', error.message);
     console.log('');
-    console.log('💡 You can complete setup manually:');
+    console.log('You can complete setup manually:');
     console.log('   • For local database: pnpm setup:local');
     console.log('   • For production database: cd server && pnpm db:push');
     process.exit(1);

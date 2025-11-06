@@ -57,21 +57,21 @@ async function findNextAvailablePort(startPort) {
  * Setup local embedded PostgreSQL database
  */
 export async function setupEmbeddedPostgres() {
-  console.log('🗄️ Setting up local embedded PostgreSQL...');
+  console.log('Setting up local embedded PostgreSQL...');
   
   const dataDir = join(projectRoot, 'data');
   if (!existsSync(dataDir)) {
     await mkdir(dataDir, { recursive: true });
-    console.log('✅ Created data directory');
+    console.log('Created data directory');
   }
 
   // Find available port
-  console.log('🔍 Finding available PostgreSQL port...');
+  console.log('Finding available PostgreSQL port...');
   const postgresPort = await findNextAvailablePort(5433);
-  console.log(`✅ Found available port: ${postgresPort}`);
+  console.log(`Found available port: ${postgresPort}`);
 
   // Initialize database
-  console.log(`📦 Initializing embedded PostgreSQL on port ${postgresPort}...`);
+  console.log(`Initializing embedded PostgreSQL on port ${postgresPort}...`);
   
   let embeddedPg = null;
   let client = null;
@@ -90,7 +90,7 @@ export async function setupEmbeddedPostgres() {
 
     await embeddedPg.initialise();
     await embeddedPg.start();
-    console.log(`✅ Embedded PostgreSQL started on port ${postgresPort}`);
+    console.log(`Embedded PostgreSQL started on port ${postgresPort}`);
 
     const connectionString = `postgresql://postgres:password@localhost:${postgresPort}/postgres`;
     
@@ -114,7 +114,7 @@ export async function setupEmbeddedPostgres() {
     }
     
     writeFileSync(envPath, updatedEnv);
-    console.log(`✅ Updated .env with PostgreSQL on port ${postgresPort}`);
+    console.log(`Updated .env with PostgreSQL on port ${postgresPort}`);
 
     // Test connection and create schema
     client = postgres(connectionString);
@@ -126,7 +126,7 @@ export async function setupEmbeddedPostgres() {
     `;
 
     if (schemaExists.length === 0) {
-      console.log('📦 Creating app schema...');
+      console.log('Creating app schema...');
       await client`CREATE SCHEMA app`;
       
       const migrationPath = join(projectRoot, 'server', 'drizzle', '0000_initial.sql');
@@ -137,19 +137,19 @@ export async function setupEmbeddedPostgres() {
           'CREATE TABLE IF NOT EXISTS app.users'
         );
         await client.unsafe(schemaAwareSql);
-        console.log('✅ Database schema created');
+        console.log('Database schema created');
       }
     } else {
-      console.log('✅ Database schema already exists');
+      console.log('Database schema already exists');
     }
 
     return connectionString;
 
   } catch (error) {
-    console.error('❌ Failed to setup embedded PostgreSQL:', error);
+    console.error('Failed to setup embedded PostgreSQL:', error);
     
     if (error.message?.includes('postmaster.pid already exists')) {
-      console.log('⚠️ PostgreSQL instance already running, continuing...');
+      console.log('PostgreSQL instance already running, continuing...');
       return `postgresql://postgres:password@localhost:${postgresPort}/postgres`;
     }
     

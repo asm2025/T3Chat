@@ -7,7 +7,11 @@
     "deploy": "npm run deploy:cf",
     "deploy:cf": "node scripts/deploy-cloudflare.js",
     "test": "vitest",
-    "db:push": "drizzle-kit push:pg"
+    "db:push": "drizzle-kit push:pg",
+    "db:generate": "drizzle-kit generate:pg",
+    "db:migrate": "node scripts/auto-migrate.mjs",
+    "db:test": "node scripts/test-migration.mjs",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",

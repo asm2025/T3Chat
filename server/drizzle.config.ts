@@ -8,7 +8,6 @@ export default {
     out: "./drizzle",
     driver: "pg",
     dbCredentials: {
-        connectionString: databaseUrl || "postgresql://postgres:postgres@localhost:5433/postgres",
+        connectionString: databaseUrl || "postgresql://postgres:postgres@localhost:5433/t3chat",
     },
-    schemaFilter: ["app"],
 } satisfies Config;

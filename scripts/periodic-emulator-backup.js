@@ -28,7 +28,7 @@ let isBackupRunning = false;
  */
 async function exportEmulatorData() {
   if (isBackupRunning) {
-    console.log('⏳ Backup already in progress, skipping...');
+      console.log('Backup already in progress, skipping...');
     return;
   }
 
@@ -47,14 +47,14 @@ async function exportEmulatorData() {
     });
 
     if (response.ok) {
-      console.log(`💾 Emulator data backed up (#${backupCount}) - ${new Date().toISOString()}`);
+      console.log(`Emulator data backed up (#${backupCount}) - ${new Date().toISOString()}`);
     } else {
-      console.warn(`⚠️  Backup failed (HTTP ${response.status}): ${response.statusText}`);
+      console.warn(`Backup failed (HTTP ${response.status}): ${response.statusText}`);
     }
   } catch (error) {
     // Don't log connection errors during startup - emulator might not be ready yet
     if (backupCount > 2) {
-      console.warn(`⚠️  Backup failed: ${error.message}`);
+      console.warn(`Backup failed: ${error.message}`);
     }
   } finally {
     isBackupRunning = false;
@@ -77,15 +77,15 @@ async function isEmulatorRunning() {
  * Main backup loop
  */
 async function startPeriodicBackup() {
-  console.log('🔄 Starting periodic Firebase emulator backup (every 60s)...');
+  console.log('Starting periodic Firebase emulator backup (every 60s)...');
   
   // Wait for emulator to be ready
-  console.log('⏳ Waiting for Firebase emulator to start...');
+  console.log('Waiting for Firebase emulator to start...');
   while (!(await isEmulatorRunning())) {
     await sleep(2000); // Check every 2 seconds
   }
   
-  console.log('✅ Firebase emulator detected, starting periodic backups');
+  console.log('Firebase emulator detected, starting periodic backups');
   
   // Start periodic backups
   while (true) {
@@ -99,7 +99,7 @@ async function startPeriodicBackup() {
  */
 function setupShutdownHandlers() {
   const shutdown = () => {
-    console.log('\n🛑 Stopping periodic backup...');
+    console.log('\nStopping periodic backup...');
     process.exit(0);
   };
 
@@ -116,7 +116,7 @@ function setupShutdownHandlers() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   setupShutdownHandlers();
   startPeriodicBackup().catch((error) => {
-    console.error('❌ Periodic backup failed:', error);
+    console.error('Periodic backup failed:', error);
     process.exit(1);
   });
 } 

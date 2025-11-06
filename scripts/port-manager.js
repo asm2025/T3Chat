@@ -99,7 +99,7 @@ export function readServerEnv() {
     const content = readFileSync(envPath, 'utf-8');
     return { content, path: envPath };
   } catch (error) {
-    console.error('⚠️ Warning: Could not read server .env file:', error.message);
+    console.error('Warning: Could not read server .env file:', error.message);
     return null;
   }
 }
@@ -118,7 +118,7 @@ export function updateServerEnvWithPorts(availablePorts, useWrangler) {
 
   const envData = readServerEnv();
   if (!envData) {
-    console.error('❌ No server .env file found. Cannot update dynamic ports.');
+    console.error('No server .env file found. Cannot update dynamic ports.');
     return null;
   }
 
@@ -147,7 +147,7 @@ export function updateServerEnvWithPorts(availablePorts, useWrangler) {
           original: originalDbLine,
           modified: newDbLine
         });
-        console.log(`📝 Updated database server port to ${availablePorts.postgres}`);
+        console.log(`Updated database server port to ${availablePorts.postgres}`);
       }
     }
     
@@ -182,7 +182,7 @@ export function updateServerEnvWithPorts(availablePorts, useWrangler) {
           added: firebaseSection
         });
       }
-      console.log(`📝 Updated Firebase Auth emulator port to ${availablePorts.firebaseAuth}`);
+      console.log(`Updated Firebase Auth emulator port to ${availablePorts.firebaseAuth}`);
     }
     
     // Only write if content actually changed
@@ -195,7 +195,7 @@ export function updateServerEnvWithPorts(availablePorts, useWrangler) {
     
     return null;
   } catch (error) {
-    console.error('⚠️ Warning: Could not update server .env file:', error.message);
+    console.error('Warning: Could not update server .env file:', error.message);
     return null;
   }
 }
@@ -238,10 +238,10 @@ export function restoreEnvFile(envState) {
 
     if (hasChanges) {
       writeFileSync(envState.path, currentContent);
-      console.log('✅ Restored original server .env file (preserving user changes)');
+      console.log('Restored original server .env file (preserving user changes)');
     }
   } catch (error) {
-    console.error('⚠️ Warning: Could not restore server .env file:', error.message);
+    console.error('Warning: Could not restore server .env file:', error.message);
   }
 }
 
@@ -268,11 +268,11 @@ export function checkDatabaseConfiguration(useWrangler) {
   const envPath = path.join(__dirname, '../server/.env');
   if (!existsSync(envPath)) {
     if (useWrangler) {
-      console.error('❌ No .env file found. Cloudflare Workers requires DATABASE_URL to be set.');
+      console.error('No .env file found. Cloudflare Workers requires DATABASE_URL to be set.');
       console.error('   Please create server/.dev.vars with a remote database URL.');
       return false;
     }
-    console.error('❌ No .env file found. Run `pnpm run setup:local` first to set up your database.');
+    console.error('No .env file found. Run `pnpm run setup:local` first to set up your database.');
     return false;
   }
 
@@ -280,7 +280,7 @@ export function checkDatabaseConfiguration(useWrangler) {
   const dbUrl = envContent.match(/DATABASE_URL=(.+)/)?.[1]?.trim();
 
   if (!dbUrl) {
-    console.error('❌ No DATABASE_URL found in .env file.');
+    console.error('No DATABASE_URL found in .env file.');
     if (useWrangler) {
       console.error('   Please add DATABASE_URL to server/.dev.vars with a remote database.');
     } else {
@@ -291,7 +291,7 @@ export function checkDatabaseConfiguration(useWrangler) {
 
   // If using Wrangler and database is localhost, that's a problem
   if (useWrangler && dbUrl.includes('localhost')) {
-    console.error('❌ Cloudflare Workers Configuration Issue:');
+    console.error('Cloudflare Workers Configuration Issue:');
     console.error('   Embedded PostgreSQL cannot run in Cloudflare Workers environment.');
     console.error('   Please update DATABASE_URL in server/.dev.vars to point to a remote database.');
     console.error('   Supported options:');
@@ -302,7 +302,7 @@ export function checkDatabaseConfiguration(useWrangler) {
 
   // If not using Wrangler but we have a remote database, that's fine too
   if (!useWrangler && !dbUrl.includes('localhost')) {
-    console.log('✅ Using remote database with Node.js server');
+    console.log('Using remote database with Node.js server');
   }
 
   return true;
@@ -350,7 +350,7 @@ export function readWranglerConfig() {
     const content = readFileSync(wranglerPath, 'utf-8');
     return { content, path: wranglerPath };
   } catch (error) {
-    console.error('⚠️ Warning: Could not read wrangler.toml file:', error.message);
+    console.error('Warning: Could not read wrangler.toml file:', error.message);
     return null;
   }
 }
@@ -364,7 +364,7 @@ export function readWranglerConfig() {
 export function updateWranglerConfigWithPort(availablePorts, useFirebaseEmulator = false) {
   const configData = readWranglerConfig();
   if (!configData) {
-    console.error('❌ No wrangler.toml file found. Cannot update dynamic port.');
+    console.error('No wrangler.toml file found. Cannot update dynamic port.');
     return null;
   }
 
@@ -456,14 +456,14 @@ export function updateWranglerConfigWithPort(availablePorts, useFirebaseEmulator
           }
         }
       }
-      console.log(`📝 Updated wrangler.toml Firebase Auth emulator to localhost:${availablePorts.firebaseAuth}`);
+      console.log(`Updated wrangler.toml Firebase Auth emulator to localhost:${availablePorts.firebaseAuth}`);
     }
     
     // Only write if content actually changed
     if (hasChanges && updatedContent !== configData.content) {
       writeFileSync(configData.path, updatedContent);
       if (!useFirebaseEmulator) {
-        console.log(`📝 Updated wrangler.toml port to ${availablePorts.backend}`);
+        console.log(`Updated wrangler.toml port to ${availablePorts.backend}`);
       }
       
       // Return tracked changes for intelligent restoration
@@ -472,7 +472,7 @@ export function updateWranglerConfigWithPort(availablePorts, useFirebaseEmulator
     
     return null;
   } catch (error) {
-    console.error('⚠️ Warning: Could not update wrangler.toml file:', error.message);
+    console.error('Warning: Could not update wrangler.toml file:', error.message);
     return null;
   }
 }
@@ -534,9 +534,9 @@ export function restoreWranglerConfig(configState) {
 
     if (hasChanges) {
       writeFileSync(configState.path, currentContent);
-      console.log('✅ Restored original wrangler.toml file (preserving user changes)');
+      console.log('Restored original wrangler.toml file (preserving user changes)');
     }
   } catch (error) {
-    console.error('⚠️ Warning: Could not restore wrangler.toml file:', error.message);
+    console.error('Warning: Could not restore wrangler.toml file:', error.message);
   }
 } 

@@ -20,7 +20,7 @@ export const startEmbeddedPostgres = async (port: number = 5502): Promise<string
     return connectionString;
   }
 
-  console.log('🗄️ Starting embedded PostgreSQL...');
+  console.log('Starting embedded PostgreSQL...');
 
   // Use data directory relative to the database-server package
   const dataDir = path.join(__dirname, '../../data/postgres');
@@ -39,24 +39,24 @@ export const startEmbeddedPostgres = async (port: number = 5502): Promise<string
 
   try {
     if (!isInitialized) {
-      console.log('📦 Initializing PostgreSQL cluster...');
+      console.log('Initializing PostgreSQL cluster...');
       await embeddedInstance.initialise();
     }
 
     await embeddedInstance.start();
     connectionString = `postgresql://postgres:password@localhost:${port}/postgres`;
     
-    console.log(`✅ Embedded PostgreSQL started on port ${port}`);
+    console.log(`Embedded PostgreSQL started on port ${port}`);
     return connectionString;
   } catch (error: any) {
     embeddedInstance = null;
     
     if (error?.message && error.message.includes('postmaster.pid already exists')) {
-      console.log('⚠️ PostgreSQL instance already running in this directory');
-      console.log('💡 Either stop the other instance or use a different project folder');
+      console.log('PostgreSQL instance already running in this directory');
+      console.log('Either stop the other instance or use a different project folder');
       throw error;
     } else {
-      console.error('❌ Failed to start embedded PostgreSQL:', error?.message || error);
+      console.error('Failed to start embedded PostgreSQL:', error?.message || error);
       throw error;
     }
   }
@@ -66,13 +66,13 @@ export const stopEmbeddedPostgres = async (): Promise<void> => {
   if (!embeddedInstance) return;
 
   try {
-    console.log('🛑 Stopping embedded PostgreSQL...');
+    console.log('Stopping embedded PostgreSQL...');
     await embeddedInstance.stop();
     embeddedInstance = null;
     connectionString = null;
-    console.log('✅ Embedded PostgreSQL stopped');
+    console.log('Embedded PostgreSQL stopped');
   } catch (error) {
-    console.error('❌ Error stopping embedded PostgreSQL:', error);
+    console.error('Error stopping embedded PostgreSQL:', error);
     embeddedInstance = null;
     connectionString = null;
   }

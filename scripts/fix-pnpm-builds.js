@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = dirname(__dirname);
 
-console.log('🔧 Fixing pnpm build script permissions for embedded postgres...\n');
+console.log('Fixing pnpm build script permissions for embedded postgres...\n');
 
 // List of embedded postgres packages that need build scripts
 const embeddedPostgresPackages = [
@@ -19,10 +19,10 @@ const embeddedPostgresPackages = [
   '@embedded-postgres/win32-x64'
 ];
 
-console.log('📦 Packages to fix:', embeddedPostgresPackages.join(', '));
+console.log('Packages to fix:', embeddedPostgresPackages.join(', '));
 
 // Strategy 1: Try pnpm rebuild (forces build scripts to run)
-console.log('\n🔄 Strategy 1: Rebuilding packages...');
+console.log('\nStrategy 1: Rebuilding packages...');
 try {
   const rebuildCmd = `pnpm rebuild ${embeddedPostgresPackages.join(' ')}`;
   console.log(`Running: ${rebuildCmd}`);
@@ -31,13 +31,13 @@ try {
     stdio: 'inherit',
     cwd: projectRoot 
   });
-  console.log('✅ Successfully rebuilt embedded postgres packages');
+  console.log('Successfully rebuilt embedded postgres packages');
   
 } catch (rebuildError) {
-  console.log('⚠️ Rebuild failed:', rebuildError.message);
+  console.log('Rebuild failed:', rebuildError.message);
   
   // Strategy 2: Try approve-builds
-  console.log('\n🔄 Strategy 2: Approving build scripts...');
+  console.log('\nStrategy 2: Approving build scripts...');
   try {
     const approveCmd = `pnpm approve-builds ${embeddedPostgresPackages.join(' ')}`;
     console.log(`Running: ${approveCmd}`);
@@ -46,13 +46,13 @@ try {
       stdio: 'inherit',
       cwd: projectRoot 
     });
-    console.log('✅ Successfully approved build scripts');
+    console.log('Successfully approved build scripts');
     
   } catch (approveError) {
-    console.log('⚠️ Approve-builds failed:', approveError.message);
+    console.log('Approve-builds failed:', approveError.message);
     
     // Strategy 3: Manual instructions
-    console.log('\n📋 Manual fix required:');
+    console.log('\nManual fix required:');
     console.log('Run one of these commands:');
     console.log(`  pnpm rebuild ${embeddedPostgresPackages.join(' ')}`);
     console.log('  OR');
@@ -64,5 +64,5 @@ try {
   }
 }
 
-console.log('\n🎉 pnpm build script fix complete!');
-console.log('💡 Now try running your embedded postgres setup again.'); 
+console.log('\npnpm build script fix complete!');
+console.log('Now try running your embedded postgres setup again.'); 

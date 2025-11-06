@@ -14,28 +14,28 @@ const { port } = parseCliArgs();
 
 // Start database server
 const startDatabaseServer = async () => {
-  console.log('🚀 Starting volo-app Database Server...');
+  console.log('Starting volo-app Database Server...');
   
   try {
     // Start PostgreSQL
     await startEmbeddedPostgres(port);
     
   } catch (error) {
-    console.error('❌ Failed to start database server:', error instanceof Error ? error.message : String(error));
+    console.error('Failed to start database server:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 };
 
 // Graceful shutdown
 const shutdown = async (signal: string) => {
-  console.log(`\n🛑 Received ${signal}, shutting down database server...`);
+  console.log(`\nReceived ${signal}, shutting down database server...`);
   
   try {
     await stopEmbeddedPostgres();
-    console.log('✅ Database server stopped gracefully');
+    console.log('Database server stopped gracefully');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error during shutdown:', error);
+    console.error('Error during shutdown:', error);
     process.exit(1);
   }
 };
@@ -51,12 +51,12 @@ signals.forEach(signal => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   shutdown('uncaughtException');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   shutdown('unhandledRejection');
 });
 

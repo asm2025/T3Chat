@@ -32,7 +32,7 @@ const createConnection = async (connectionString: string): Promise<DatabaseConne
 export const getDatabase = async (connectionString?: string): Promise<DatabaseConnection> => {
   // Use default local database connection if no external connection string provided
   // Note: In development, the port is dynamically allocated by port-manager.js
-  const defaultLocalConnection = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5502/postgres';
+  const defaultLocalConnection = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5502/t3chat';
   const connStr = connectionString || defaultLocalConnection;
 
   if (cachedConnection && cachedConnectionString === connStr) {

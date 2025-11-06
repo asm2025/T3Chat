@@ -1,15 +1,19 @@
-use crate::env::{get_firebase_auth_emulator_host, get_firebase_project_id, is_development, get_allow_anonymous_users};
-use crate::schema::users::{ActiveModel, Entity, Model};
+use crate::{db::prelude::*, env::get_firebase_project_id};
 use axum::{
-    extract::{Request, State},
-    http::StatusCode,
+    body::Body,
+    extract::{FromRequestParts, State},
+    http::{Request, StatusCode, request::Parts},
     middleware::Next,
     response::Response,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
+use emix::env::{get_allow_anonymous_users, is_development};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 use serde::{Deserialize, Serialize};
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use std::collections::HashMap;
+
+use crate::AppState;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FirebaseTokenPayload {
@@ -20,11 +24,41 @@ struct FirebaseTokenPayload {
     extra: HashMap<String, serde_json::Value>,
 }
 
-pub struct AuthenticatedUser(pub Model);
+#[derive(Debug, Deserialize)]
+struct JwksResponse {
+    keys: Vec<Jwk>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Jwk {
+    kid: String,
+    n: String,
+    e: String,
+    kty: String,
+    alg: String,
+}
+
+#[derive(Clone)]
+pub struct AuthenticatedUser(pub UserModel);
+
+impl<S> FromRequestParts<S> for AuthenticatedUser
+where
+    S: Send + Sync,
+{
+    type Rejection = StatusCode;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        parts
+            .extensions
+            .get::<AuthenticatedUser>()
+            .cloned()
+            .ok_or(StatusCode::UNAUTHORIZED)
+    }
+}
 
 pub async fn auth_middleware(
-    State(db): State<sea_orm::DatabaseConnection>,
-    mut request: Request,
+    State(state): State<AppState>,
+    mut request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Extract token from Authorization header
@@ -35,61 +69,35 @@ pub async fn auth_middleware(
         .ok_or(StatusCode::UNAUTHORIZED)?
         .strip_prefix("Bearer ")
         .ok_or(StatusCode::UNAUTHORIZED)?;
-
     // Verify token
-    let firebase_user = verify_firebase_token(auth_header).await
+    let firebase_user = verify_firebase_token(auth_header)
+        .await
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
-
     // Check if anonymous users are allowed
     let allow_anonymous = get_allow_anonymous_users();
     let is_anonymous = firebase_user.email.is_none();
-    
+
     if !allow_anonymous && is_anonymous {
         return Err(StatusCode::FORBIDDEN);
     }
 
-    // Upsert user in database
-    let user = upsert_user(&db, &firebase_user).await
+    // Upsert user in database using repository
+    let create_user_dto = CreateUserDto {
+        id: firebase_user.id,
+        email: firebase_user.email,
+        display_name: None,
+        image_url: None,
+    };
+    let user = state
+        .user_repository
+        .upsert(create_user_dto)
+        .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Add user to request extensions
     request.extensions_mut().insert(AuthenticatedUser(user));
 
     Ok(next.run(request).await)
-}
-
-async fn upsert_user(
-    db: &sea_orm::DatabaseConnection,
-    firebase_user: &FirebaseUser,
-) -> Result<Model, sea_orm::DbErr> {
-    use sea_orm::EntityTrait;
-    
-    // Try to find existing user
-    let existing_user = Entity::find_by_id(&firebase_user.id)
-        .one(db)
-        .await?;
-
-    if let Some(mut user) = existing_user {
-        // Update if email changed
-        if user.email != firebase_user.email {
-            let mut user_active: ActiveModel = user.clone().into();
-            user_active.email = Set(firebase_user.email.clone());
-            user_active.updated_at = Set(chrono::Utc::now());
-            user = user_active.update(db).await?;
-        }
-        Ok(user)
-    } else {
-        // Insert new user
-        let new_user = ActiveModel {
-            id: Set(firebase_user.id.clone()),
-            email: Set(firebase_user.email.clone()),
-            display_name: Set(None),
-            photo_url: Set(None),
-            created_at: Set(chrono::Utc::now()),
-            updated_at: Set(chrono::Utc::now()),
-        };
-        new_user.insert(db).await
-    }
 }
 
 #[derive(Debug)]
@@ -99,7 +107,7 @@ struct FirebaseUser {
 }
 
 async fn verify_firebase_token(token: &str) -> Result<FirebaseUser, String> {
-    let project_id = get_firebase_project_id().map_err(|e| e)?;
+    let project_id = get_firebase_project_id().map_err(|e| e.to_string())?;
 
     if is_development() {
         // In development/emulator mode, decode token without verification
@@ -122,10 +130,10 @@ fn verify_emulator_token(token: &str, project_id: &str) -> Result<FirebaseUser, 
     // Add padding if needed
     let padding = (4 - payload_b64.len() % 4) % 4;
     let payload_b64_padded = format!("{}{}", payload_b64, "=".repeat(padding));
-    let payload_bytes = base64::engine::general_purpose::STANDARD
+    let payload_bytes = STANDARD
         .decode(&payload_b64_padded)
         .map_err(|_| "Invalid token payload encoding".to_string())?;
-    
+
     let payload: FirebaseTokenPayload = serde_json::from_slice(&payload_bytes)
         .map_err(|_| "Invalid token payload JSON".to_string())?;
 
@@ -141,37 +149,83 @@ fn verify_emulator_token(token: &str, project_id: &str) -> Result<FirebaseUser, 
 }
 
 async fn verify_production_token(token: &str, project_id: &str) -> Result<FirebaseUser, String> {
-    // Fetch JWKS from Google
-    let jwks_url = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
-    
-    // For production, we'll use a simpler approach with jsonwebtoken
-    // In a production app, you'd want to cache JWKS and handle key rotation
-    let jwks_response = reqwest::get(jwks_url)
-        .await
-        .map_err(|e| format!("Failed to fetch JWKS: {}", e))?;
-    
-    let jwks: serde_json::Value = jwks_response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse JWKS: {}", e))?;
+    tracing::debug!("Verifying production Firebase token");
 
-    // Extract keys from JWKS (simplified - in production you'd want proper key selection)
-    // For now, we'll use a validation approach that works with the first key
-    // Note: This is simplified - proper JWKS handling requires more complex logic
-    
+    // Step 1: Decode token header to get the kid (key ID)
+    let header = decode_header(token).map_err(|e| {
+        tracing::error!("Failed to decode token header: {}", e);
+        format!("Invalid token header: {}", e)
+    })?;
+
+    let kid = header.kid.ok_or_else(|| {
+        tracing::error!("Token header missing 'kid' field");
+        "Token missing kid field".to_string()
+    })?;
+
+    tracing::debug!("Token kid: {}", kid);
+
+    // Step 2: Fetch JWKS from Google
+    let jwks_url =
+        "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
+
+    tracing::debug!("Fetching JWKS from Google");
+    let jwks_response = reqwest::get(jwks_url).await.map_err(|e| {
+        tracing::error!("Failed to fetch JWKS: {}", e);
+        format!("Failed to fetch JWKS: {}", e)
+    })?;
+
+    let jwks: JwksResponse = jwks_response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse JWKS: {}", e);
+        format!("Failed to parse JWKS: {}", e)
+    })?;
+
+    // Step 3: Find the matching key from JWKS
+    let jwk = jwks.keys.iter().find(|key| key.kid == kid).ok_or_else(|| {
+        tracing::error!("No matching key found for kid: {}", kid);
+        format!("No matching key found for kid: {}", kid)
+    })?;
+
+    tracing::debug!("Found matching JWK for kid: {}", kid);
+
+    // Step 4: Convert JWK to DecodingKey
+    // The JWK contains n (modulus) and e (exponent) in base64url format
+    let decoding_key = jwk_to_decoding_key(jwk).map_err(|e| {
+        tracing::error!("Failed to convert JWK to DecodingKey: {}", e);
+        format!("Failed to convert JWK to DecodingKey: {}", e)
+    })?;
+
+    // Step 5: Set up validation parameters
     let issuer = format!("https://securetoken.google.com/{}", project_id);
-    let mut validation = Validation::new(jsonwebtoken::Algorithm::RS256);
+    let mut validation = Validation::new(Algorithm::RS256);
     validation.set_issuer(&[issuer]);
     validation.set_audience(&[project_id]);
 
-    // Try to decode with a placeholder key (this won't work for real verification)
-    // For a proper implementation, you'd need to:
-    // 1. Extract the kid from the token header
-    // 2. Find the matching key in JWKS
-    // 3. Decode with that specific key
-    
-    // For now, we'll use a simplified approach that works with the emulator
-    // In production, you'd want to use a library that properly handles JWKS
-    verify_emulator_token(token, project_id)
+    // Step 6: Verify and decode the token
+    let token_data =
+        decode::<FirebaseTokenPayload>(token, &decoding_key, &validation).map_err(|e| {
+            tracing::error!("Token verification failed: {}", e);
+            format!("Token verification failed: {}", e)
+        })?;
+
+    tracing::debug!(
+        "Token verified successfully for user: {}",
+        token_data.claims.sub
+    );
+
+    Ok(FirebaseUser {
+        id: token_data.claims.sub,
+        email: token_data.claims.email,
+    })
 }
 
+fn jwk_to_decoding_key(jwk: &Jwk) -> Result<DecodingKey, String> {
+    // Validate that this is an RSA key
+    if jwk.kty != "RSA" {
+        return Err(format!("Unsupported key type: {}", jwk.kty));
+    }
+
+    // Create DecodingKey from RSA components (n and e are base64url-encoded)
+    // The jsonwebtoken crate handles the base64 decoding internally
+    DecodingKey::from_rsa_components(&jwk.n, &jwk.e)
+        .map_err(|e| format!("Failed to create DecodingKey: {}", e))
+}
