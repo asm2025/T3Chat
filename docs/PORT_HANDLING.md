@@ -10,8 +10,8 @@ volo-app automatically handles port assignments to prevent conflicts and enable 
 
 When you run `pnpm run dev`, volo-app:
 
-1. **Finds available ports** starting from 5500-5504 for the first instance
-2. **Uses clean port blocks** (5600-5604, 5700-5704, etc.) for additional instances
+1. **Finds available ports** starting from 5000-5004 for the first instance
+2. **Uses clean port blocks** (5100-5104, 5200-5204, etc.) for additional instances
 3. **Temporarily updates configuration files** with the assigned ports
 4. **Displays clear status** showing which ports are being used
 5. **Restores original configuration** when you stop the server
@@ -20,10 +20,10 @@ When you run `pnpm run dev`, volo-app:
 
 The system allocates ports in clean 100-port blocks:
 
-- **Instance 1:** 5500-5504 (backend, frontend, postgres, firebase auth, firebase UI)
-- **Instance 2:** 5600-5604  
-- **Instance 3:** 5700-5704
-- **And so on...**
+-   **Instance 1:** 5000-5004 (backend, frontend, postgres, firebase auth, firebase UI)
+-   **Instance 2:** 5100-5104
+-   **Instance 3:** 5200-5204
+-   **And so on...**
 
 If any port in a block is occupied, the system jumps to the next 100-port block to ensure clean groupings.
 
@@ -31,23 +31,23 @@ If any port in a block is occupied, the system jumps to the next 100-port block 
 
 For dynamic port management, the system:
 
-- ✅ **Temporarily modifies `.env` file** with dynamic PostgreSQL and Firebase Auth ports
-- ✅ **Passes CLI arguments** to services with correct ports  
-- ✅ **Sets environment variables** for frontend Firebase Auth emulator connection
-- ✅ **Restores original `.env`** when services are stopped
-- ✅ **Ensures all services** use the dynamically assigned ports
+-   ✅ **Temporarily modifies `.env` file** with dynamic PostgreSQL and Firebase Auth ports
+-   ✅ **Passes CLI arguments** to services with correct ports
+-   ✅ **Sets environment variables** for frontend Firebase Auth emulator connection
+-   ✅ **Restores original `.env`** when services are stopped
+-   ✅ **Ensures all services** use the dynamically assigned ports
 
 This prevents port conflicts between multiple instances and ensures proper service isolation.
 
 ### Services and Default Ports
 
-| Service | Default Port | Purpose |
-|---------|-------------|---------|
-| **Backend API** | 8787 | Your Hono server |
-| **Frontend (Vite)** | 5173 | React development server |
-| **PostgreSQL** | 5433 | Embedded database |
-| **Firebase Auth Emulator** | 9099 | Authentication testing |
-| **Firebase Emulator UI** | 4000 | Emulator dashboard |
+| Service                    | Default Port | Purpose                  |
+| -------------------------- | ------------ | ------------------------ |
+| **Backend API**            | 8787         | Your Hono server         |
+| **Frontend (Vite)**        | 5173         | React development server |
+| **PostgreSQL**             | 5433         | Embedded database        |
+| **Firebase Auth Emulator** | 9099         | Authentication testing   |
+| **Firebase Emulator UI**   | 4000         | Emulator dashboard       |
 
 ## 📋 Port Status Display
 
@@ -78,16 +78,17 @@ You can run multiple volo-app projects simultaneously by:
 cd ~/projects/my-first-app
 pnpm run dev    # Uses ports 8787, 5173, 5433, etc.
 
-# Terminal 2  
+# Terminal 2
 cd ~/projects/my-second-app
 pnpm run dev    # Uses ports 8788, 5174, 5434, etc.
 ```
 
 ### What Gets Isolated:
-- ✅ **PostgreSQL databases** - each project has its own `data/postgres` directory
-- ✅ **HTTP services** - automatic port conflict resolution
-- ✅ **Firebase emulator data** - stored in each project's `data/firebase-emulator` folder
-- ✅ **Configuration files** - temporarily updated with correct ports per instance
+
+-   ✅ **PostgreSQL databases** - each project has its own `data/postgres` directory
+-   ✅ **HTTP services** - automatic port conflict resolution
+-   ✅ **Firebase emulator data** - stored in each project's `data/firebase-emulator` folder
+-   ✅ **Configuration files** - temporarily updated with correct ports per instance
 
 **Important:** Each instance temporarily modifies its own `.env` file with the correct database port, ensuring proper isolation between multiple running instances.
 
@@ -100,10 +101,11 @@ pnpm run dev
 ```
 
 **Features:**
-- ✅ Embedded PostgreSQL database
-- ✅ Hot reload for server and frontend
-- ✅ Firebase Auth emulator
-- ✅ Automatic port management
+
+-   ✅ Embedded PostgreSQL database
+-   ✅ Hot reload for server and frontend
+-   ✅ Firebase Auth emulator
+-   ✅ Automatic port management
 
 ### Cloudflare Workers Mode
 
@@ -114,10 +116,11 @@ pnpm run dev -- --cloudflare
 ```
 
 **Features:**
-- ⚡ Wrangler dev server (simulates Cloudflare Workers)
-- 🌐 **Requires remote database** (Neon, Supabase, etc.)
-- ✅ Firebase Auth emulator
-- ✅ Automatic port management
+
+-   ⚡ Wrangler dev server (simulates Cloudflare Workers)
+-   🌐 **Requires remote database** (Neon, Supabase, etc.)
+-   ✅ Firebase Auth emulator
+-   ✅ Automatic port management
 
 **Note:** Embedded PostgreSQL is not available in Cloudflare Workers mode.
 
@@ -127,10 +130,10 @@ pnpm run dev -- --cloudflare
 
 When using embedded PostgreSQL (the default for local development):
 
-- **Port assignment:** Dynamic, starting from 5433
-- **Data isolation:** Each project folder has its own `data/postgres` directory
-- **Conflict detection:** Prevents multiple instances from using the same data directory
-- **Port conflicts matter:** If PostgreSQL ports conflict, the system finds alternatives
+-   **Port assignment:** Dynamic, starting from 5433
+-   **Data isolation:** Each project folder has its own `data/postgres` directory
+-   **Conflict detection:** Prevents multiple instances from using the same data directory
+-   **Port conflicts matter:** If PostgreSQL ports conflict, the system finds alternatives
 
 ### External Database (Production & Wrangler Mode)
 
@@ -140,9 +143,9 @@ When using external databases (Neon, Supabase, etc.):
 DATABASE_URL=postgresql://user:password@host.neon.tech:5432/mydb
 ```
 
-- **No port conflicts:** Database runs remotely, no local port management needed
-- **Shared access:** Multiple projects can connect to the same external database
-- **Required for Wrangler mode:** Cloudflare Workers cannot run embedded PostgreSQL
+-   **No port conflicts:** Database runs remotely, no local port management needed
+-   **Shared access:** Multiple projects can connect to the same external database
+-   **Required for Wrangler mode:** Cloudflare Workers cannot run embedded PostgreSQL
 
 **Supported providers:** Neon (recommended), Supabase, Railway, or any PostgreSQL-compatible service.
 
@@ -159,8 +162,8 @@ The system uses simple defaults and automatic port detection:
 Your `server/.env` focuses on essential configuration:
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5433/postgres
-FIREBASE_PROJECT_ID=demo-project
+DATABASE_URL=postgresql://postgres:password@localhost:5433/t3chat
+FIREBASE_PROJECT_ID=[project-id]
 ```
 
 **Note:** Port numbers in DATABASE_URL are handled automatically - the system will update the actual port used for embedded PostgreSQL.

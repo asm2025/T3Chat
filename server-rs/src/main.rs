@@ -182,7 +182,7 @@ fn setup_router(state: AppState) -> Router {
         .allow_origin(origins)
         .allow_methods(Any)
         .allow_headers(Any);
-    let profile_routes = Router::new()
+    let protected_routes = Router::new()
         .route("/me", get(api::protected::profile::me))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -192,7 +192,7 @@ fn setup_router(state: AppState) -> Router {
         .route("/", get(api::health_check))
         .route("/api/v1/hello", get(api::hello))
         .route("/api/v1/db-test", get(api::db_test))
-        .nest("/api/v1/profile", profile_routes)
+        .nest("/api/v1/protected", protected_routes)
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
