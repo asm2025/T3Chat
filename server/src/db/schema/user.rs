@@ -123,29 +123,59 @@ impl Merge<ActiveModel> for CreateUserDto {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateUserDto {
-    pub display_name: Option<String>,
-    pub image_url: Option<String>,
+    // Use Option<Option<String>> to distinguish:
+    // None = field not provided (don't update)
+    // Some(None) = field provided as null (set to null)
+    // Some(Some(String)) = field provided with value (set to value)
+    pub display_name: Option<Option<String>>,
+    pub image_url: Option<Option<String>>,
 }
 
 impl Merge<ActiveModel> for UpdateUserDto {
     fn merge(&self, model: &mut ActiveModel) -> bool {
         let mut changed = false;
 
-        if let Some(display_name) = &self.display_name {
-            model.display_name = Set(Some(display_name.clone()));
-            changed = true;
+        // Update display_name only if it was explicitly provided
+        tracing::debug!("Merge: display_name in DTO = {:?}", self.display_name);
+        if let Some(inner) = &self.display_name {
+            match inner {
+                Some(display_name) => {
+                    // Set to the provided value
+                    tracing::debug!("Merge: Setting display_name to Some(\"{}\")", display_name);
+                    model.display_name = Set(Some(display_name.clone()));
+                    changed = true;
+                }
+                None => {
+                    // Explicitly set to null
+                    tracing::debug!("Merge: Setting display_name to None (clearing)");
+                    model.display_name = Set(None);
+                    changed = true;
+                }
+            }
+        } else {
+            tracing::debug!("Merge: display_name not provided, skipping update");
         }
+        // If display_name is None in the DTO, don't update (field not provided)
 
-        if let Some(image_url) = &self.image_url {
-            model.image_url = Set(Some(image_url.clone()));
-            changed = true;
+        // Update image_url only if it was explicitly provided
+        if let Some(inner) = &self.image_url {
+            match inner {
+                Some(image_url) => {
+                    model.image_url = Set(Some(image_url.clone()));
+                    changed = true;
+                }
+                None => {
+                    model.image_url = Set(None);
+                    changed = true;
+                }
+            }
         }
+        // If image_url is None in the DTO, don't update (field not provided)
 
         changed
     }
 }
 
 pub use ActiveModel as UserModelDto;
-pub use Column as UserColumn;
 pub use Entity as UserEntity;
 pub use Model as UserModel;

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use axum::{Router, http::HeaderValue, routing::get};
+use axum::{Router, http::HeaderValue, routing::{get, post, put, delete}};
 use dotenvy::dotenv;
 use emix::env::{get_env, get_port_or};
 use sea_orm::prelude::*;
@@ -19,11 +19,16 @@ mod api;
 mod db;
 mod env;
 pub mod middleware;
+mod ai;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: DatabaseConnection,
     pub user_repository: Arc<Box<dyn db::repositories::IUserRepository>>,
+    pub ai_model_repository: Arc<Box<dyn db::repositories::IAiModelRepository>>,
+    pub user_api_key_repository: Arc<Box<dyn db::repositories::IUserApiKeyRepository>>,
+    pub chat_repository: Arc<Box<dyn db::repositories::IChatRepository>>,
+    pub message_repository: Arc<Box<dyn db::repositories::IMessageRepository>>,
 }
 
 #[tokio::main]
@@ -64,9 +69,25 @@ async fn run() -> Result<()> {
     let user_repository: Arc<Box<dyn db::repositories::IUserRepository>> = Arc::new(Box::new(
         db::repositories::UserRepository::new(connection.clone()),
     ));
+    let ai_model_repository: Arc<Box<dyn db::repositories::IAiModelRepository>> = Arc::new(Box::new(
+        db::repositories::AiModelRepository::new(connection.clone()),
+    ));
+    let user_api_key_repository: Arc<Box<dyn db::repositories::IUserApiKeyRepository>> = Arc::new(Box::new(
+        db::repositories::UserApiKeyRepository::new(connection.clone()),
+    ));
+    let chat_repository: Arc<Box<dyn db::repositories::IChatRepository>> = Arc::new(Box::new(
+        db::repositories::ChatRepository::new(connection.clone()),
+    ));
+    let message_repository: Arc<Box<dyn db::repositories::IMessageRepository>> = Arc::new(Box::new(
+        db::repositories::MessageRepository::new(connection.clone()),
+    ));
     let state = AppState {
         db: connection,
         user_repository,
+        ai_model_repository,
+        user_api_key_repository,
+        chat_repository,
+        message_repository,
     };
     tracing::info!("Database configured successfully.");
 
@@ -182,17 +203,49 @@ fn setup_router(state: AppState) -> Router {
         .allow_origin(origins)
         .allow_methods(Any)
         .allow_headers(Any);
-    let protected_routes = Router::new()
-        .route("/me", get(api::protected::profile::me))
+    let models_routes = Router::new()
+        .route("/", get(api::models::list_models))
+        .route("/{id}", get(api::models::get_model));
+
+    let chats_routes = Router::new()
+        .route("/", get(api::chats::list_chats).post(api::chats::create_chat))
+        .route("/{id}", get(api::chats::get_chat).put(api::chats::update_chat).delete(api::chats::delete_chat))
+        .route("/{id}/messages", get(api::messages::get_messages).post(api::messages::create_message))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
         ));
+
+    let chat_routes = Router::new()
+        .route("/", post(api::chat::chat))
+        .route("/stream", post(api::chat::stream_chat))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::auth_middleware,
+        ));
+
+    let user_api_keys_routes = Router::new()
+        .route("/", get(api::user_api_keys::list_keys).post(api::user_api_keys::create_key))
+        .route("/{id}", delete(api::user_api_keys::delete_key))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::auth_middleware,
+        ));
+
+    let authenticated_routes = Router::new()
+        .route("/me", get(api::me::profile).put(api::me::update_profile))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::auth_middleware,
+        ));
+
     Router::new()
         .route("/", get(api::health_check))
-        .route("/api/v1/hello", get(api::hello))
-        .route("/api/v1/db-test", get(api::db_test))
-        .nest("/api/v1/protected", protected_routes)
+        .nest("/api/v1/models", models_routes)
+        .nest("/api/v1/chats", chats_routes)
+        .nest("/api/v1/chat", chat_routes)
+        .nest("/api/v1/user-api-keys", user_api_keys_routes)
+        .nest("/api/v1", authenticated_routes)
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {

@@ -6,8 +6,8 @@ import { Navbar } from '@/components/navbar';
 import { AppSidebar } from '@/components/appSidebar';
 import { Home } from '@/pages/Home';
 import { Settings } from '@/pages/Settings';
-import { Page1 } from '@/pages/Page1';
-import { Page2 } from '@/pages/Page2';
+import { Chat } from '@/pages/Chat';
+import { Profile } from '@/pages/Profile';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import {
   SidebarProvider,
@@ -59,19 +59,32 @@ function AppContent() {
             <LoginForm />
           </main>
         ) : (
-          <div className="flex flex-1">
-            <AppSidebar />
-            <SidebarInset className="flex-1">
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/page1" element={<Page1 />} />
-                  <Route path="/page2" element={<Page2 />} />
-                  <Route path="/settings" element={<Settings />} />
-                </Routes>
-              </main>
-            </SidebarInset>
-          </div>
+          <>
+            <Routes>
+              <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
+              <Route path="/chat/:chatId?" element={<Chat />} />
+              <Route path="/profile" element={
+                <div className="flex flex-1">
+                  <AppSidebar />
+                  <SidebarInset className="flex-1">
+                    <main className="flex-1">
+                      <Profile />
+                    </main>
+                  </SidebarInset>
+                </div>
+              } />
+              <Route path="/settings" element={
+                <div className="flex flex-1">
+                  <AppSidebar />
+                  <SidebarInset className="flex-1">
+                    <main className="flex-1">
+                      <Settings />
+                    </main>
+                  </SidebarInset>
+                </div>
+              } />
+            </Routes>
+          </>
         )}
       </div>
     </SidebarProvider>

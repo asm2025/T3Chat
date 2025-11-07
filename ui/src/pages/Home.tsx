@@ -1,49 +1,79 @@
 import { useAuth } from '@/lib/auth-context';
-import { api } from '@/lib/serverComm';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { MessageSquare, ArrowRight } from 'lucide-react';
 
-export function Home() {
+interface HomeProps {
+  onSignInClick?: () => void;
+}
+
+export function Home({ onSignInClick }: HomeProps = {}) {
   const { user } = useAuth();
-  const [serverUserInfo, setServerUserInfo] = useState(null);
-  const [serverError, setServerError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    async function fetchUserInfo() {
-      if (user) {
-        try {
-          const data = await api.getCurrentUser();
-          setServerUserInfo(data);
-          setServerError('');
-        } catch (error) {
-          setServerError('Failed to fetch user info from server');
-          console.error('Server error:', error);
-        }
-      }
+    // Redirect authenticated users to chat
+    if (user && !user.isAnonymous) {
+      navigate('/chat');
     }
-    fetchUserInfo();
-  }, [user]);
+  }, [user, navigate]);
 
-  return (
-    <div className="container mx-auto p-6">
-      <div className="space-y-4 text-center">
-        <h1 className="text-3xl font-bold">Welcome to Your App!</h1>
-        <p className="text-muted-foreground">
-          This is your application template with authentication and routing ready to go.
-        </p>
-        
-        {serverError ? (
-          <p className="text-red-500">{serverError}</p>
-        ) : serverUserInfo ? (
-          <div className="p-4 border rounded-lg max-w-md mx-auto">
-            <h2 className="text-xl font-semibold mb-2">Server User Info</h2>
-            <pre className="text-left bg-muted p-2 rounded text-sm">
-              {JSON.stringify(serverUserInfo, null, 2)}
-            </pre>
+  // Show welcome page for non-authenticated users
+  if (!user || user.isAnonymous) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] space-y-8">
+          <div className="text-center space-y-4">
+            <div className="flex justify-center mb-4">
+              <div className="rounded-full bg-primary/10 p-6">
+                <MessageSquare className="h-16 w-16 text-primary" />
+              </div>
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight">Welcome to T3Chat</h1>
+            <p className="text-xl text-muted-foreground max-w-2xl">
+              Your intelligent chat companion powered by AI. Start conversations, get answers, and explore the power of artificial intelligence.
+            </p>
           </div>
-        ) : (
-          <p>Loading server info...</p>
-        )}
+
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle>Get Started</CardTitle>
+              <CardDescription>
+                Sign in to start chatting with AI models and explore the features
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">AI-Powered Conversations</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Chat with state-of-the-art AI models and get intelligent responses to your questions.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Multiple Models</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Choose from a variety of AI models to suit your needs and preferences.
+                    </p>
+                  </div>
+                </div>
+                {onSignInClick && (
+                  <Button onClick={onSignInClick} className="w-full" size="lg">
+                    Sign In to Get Started
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // This should not be reached due to redirect, but just in case
+  return null;
 } 

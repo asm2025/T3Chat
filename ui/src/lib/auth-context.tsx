@@ -12,7 +12,7 @@ interface UserProfile {
   id: string
   email: string | null
   display_name: string | null
-  photo_url: string | null
+  image_url: string | null
   created_at: string
   updated_at: string
 }
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setProfileLoading(true)
       const response = await getCurrentUser()
-      setUserProfile(response.user)
+      setUserProfile(response)
     } catch (error) {
       // Only log profile fetch errors if they're not authentication errors
       // (which can happen during logout when old listeners are still active)

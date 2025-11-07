@@ -28,7 +28,7 @@ async function getAuthToken(): Promise<string | null> {
   return user.getIdToken();
 }
 
-async function fetchWithAuth(
+export async function fetchWithAuth(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> {
@@ -60,17 +60,35 @@ async function fetchWithAuth(
 
 // API endpoints
 export async function getCurrentUser(): Promise<{
-  user: {
-    id: string;
-    email: string | null;
-    display_name: string | null;
-    photo_url: string | null;
-    created_at: string;
-    updated_at: string;
-  };
-  message: string;
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
 }> {
-  const response = await fetchWithAuth('/api/v1/protected/me');
+  const response = await fetchWithAuth('/api/v1/me');
+  return response.json();
+}
+
+export async function updateUser(data: {
+  display_name?: string | null;
+  image_url?: string | null;
+}): Promise<{
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}> {
+  const response = await fetchWithAuth('/api/v1/me', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
   return response.json();
 }
 
@@ -88,5 +106,13 @@ export async function getCurrentUser(): Promise<{
 
 export const api = {
   getCurrentUser,
+  updateUser,
   // Add other API endpoints here
-}; 
+};
+
+// Export API functions
+export * from './api/models';
+export * from './api/chats';
+export * from './api/messages';
+export * from './api/chat';
+export * from './api/userApiKeys'; 

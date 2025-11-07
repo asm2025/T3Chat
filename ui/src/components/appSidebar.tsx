@@ -1,8 +1,6 @@
 import { 
-  Home, 
   Settings, 
-  FileText,
-  Layers,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -30,26 +28,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Home" isActive={isActive('/')} asChild>
-                  <Link to="/">
-                    <Home className="w-4 h-4" />
-                    <span>Home</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Page 1" isActive={isActive('/page1')} asChild>
-                  <Link to="/page1">
-                    <FileText className="w-4 h-4" />
-                    <span>Page 1</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Page 2" isActive={isActive('/page2')} asChild>
-                  <Link to="/page2">
-                    <Layers className="w-4 h-4" />
-                    <span>Page 2</span>
+                <SidebarMenuButton tooltip="Chat" isActive={location.pathname.startsWith('/chat')} asChild>
+                  <Link to="/chat">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Chat</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

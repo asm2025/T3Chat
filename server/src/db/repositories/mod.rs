@@ -1,2 +1,11 @@
 mod user_repository;
+mod ai_model_repository;
+mod user_api_key_repository;
+mod chat_repository;
+mod message_repository;
+
 pub use user_repository::*;
+pub use ai_model_repository::*;
+pub use user_api_key_repository::*;
+pub use chat_repository::*;
+pub use message_repository::*;
