@@ -1,11 +1,17 @@
+use crate::{
+    AppState,
+    ai::types::{ChatMessage, ChatRequest as AIChatRequest},
+    db::prelude::*,
+    db::repositories::{IChatRepository, IMessageRepository, IUserApiKeyRepository},
+    middleware::auth::AuthenticatedUser,
+};
 use axum::{
+    body::Body,
     extract::State,
     http::StatusCode,
-    response::{Json, IntoResponse, Response},
-    body::Body,
+    response::{IntoResponse, Json, Response},
 };
 use serde::{Deserialize, Serialize};
-use crate::{AppState, db::prelude::*, middleware::auth::AuthenticatedUser, ai::types::{ChatRequest as AIChatRequest, ChatMessage}};
 
 #[derive(Debug, Deserialize)]
 pub struct ChatRequest {
@@ -26,6 +32,7 @@ pub struct ChatCompletionResponse {
     pub finish_reason: Option<String>,
 }
 
+/// Handle non-streaming chat completion
 pub async fn chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -102,13 +109,10 @@ pub async fn chat(
         stream: false,
     };
 
-    let ai_response = ai_provider
-        .chat(ai_request)
-        .await
-        .map_err(|e| {
-            tracing::error!("AI provider error: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let ai_response = ai_provider.chat(ai_request).await.map_err(|e| {
+        tracing::error!("AI provider error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     // Save user message
     let user_seq = state
@@ -167,6 +171,7 @@ pub async fn chat(
     }))
 }
 
+/// Handle streaming chat completion
 pub async fn stream_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -175,7 +180,7 @@ pub async fn stream_chat(
     // For now, return a simple non-streaming response
     // Full SSE streaming implementation would go here
     let response = chat(user, state, Json(payload)).await?;
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")

@@ -5,7 +5,8 @@ use axum::{
 };
 use serde::Deserialize;
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*, middleware::auth::AuthenticatedUser, api::chats::MessageResponse};
+use crate::{AppState, db::prelude::*, db::repositories::{IChatRepository, IMessageRepository}, middleware::auth::AuthenticatedUser};
+use super::MessageResponse;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateMessageRequest {
@@ -13,6 +14,7 @@ pub struct CreateMessageRequest {
     pub role: Option<String>,
 }
 
+/// Get all messages for a chat
 pub async fn get_messages(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -27,6 +29,7 @@ pub async fn get_messages(
     Ok(Json(messages.into_iter().map(MessageResponse::from).collect()))
 }
 
+/// Create a new message in a chat
 pub async fn create_message(
     user: AuthenticatedUser,
     state: State<AppState>,

@@ -19,7 +19,7 @@ interface UserProfile {
 }
 
 export function Profile() {
-    const { user, forceRefresh } = useAuth();
+    const { user } = useAuth();
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -80,9 +80,6 @@ export function Profile() {
             const updatedData = await api.getCurrentUser();
             setUserProfile(updatedData);
             setOriginalDisplayName(updatedData.display_name || "");
-
-            // Force refresh auth context to update user profile and navbar
-            forceRefresh();
 
             setIsEditing(false);
             setSuccess("Profile updated successfully");
@@ -236,7 +233,7 @@ export function Profile() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="displayName">Display Name</Label>
-                                        <Input id="displayName" value={displayName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)} placeholder="Enter your display name" />
+                                        <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your display name" />
                                     </div>
                                 </div>
 

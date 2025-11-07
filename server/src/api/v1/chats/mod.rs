@@ -1,3 +1,5 @@
+pub mod messages;
+
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -5,7 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*, middleware::auth::AuthenticatedUser};
+use crate::{AppState, db::prelude::*, db::repositories::{IChatRepository, IMessageRepository}, middleware::auth::AuthenticatedUser};
 
 #[derive(Debug, Serialize)]
 pub struct ChatResponse {
@@ -104,6 +106,7 @@ pub struct UpdateChatRequest {
     pub title: Option<String>,
 }
 
+/// List all chats for the authenticated user
 pub async fn list_chats(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -129,6 +132,7 @@ pub async fn list_chats(
     }))
 }
 
+/// Create a new chat
 pub async fn create_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -159,6 +163,7 @@ pub async fn create_chat(
     Ok(Json(ChatResponse::from(chat)))
 }
 
+/// Get a specific chat with its messages
 pub async fn get_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -183,6 +188,7 @@ pub async fn get_chat(
     }))
 }
 
+/// Update a chat
 pub async fn update_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -202,6 +208,7 @@ pub async fn update_chat(
     Ok(Json(ChatResponse::from(chat)))
 }
 
+/// Delete a chat
 pub async fn delete_chat(
     user: AuthenticatedUser,
     state: State<AppState>,

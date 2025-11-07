@@ -1,8 +1,10 @@
-use axum::{extract::State, http::StatusCode, response::Json};
-use serde::Deserialize;
-use crate::{middleware::auth::AuthenticatedUser, api::UserResponse, AppState};
 use crate::db::schema::UpdateUserDto;
+use crate::{AppState, api::UserResponse, middleware::auth::AuthenticatedUser};
+use axum::{extract::State, http::StatusCode, response::Json};
+use emixdb::repositories::IRepository;
+use serde::Deserialize;
 
+/// Get current user profile
 pub async fn profile(user: AuthenticatedUser) -> Result<Json<UserResponse>, StatusCode> {
     Ok(Json(UserResponse::from(user.0)))
 }
@@ -19,14 +21,19 @@ pub struct UpdateUserRequest {
     pub image_url: Option<String>,
 }
 
+/// Update current user profile
 pub async fn update_profile(
     user: AuthenticatedUser,
     state: State<AppState>,
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, StatusCode> {
     // Debug: log what we received
-    tracing::debug!("UpdateUserRequest received: display_name={:?}, image_url={:?}", payload.display_name, payload.image_url);
-    
+    tracing::debug!(
+        "UpdateUserRequest received: display_name={:?}, image_url={:?}",
+        payload.display_name,
+        payload.image_url
+    );
+
     // Convert Option<String> to Option<Option<String>> for UpdateUserDto:
     // Since frontend always sends display_name, if it's Some(value), wrap it
     // If it's None, it means null was sent, so we want Some(None)
@@ -38,7 +45,11 @@ pub async fn update_profile(
         image_url: payload.image_url.map(|v| Some(v)), // Only wrap if provided
     };
 
-    tracing::debug!("UpdateUserDto created: display_name={:?}, image_url={:?}", update_dto.display_name, update_dto.image_url);
+    tracing::debug!(
+        "UpdateUserDto created: display_name={:?}, image_url={:?}",
+        update_dto.display_name,
+        update_dto.image_url
+    );
 
     let updated_user = state
         .user_repository
@@ -49,8 +60,10 @@ pub async fn update_profile(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    tracing::debug!("User updated successfully: display_name={:?}", updated_user.display_name);
+    tracing::debug!(
+        "User updated successfully: display_name={:?}",
+        updated_user.display_name
+    );
 
     Ok(Json(UserResponse::from(updated_user)))
 }
-

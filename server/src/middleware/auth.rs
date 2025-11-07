@@ -1,4 +1,4 @@
-use crate::{db::prelude::*, env::get_firebase_project_id};
+use crate::{db::prelude::*, db::repositories::IUserRepository, env::get_firebase_project_id};
 use axum::{
     body::Body,
     extract::{FromRequestParts, State},

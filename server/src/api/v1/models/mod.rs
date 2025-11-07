@@ -1,7 +1,11 @@
-use axum::{extract::{Path, State}, http::StatusCode, response::Json};
+use crate::{AppState, db::prelude::*, db::repositories::IAiModelRepository};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::Json,
+};
 use serde::Serialize;
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*};
 
 #[derive(Debug, Serialize)]
 pub struct ModelResponse {
@@ -46,6 +50,7 @@ impl From<AiModelModel> for ModelResponse {
     }
 }
 
+/// List all active AI models
 pub async fn list_models(state: State<AppState>) -> Result<Json<Vec<ModelResponse>>, StatusCode> {
     let models = state
         .ai_model_repository
@@ -56,6 +61,7 @@ pub async fn list_models(state: State<AppState>) -> Result<Json<Vec<ModelRespons
     Ok(Json(models.into_iter().map(ModelResponse::from).collect()))
 }
 
+/// Get a specific AI model by ID
 pub async fn get_model(
     state: State<AppState>,
     Path(id): Path<Uuid>,
@@ -69,4 +75,3 @@ pub async fn get_model(
 
     Ok(Json(ModelResponse::from(model)))
 }
-

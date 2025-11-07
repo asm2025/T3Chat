@@ -6,7 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*, middleware::auth::AuthenticatedUser};
+use crate::{AppState, db::prelude::*, db::repositories::IUserApiKeyRepository, middleware::auth::AuthenticatedUser};
 
 #[derive(Debug, Serialize)]
 pub struct UserApiKeyResponse {
@@ -44,6 +44,7 @@ pub struct CreateUserApiKeyRequest {
     pub is_default: Option<bool>,
 }
 
+/// List all API keys for the authenticated user
 pub async fn list_keys(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -57,6 +58,7 @@ pub async fn list_keys(
     Ok(Json(keys.into_iter().map(UserApiKeyResponse::from).collect()))
 }
 
+/// Create a new API key for the authenticated user
 pub async fn create_key(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -98,6 +100,7 @@ pub async fn create_key(
     Ok(Json(UserApiKeyResponse::from(key)))
 }
 
+/// Delete an API key
 pub async fn delete_key(
     user: AuthenticatedUser,
     state: State<AppState>,

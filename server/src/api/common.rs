@@ -1,9 +1,7 @@
-use axum::response::Json;
 use serde::Serialize;
-use serde_json::{Value, json};
-
 use crate::db::prelude::*;
 
+/// Common response type for user data
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
     pub id: String,
@@ -27,16 +25,3 @@ impl From<UserModel> for UserResponse {
     }
 }
 
-pub async fn health_check() -> Json<Value> {
-    Json(json!({
-        "status": "ok",
-        "message": "API is running"
-    }))
-}
-
-pub mod me;
-pub mod models;
-pub mod chats;
-pub mod messages;
-pub mod chat;
-pub mod user_api_keys;

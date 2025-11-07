@@ -101,18 +101,43 @@ impl IRepository<UserEntity, UpdateUserDto> for UserRepository {
     }
 
     async fn update(&self, id: String, model: UpdateUserDto) -> Result<UserModel> {
-        let existing = UserEntity::find_by_id(id)
+        let existing = UserEntity::find_by_id(id.clone())
             .one(&self.db)
             .await
             .map_err(Error::from_std_error)?
             .ok_or_else(|| sea_orm::DbErr::RecordNotFound("User not found".to_owned()))
             .map_err(Error::from_std_error)?;
+        
+        tracing::debug!("BEFORE UPDATE: existing.display_name = {:?}", existing.display_name);
+        tracing::debug!("UPDATE DTO: model.display_name = {:?}, model.image_url = {:?}", model.display_name, model.image_url);
+        
         let mut active_model: UserModelDto = existing.into();
-        model.merge(&mut active_model);
-        active_model
+        
+        tracing::debug!("ACTIVE MODEL BEFORE MERGE: display_name = {:?}", active_model.display_name);
+        
+        let changed = model.merge(&mut active_model);
+        
+        tracing::debug!("MERGE RESULT: changed = {}", changed);
+        tracing::debug!("ACTIVE MODEL AFTER MERGE: display_name = {:?}", active_model.display_name);
+        
+        let result = active_model
             .update(self.database())
             .await
-            .map_err(Error::from_std_error)
+            .map_err(Error::from_std_error)?;
+        
+        tracing::debug!("AFTER UPDATE: result.display_name = {:?}", result.display_name);
+        
+        // Verify by fetching fresh from DB
+        let verified = UserEntity::find_by_id(id)
+            .one(self.database())
+            .await
+            .map_err(Error::from_std_error)?
+            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("User not found".to_owned()))
+            .map_err(Error::from_std_error)?;
+        
+        tracing::debug!("VERIFIED FROM DB: display_name = {:?}", verified.display_name);
+        
+        Ok(verified)
     }
 
     async fn delete(&self, id: String) -> Result<()> {
