@@ -1,148 +1,173 @@
-# Chat App API
+# Rust Backend Server
 
-This is the API server for the Chat App, built with Cloudflare Workers.
+A Rust backend server for T3Chat, converted from the Node.js Hono server. Built with Axum, SeaORM, and Firebase Authentication.
 
-## Environment Setup
+## 📋 Review & Compatibility Documentation
 
-The API uses `.dev.vars` for local development configuration and Cloudflare's dashboard for production environment variables. Follow these steps to get started:
+**NEW:** Comprehensive comparison with Node.js server available!
 
-1. Create your local development variables file:
-   ```bash
-   # Copy the example vars file
-   cp .dev.vars.example .dev.vars
-   ```
+- **🎯 [Quick Summary](REVIEW_SUMMARY.md)** - Start here! Overview of compatibility status
+- **📊 [Compatibility Matrix](COMPATIBILITY_MATRIX.md)** - Detailed feature-by-feature comparison
+- **📝 [Full Comparison Report](COMPARISON_REPORT.md)** - In-depth technical analysis
+- **🔧 [Action Plan](ACTION_PLAN.md)** - Step-by-step guide to fix remaining issues
 
-2. Configure your environment variables in `.dev.vars`:
-   ```
-   DATABASE_URL=postgresql://user:password@your-db-host/your-db-name
-   FIREBASE_PROJECT_ID=your-firebase-project-id
-   ```
+**TL;DR:** ✅ Works perfectly in development | ✅ Production-ready with JWKS-based Firebase auth
 
-3. Update the worker name in `wrangler.toml`:
-   ```toml
-   name = "your-worker-name"    # This is your Cloudflare Worker name
-   ```
+## Features
 
-## Firebase Setup
+- **Axum Web Framework**: Fast, ergonomic async web framework
+- **SeaORM**: Type-safe ORM for PostgreSQL
+- **Firebase Authentication**: Full JWKS-based JWT token verification for production
+- **Graceful Shutdown**: Handles SIGINT/SIGTERM signals properly
+- **Structured Logging**: Using tracing and tracing-subscriber
+- **CORS Support**: Enabled for cross-origin requests
+- **Health Checks**: Database connectivity and API health endpoints
 
-The API uses Firebase Authentication. To set up Firebase:
+## API Routes
 
-1. Go to the [Firebase Console](https://console.firebase.google.com)
-2. Select or create your project
-3. Copy your project ID from the project settings
-4. Add it to your environment variables as `FIREBASE_PROJECT_ID`
-
-The API uses Firebase's public JWKS endpoint to verify tokens, so no additional credentials are needed.
-
-## Development Server Configuration
-
-The development server configuration is set in `wrangler.toml`. By default, it runs on port 8787. To use a different port:
-
-1. **Option 1**: Modify `wrangler.toml` directly
-   ```toml
-   [dev]
-   port = YOUR_PREFERRED_PORT  # Replace with your desired port number
-   local_protocol = "http"
-   ```
-
-2. **Option 2**: Use the CLI flag (temporary override)
-   ```bash
-   pnpm wrangler dev --port YOUR_PREFERRED_PORT
-   ```
-
-## Development
-
-To run the API locally:
-```bash
-pnpm wrangler dev
-```
-
-This will:
-- Load variables from `.dev.vars`
-- Start the development server (default port: 8787)
-- Enable local development tools
-
-Your API will be available at `http://localhost:8787` (or your configured port).
-
-## Build Process
-
-**No build step required!** Cloudflare Workers automatically handle the build process during both development (`wrangler dev`) and deployment (`wrangler deploy`). The TypeScript files in `src/` are processed directly by Wrangler.
-
-This is different from traditional Node.js applications that require a separate build step to compile TypeScript to JavaScript.
-
-## API Authentication
-
-All routes under `/api/v1/protected/*` require authentication. To authenticate requests:
-
-1. Include the Firebase ID token in the Authorization header:
-   ```
-   Authorization: Bearer <firebase-id-token>
-   ```
-
-2. The token will be verified and the user information will be available in protected routes.
-
-Example protected route: `/api/v1/protected/me` returns the current user's information.
-
-## Deployment
-
-To deploy to production:
-```bash
-pnpm wrangler deploy
-```
-
-This will deploy to your Cloudflare Workers environment using the name specified in `wrangler.toml`. Make sure to configure your production environment variables in the Cloudflare dashboard with your production values for:
-- DATABASE_URL
-- FIREBASE_PROJECT_ID
+- `GET /` - Health check endpoint
+- `GET /api/v1/hello` - Hello world endpoint
+- `GET /api/v1/db-test` - Database connection test
+- `GET /api/v1/protected/me` - Get authenticated user info (requires Bearer token)
 
 ## Environment Variables
 
-### Local Development
-- `.dev.vars`: Contains your development environment variables
-- `.dev.vars.example`: Template file showing required variables (safe to commit)
+The server expects the following environment variables (can be set via `.env` file):
 
-### Production
-Configure your production environment variables in the Cloudflare Dashboard:
-1. Go to Workers & Pages
-2. Select your application (it will be listed under the name specified in `wrangler.toml`)
-3. Navigate to Settings > Environment Variables
-4. Add your environment variables with production values
+- `DATABASE_URL` - PostgreSQL connection string (defaults to `postgresql://postgres:password@localhost:5502/postgres`)
+- `PORT` - Server port (defaults to `8787`)
+- `FIREBASE_PROJECT_ID` - Firebase project ID (required)
+- `FIREBASE_AUTH_EMULATOR_HOST` - Firebase Auth emulator host (for development, optional)
+- `NODE_ENV` - Set to `development` for emulator mode
+- `ALLOW_ANONYMOUS_USERS` - Allow anonymous Firebase users (defaults to `true`)
+- `AUTO_MIGRATE` - Set to `true` to automatically run migrations on startup (requires `with-migration` feature)
 
-⚠️ Important: Never commit your `.dev.vars` file to version control. It should be listed in `.gitignore`.
+## Running the Server
 
-## Troubleshooting
+### Development
 
-If you encounter issues:
+```bash
+cd server-rs
+cargo run
+```
 
-1. Ensure all required environment variables are set in `.dev.vars` for local development
-2. Verify your database connection string is correct for your environment
-3. Check that you're using the correct port and it's not in use by another application
-4. Make sure your Cloudflare account has the necessary permissions and configurations
-5. Verify that your worker name in `wrangler.toml` matches your intended Cloudflare Worker name
-6. For Firebase authentication issues:
-   - Verify your Firebase project ID is correctly set in your environment variables
-   - Ensure the client is sending a valid Firebase ID token 
+### With custom port
+
+```bash
+cargo run -- --port 8788
+```
+
+### Production Build
+
+```bash
+cargo build --release
+./target/release/server-rs
+```
 
 ## Database Setup
 
-### Working with the Database
+The server uses SeaORM migrations with automatic database creation and schema management.
 
-This project uses [Drizzle ORM](https://orm.drizzle.team) with a Neon Postgres database. The database schema is defined in TypeScript under `src/schema/`.
+### Auto-Migration (Recommended for Development)
 
-### Setting Up Your Database
+The server will automatically:
+1. Create the database if it doesn't exist (e.g., `t3chat`)
+2. Run all pending migrations
+3. Create tables and indexes in the `public` schema (default PostgreSQL schema)
 
-1. Get your database connection string from Neon:
-   ```
-   DATABASE_URL=postgres://user:password@your-neon-host/dbname
-   ```
+Simply set your `DATABASE_URL` in `.env` and run:
 
-2. Add it to your `.dev.vars`:
-   ```
-   DATABASE_URL=your-connection-string
-   ```
+```bash
+# Example .env file
+DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 
-3. Push the schema to your database:
-   ```bash
-   npx dotenv-cli -e .dev.vars -- pnpm db:push
-   ```
+# Run the server (auto_migrate is enabled by default in main.rs)
+cargo run
+```
 
-This command will create or update your database tables to match your schema. Run it whenever you make changes to files in `src/schema/`. 
+The auto-migration runs on startup when `auto_migrate` is `true` in the `db::connect()` call (enabled by default).
+
+### Manual Migration (For Production or Manual Control)
+
+If you prefer to run migrations manually:
+
+```bash
+cd migration
+cargo run
+```
+
+**Note:** Manual migration requires the database to already exist. You can create it with:
+```sql
+CREATE DATABASE t3chat;
+```
+
+### Creating New Migrations
+
+See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed instructions on:
+- Running migrations
+- Creating new migrations
+- Best practices
+- Common patterns
+
+### Schema Information
+
+- **Schema**: `public` (default PostgreSQL schema, no custom schema required)
+- **Database Name**: Extracted from `DATABASE_URL` (e.g., `t3chat`)
+- **Tables**: Created via SeaORM migrations with proper indexes
+
+## Differences from Node.js Version
+
+- Uses SeaORM instead of Drizzle ORM
+- Firebase token verification with proper JWKS-based JWT verification for production
+- Database connection pooling handled by SeaORM
+- Structured logging with tracing instead of console.log
+- Graceful shutdown handling for SIGINT/SIGTERM signals
+- No Cloudflare Workers support (standalone deployment only)
+- No Neon database support (use standard PostgreSQL or Supabase)
+
+## ✅ Implementation Status
+
+### ✅ Production Firebase Authentication - IMPLEMENTED
+Full production token verification with JWKS-based JWT verification is now implemented.
+
+**Status:** ✅ Complete  
+**Implementation:**
+- Proper JWKS fetching from Google's Firebase public keys
+- Token header kid (key ID) extraction
+- RSA key selection and validation
+- Full JWT verification with issuer and audience validation
+- Comprehensive error logging
+
+**Details:** See `src/middleware/auth.rs`
+
+### ✅ Graceful Shutdown - IMPLEMENTED
+Server now properly handles SIGINT/SIGTERM signals for graceful shutdown.
+
+**Status:** ✅ Complete  
+**Implementation:**
+- Ctrl+C (SIGINT) handling on all platforms
+- SIGTERM handling on Unix-like systems
+- Proper connection cleanup
+- Informative shutdown logging
+
+**Details:** See `src/main.rs`
+
+## Development Status
+
+| Environment | Status | Notes |
+|-------------|--------|-------|
+| **Development** | ✅ Ready | Full compatibility with Firebase emulator |
+| **Production** | ✅ Ready | Full JWKS-based authentication + graceful shutdown |
+
+## 🚨 Known Limitations
+
+### Neon Database Not Supported
+The Rust server uses standard PostgreSQL protocol and doesn't support Neon's serverless HTTP-based driver.
+
+**Supported databases:**
+- ✅ Standard PostgreSQL (localhost, cloud instances)
+- ✅ Supabase (uses standard Postgres protocol)
+- ❌ Neon Database (requires Node.js-specific serverless driver)
+
+**For detailed compatibility analysis, see [REVIEW_SUMMARY.md](REVIEW_SUMMARY.md)**
+
