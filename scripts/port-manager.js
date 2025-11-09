@@ -5,6 +5,7 @@ import getPort from "get-port";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+export const DEFAULT_APP_ENV = "development";
 
 /**
  * Finds a clean block of 5 consecutive available ports starting from base port 5000
@@ -85,14 +86,28 @@ export function createFirebaseConfig(availablePorts) {
     return firebaseConfigPath;
 }
 
+function getServerEnvCandidates(appEnv = DEFAULT_APP_ENV) {
+    const serverDir = path.join(__dirname, "../server");
+    return [
+        path.join(serverDir, `.env.${appEnv}.local`),
+        path.join(serverDir, `.env.${appEnv}`),
+        path.join(serverDir, ".env.local"),
+        path.join(serverDir, ".env"),
+    ];
+}
+
+function findExistingServerEnvPath(appEnv = DEFAULT_APP_ENV) {
+    return getServerEnvCandidates(appEnv).find((candidate) => existsSync(candidate));
+}
+
 /**
  * Reads the current content of the server .env file
  * @returns {Object|null} Object with {content: string, path: string} or null if file doesn't exist
  */
-export function readServerEnv() {
-    const envPath = path.join(__dirname, "../server/.env");
+export function readServerEnv(appEnv = DEFAULT_APP_ENV) {
+    const envPath = findExistingServerEnvPath(appEnv);
 
-    if (!existsSync(envPath)) {
+    if (!envPath) {
         return null;
     }
 
@@ -109,17 +124,18 @@ export function readServerEnv() {
  * Updates server .env file with dynamic port configuration
  * @param {Object} availablePorts - Object with port assignments
  * @param {boolean} useWrangler - Whether running in Wrangler mode
+ * @param {string} appEnv - Target application environment
  * @returns {Object|null} Original env state for restoration, or null if no changes made
  */
-export function updateServerEnvWithPorts(availablePorts, useWrangler) {
+export function updateServerEnvWithPorts(availablePorts, useWrangler, appEnv = DEFAULT_APP_ENV) {
     if (useWrangler) {
         // For Wrangler mode, don't modify .env as it should use remote database
         return null;
     }
 
-    const envData = readServerEnv();
+    const envData = readServerEnv(appEnv);
     if (!envData) {
-        console.error("No server .env file found. Cannot update dynamic ports.");
+        console.error(`No server .env file found for environment "${appEnv}". Cannot update dynamic ports.`);
         return null;
     }
 
@@ -257,17 +273,18 @@ export function cleanupFirebaseConfig(firebaseConfigPath) {
 /**
  * Checks if database configuration is valid for the given mode
  * @param {boolean} useWrangler - Whether running in Wrangler mode
+ * @param {string} appEnv - Target application environment
  * @returns {boolean} True if configuration is valid
  */
-export function checkDatabaseConfiguration(useWrangler) {
-    const envPath = path.join(__dirname, "../server/.env");
-    if (!existsSync(envPath)) {
+export function checkDatabaseConfiguration(useWrangler, appEnv = DEFAULT_APP_ENV) {
+    const envPath = findExistingServerEnvPath(appEnv);
+    if (!envPath) {
         if (useWrangler) {
-            console.error("No .env file found. Cloudflare Workers requires DATABASE_URL to be set.");
+            console.error(`No .env file found for environment "${appEnv}". Cloudflare Workers requires DATABASE_URL to be set.`);
             console.error("   Please create server/.dev.vars with a remote database URL.");
             return false;
         }
-        console.error("No .env file found. Run `pnpm run setup:local` first to set up your database.");
+        console.error(`No .env file found for environment "${appEnv}". Run \`pnpm run setup:local\` first to set up your database.`);
         return false;
     }
 
@@ -309,12 +326,12 @@ export function checkDatabaseConfiguration(useWrangler) {
  * @param {boolean} useWrangler - Whether running in Wrangler mode
  * @returns {string} Database URL string
  */
-export function getDatabaseUrl(availablePorts, useWrangler) {
+export function getDatabaseUrl(availablePorts, useWrangler, appEnv = DEFAULT_APP_ENV) {
     let databaseUrl = `postgresql://postgres:password@localhost:${availablePorts.postgres}/postgres`;
 
     if (useWrangler) {
         // For Cloudflare Workers, try to read the actual DATABASE_URL
-        const envData = readServerEnv();
+        const envData = readServerEnv(appEnv);
         if (envData) {
             try {
                 const dbUrlMatch = envData.content.match(/DATABASE_URL=(.+)/);

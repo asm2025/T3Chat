@@ -11,15 +11,31 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateMessageRequest {
     pub content: String,
     pub role: Option<String>,
 }
 
 /// Get all messages for a chat
+#[utoipa::path(
+    get,
+    path = "/api/v1/chats/{id}/messages",
+    tag = "Messages",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Chat identifier")
+    ),
+    responses(
+        (status = 200, description = "Messages list", body = [super::MessageResponse]),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_messages(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -37,6 +53,22 @@ pub async fn get_messages(
 }
 
 /// Create a new message in a chat
+#[utoipa::path(
+    post,
+    path = "/api/v1/chats/{id}/messages",
+    tag = "Messages",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Chat identifier")
+    ),
+    request_body = CreateMessageRequest,
+    responses(
+        (status = 200, description = "Message created", body = super::MessageResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn create_message(
     user: AuthenticatedUser,
     state: State<AppState>,

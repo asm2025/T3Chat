@@ -2,8 +2,8 @@ pub mod messages;
 
 use crate::{
     AppState,
-    db::prelude::*,
     db::dto::Pagination,
+    db::prelude::*,
     db::repositories::{IChatRepository, IMessageRepository},
     middleware::auth::AuthenticatedUser,
 };
@@ -13,9 +13,10 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ChatResponse {
     pub id: Uuid,
     pub user_id: String,
@@ -46,7 +47,7 @@ impl From<ChatModel> for ChatResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MessageResponse {
     pub id: Uuid,
     pub chat_id: Uuid,
@@ -81,38 +82,51 @@ impl From<MessageModel> for MessageResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ChatWithMessagesResponse {
     #[serde(flatten)]
     pub chat: ChatResponse,
     pub messages: Vec<MessageResponse>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct PaginationParams {
     pub page: Option<u64>,
     pub page_size: Option<u64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ChatListResponse {
     pub data: Vec<ChatResponse>,
     pub total: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateChatRequest {
     pub title: Option<String>,
     pub model_provider: String,
     pub model_id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateChatRequest {
     pub title: Option<String>,
 }
 
 /// List all chats for the authenticated user
+#[utoipa::path(
+    get,
+    path = "/api/v1/chats",
+    tag = "Chats",
+    params(PaginationParams),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "List of chats", body = ChatListResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn list_chats(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -136,6 +150,19 @@ pub async fn list_chats(
 }
 
 /// Create a new chat
+#[utoipa::path(
+    post,
+    path = "/api/v1/chats",
+    tag = "Chats",
+    security(("bearer_auth" = [])),
+    request_body = CreateChatRequest,
+    responses(
+        (status = 200, description = "Chat created", body = ChatResponse),
+        (status = 400, description = "Invalid provider or payload"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn create_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -167,6 +194,21 @@ pub async fn create_chat(
 }
 
 /// Get a specific chat with its messages
+#[utoipa::path(
+    get,
+    path = "/api/v1/chats/{id}",
+    tag = "Chats",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Chat identifier")
+    ),
+    responses(
+        (status = 200, description = "Chat detail", body = ChatWithMessagesResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -192,6 +234,22 @@ pub async fn get_chat(
 }
 
 /// Update a chat
+#[utoipa::path(
+    put,
+    path = "/api/v1/chats/{id}",
+    tag = "Chats",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Chat identifier")
+    ),
+    request_body = UpdateChatRequest,
+    responses(
+        (status = 200, description = "Chat updated", body = ChatResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn update_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -216,6 +274,21 @@ pub async fn update_chat(
 }
 
 /// Delete a chat
+#[utoipa::path(
+    delete,
+    path = "/api/v1/chats/{id}",
+    tag = "Chats",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Chat identifier")
+    ),
+    responses(
+        (status = 204, description = "Chat deleted"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn delete_chat(
     user: AuthenticatedUser,
     state: State<AppState>,

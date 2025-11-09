@@ -3,7 +3,7 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { existsSync, readFileSync } from "fs";
-import { getAvailablePorts, createFirebaseConfig, updateServerEnvWithPorts, restoreEnvFile, cleanupFirebaseConfig, checkDatabaseConfiguration, getDatabaseUrl, readServerEnv, updateWranglerConfigWithPort, restoreWranglerConfig } from "./port-manager.js";
+import { getAvailablePorts, createFirebaseConfig, updateServerEnvWithPorts, restoreEnvFile, cleanupFirebaseConfig, checkDatabaseConfiguration, getDatabaseUrl, readServerEnv, updateWranglerConfigWithPort, restoreWranglerConfig, DEFAULT_APP_ENV } from "./port-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,9 +34,24 @@ function detectWranglerUsage() {
 
 function parseCliArgs() {
     const args = process.argv.slice(2);
+    let env = null;
+
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === "--env" && args[i + 1]) {
+            env = args[i + 1];
+            break;
+        }
+        if (arg.startsWith("--env=")) {
+            env = arg.split("=")[1];
+            break;
+        }
+    }
+
     return {
         useWrangler: args.includes("--wrangler") || args.includes("--cloudflare"),
         help: args.includes("--help") || args.includes("-h"),
+        env: env || null,
     };
 }
 
@@ -44,8 +59,8 @@ function parseCliArgs() {
  * Detects if we're using production services or local emulators
  * @returns {Object} Configuration detection results
  */
-function detectEnvironmentConfiguration() {
-    const envData = readServerEnv();
+function detectEnvironmentConfiguration(appEnv = DEFAULT_APP_ENV) {
+    const envData = readServerEnv(appEnv);
 
     if (!envData) {
         return {
@@ -94,6 +109,7 @@ volo-app Development Server
 Usage:
   npm run dev                    Start with Node.js server (default)
   npm run dev -- --wrangler     Start with Cloudflare Wrangler dev server
+  npm run dev -- --env staging  Start with staging .env configuration
   npm run dev -- --help         Show this help
 
 Features:
@@ -114,8 +130,8 @@ function handleError(error, message = "Failed to start services") {
     process.exit(1);
 }
 
-function showServiceInfo(availablePorts, useWrangler, config) {
-    console.log("Your app is ready at:");
+function showServiceInfo(availablePorts, useWrangler, config, appEnv) {
+    console.log(`Your app is ready at (${appEnv} mode):`);
     console.log(`   Frontend:  \x1b[32mhttp://localhost:${availablePorts.frontend}\x1b[0m`);
     console.log(`   Backend:   http://localhost:${availablePorts.backend}`);
 
@@ -127,7 +143,7 @@ function showServiceInfo(availablePorts, useWrangler, config) {
 
     if (config.useLocalDatabase) {
         if (useWrangler) {
-            console.log(`   Database:  ${getDatabaseUrl(availablePorts, useWrangler)}`);
+            console.log(`   Database:  ${getDatabaseUrl(availablePorts, useWrangler, appEnv)}`);
         } else {
             console.log(`   Database:  postgresql://postgres:***@localhost:${availablePorts.postgres}/postgres`);
         }
@@ -189,20 +205,25 @@ async function startServices() {
         // Override CLI args with auto-detection result
         cliArgs.useWrangler = useWrangler;
 
+        const appEnv = (cliArgs.env || process.env.APP_ENV || DEFAULT_APP_ENV).toLowerCase();
+        process.env.APP_ENV = appEnv;
+        process.env.VITE_APP_ENV = appEnv;
+        process.env.NODE_ENV = appEnv === "release" ? "production" : appEnv;
+
         // Detect environment configuration
-        const config = detectEnvironmentConfiguration();
+        const config = detectEnvironmentConfiguration(appEnv);
 
         // Get available ports
         const availablePorts = await getAvailablePorts();
 
         // Check database configuration for Cloudflare Workers mode
-        if (!checkDatabaseConfiguration(cliArgs.useWrangler)) {
+        if (!checkDatabaseConfiguration(cliArgs.useWrangler, appEnv)) {
             process.exit(1);
         }
 
         // Update .env files with dynamic ports (only for local services)
         if (config.useLocalDatabase || config.useLocalFirebase) {
-            envState = updateServerEnvWithPorts(availablePorts, cliArgs.useWrangler);
+            envState = updateServerEnvWithPorts(availablePorts, cliArgs.useWrangler, appEnv);
         }
 
         // Update wrangler.toml with dynamic port (only for wrangler mode)
@@ -239,7 +260,12 @@ async function startServices() {
         }
 
         // Add frontend server
-        const frontendArgs = [`--port ${availablePorts.frontend}`, "--strictPort", `--api-url http://localhost:${availablePorts.backend}`];
+        const frontendArgs = [
+            `--port ${availablePorts.frontend}`,
+            "--strictPort",
+            `--api-url http://localhost:${availablePorts.backend}`,
+            `--mode ${appEnv}`,
+        ];
 
         if (config.useLocalFirebase) {
             frontendArgs.push("--use-firebase-emulator true");
@@ -313,7 +339,7 @@ async function startServices() {
                     process.stdout.write(capturedOutput);
                 }
                 console.log("All services are starting up...\n");
-                showServiceInfo(availablePorts, cliArgs.useWrangler, config);
+                showServiceInfo(availablePorts, cliArgs.useWrangler, config, appEnv);
                 startupComplete = true;
                 // Switch to live output
                 child.stdout.pipe(process.stdout);
@@ -362,7 +388,7 @@ async function startServices() {
                             process.stdout.write(capturedOutput);
 
                             console.log("All services started successfully!\n");
-                            showServiceInfo(availablePorts, cliArgs.useWrangler, config);
+                            showServiceInfo(availablePorts, cliArgs.useWrangler, config, appEnv);
                             startupComplete = true;
                             // Switch to live output for ongoing logs
                             child.stdout.pipe(process.stdout);

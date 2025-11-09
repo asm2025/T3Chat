@@ -38,6 +38,16 @@ Start with everything running locally on your machine, then progressively connec
 
 -   ✅ Zero sign-ins or accounts needed
 
+## 🗂 Environment Configuration
+
+-   Create per-environment files for both the backend and frontend:
+    -   `server/.env.development`, `server/.env.staging`, `server/.env.release`
+    -   `ui/.env.development`, `ui/.env.staging`, `ui/.env.release`
+-   The backend resolves configuration in this order: `.env.<APP_ENV>.local`, `.env.<APP_ENV>`, `.env.local`, `.env` (default `APP_ENV=development`)
+-   `pnpm run dev -- --env staging` launches the stack with staging configuration and exposes Swagger UI
+-   For manual runs: `APP_ENV=staging cargo run` or `APP_ENV=release cargo run --release`
+-   Vite automatically loads `ui/.env.<mode>`; the dev script forwards the selected environment via `--mode` so the frontend and backend stay aligned
+
 **Production (when connected):**
 
 -   🌐 Cloudflare Pages deployment ready (frontend)

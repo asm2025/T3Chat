@@ -30,6 +30,12 @@ This app uses Firebase for authentication. To set up Firebase:
 
 Note: Make sure to add `firebase-config.json` to your `.gitignore` if you're using version control.
 
+## Environment Modes
+
+-   Place frontend configuration in `.env.development`, `.env.staging`, and `.env.release`
+-   Vite automatically loads `.env.<mode>`; the dev script passes `--mode <APP_ENV>` so the selected backend environment stays in sync
+-   For manual runs use `pnpm run dev -- --mode staging` or `pnpm run build -- --mode release`
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:

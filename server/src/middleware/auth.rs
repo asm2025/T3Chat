@@ -1,4 +1,5 @@
 use crate::{db::prelude::*, db::repositories::IUserRepository, env::get_firebase_project_id};
+use async_trait::async_trait;
 use axum::{
     body::Body,
     extract::{FromRequestParts, State},
@@ -41,6 +42,7 @@ struct Jwk {
 #[derive(Clone)]
 pub struct AuthenticatedUser(pub UserModel);
 
+#[async_trait]
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
@@ -81,18 +83,32 @@ pub async fn auth_middleware(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    // Upsert user in database using repository
-    let create_user_dto = CreateUserDto {
-        id: firebase_user.id,
-        email: firebase_user.email,
-        display_name: None,
-        image_url: None,
-    };
-    let user = state
+    // Try to find existing user first - only create if they don't exist
+    let user = match state
         .user_repository
-        .upsert(create_user_dto)
+        .get(firebase_user.id.clone())
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        Some(existing_user) => {
+            // User exists, use their existing data without overwriting
+            existing_user
+        }
+        None => {
+            // User doesn't exist, create new user
+            let create_user_dto = CreateUserDto {
+                id: firebase_user.id,
+                email: firebase_user.email,
+                display_name: None,
+                image_url: None,
+            };
+            state
+                .user_repository
+                .upsert(create_user_dto)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        }
+    };
 
     // Add user to request extensions
     request.extensions_mut().insert(AuthenticatedUser(user));

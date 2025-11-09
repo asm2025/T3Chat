@@ -3,13 +3,24 @@ use crate::db::repositories::IUserRepository;
 use crate::{AppState, api::UserResponse, middleware::auth::AuthenticatedUser};
 use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
+use utoipa::ToSchema;
 
 /// Get current user profile
+#[utoipa::path(
+    get,
+    path = "/api/v1/me",
+    tag = "User",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Current user profile", body = UserResponse),
+        (status = 401, description = "Unauthorized")
+    )
+)]
 pub async fn profile(user: AuthenticatedUser) -> Result<Json<UserResponse>, StatusCode> {
     Ok(Json(UserResponse::from(user.0)))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateUserRequest {
     // Since frontend always sends display_name (either string or null),
     // we can use Option<String> directly. When null is sent, it becomes None.
@@ -22,6 +33,18 @@ pub struct UpdateUserRequest {
 }
 
 /// Update current user profile
+#[utoipa::path(
+    put,
+    path = "/api/v1/me",
+    tag = "User",
+    security(("bearer_auth" = [])),
+    request_body = UpdateUserRequest,
+    responses(
+        (status = 200, description = "Updated user profile", body = UserResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn update_profile(
     user: AuthenticatedUser,
     state: State<AppState>,

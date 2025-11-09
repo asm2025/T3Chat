@@ -4,7 +4,6 @@ use axum::{
     http::{HeaderValue, Method, header},
     routing::{delete, get, post},
 };
-use dotenvy::dotenv;
 use emix::env::{get_env, get_port_or};
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
@@ -12,10 +11,12 @@ use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
     EnvFilter, filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
+use utoipa::OpenApi;
 
 mod ai;
 mod api;
 mod db;
+mod docs;
 mod env;
 pub mod middleware;
 
@@ -33,7 +34,7 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    dotenv().ok();
+    env::ensure_env_loaded();
 
     let app_name = env::APP_INFO.name.to_string();
     setup_tracing(&app_name).unwrap_or_else(|e| {
@@ -125,7 +126,7 @@ async fn run() -> Result<()> {
 
     // Serve with graceful shutdown
     tracing::info!("Server listening on http://{}", addr);
-    axum::serve(listener, app.into_make_service())
+    axum::serve(listener, app)
         .with_graceful_shutdown(graceful_shutdown)
         .await?;
     tracing::info!("Server shutdown complete");
@@ -257,8 +258,8 @@ fn setup_router(state: AppState) -> Router {
             middleware::auth::auth_middleware,
         ));
 
-    Router::new()
-        .route("/", get(api::v1::health::health_check))
+    let router = Router::new()
+        .route("/health", get(api::v1::health::health_check))
         .nest("/api/v1/models", models_routes)
         .nest("/api/v1/chats", chats_routes)
         .nest("/api/v1/chat", chat_routes)
@@ -275,5 +276,18 @@ fn setup_router(state: AppState) -> Router {
             }),
         )
         .layer(cors)
-        .with_state(state)
+        .with_state(state);
+
+    if env::is_swagger_enabled() {
+        router.merge(swagger_docs_router())
+    } else {
+        router
+    }
+}
+
+fn swagger_docs_router() -> Router {
+    let open_api = docs::ApiDoc::openapi();
+    let swagger: Router =
+        Into::<Router>::into(utoipa_swagger_ui::SwaggerUi::new("/").url("/openapi.json", open_api));
+    swagger
 }

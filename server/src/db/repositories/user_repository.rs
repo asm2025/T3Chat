@@ -183,7 +183,7 @@ impl IUserRepository for UserRepository {
             .map_err(|e| Error::from_std_error(e))?;
 
         let new_user: NewUser = model.into();
-        
+
         // Use PostgreSQL's ON CONFLICT for atomic upsert
         diesel::insert_into(users::table)
             .values(&new_user)

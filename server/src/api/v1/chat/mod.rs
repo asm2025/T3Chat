@@ -12,8 +12,9 @@ use axum::{
     response::{IntoResponse, Json, Response},
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ChatRequest {
     pub chat_id: uuid::Uuid,
     pub message: String,
@@ -24,7 +25,7 @@ pub struct ChatRequest {
     pub stream: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ChatCompletionResponse {
     pub content: String,
     pub model: String,
@@ -33,6 +34,20 @@ pub struct ChatCompletionResponse {
 }
 
 /// Handle non-streaming chat completion
+#[utoipa::path(
+    post,
+    path = "/api/v1/chat",
+    tag = "Chat",
+    security(("bearer_auth" = [])),
+    request_body = ChatRequest,
+    responses(
+        (status = 200, description = "Chat completion response", body = ChatCompletionResponse),
+        (status = 400, description = "Invalid provider or API key"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn chat(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -172,6 +187,20 @@ pub async fn chat(
 }
 
 /// Handle streaming chat completion
+#[utoipa::path(
+    post,
+    path = "/api/v1/chat/stream",
+    tag = "Chat",
+    security(("bearer_auth" = [])),
+    request_body = ChatRequest,
+    responses(
+        (status = 200, description = "Streaming chat completion response"),
+        (status = 400, description = "Invalid provider or API key"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Chat not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn stream_chat(
     user: AuthenticatedUser,
     state: State<AppState>,

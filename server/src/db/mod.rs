@@ -16,7 +16,6 @@ use diesel_async::{
     AsyncPgConnection,
     pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
-use std::time::Duration;
 
 pub type DbPool = Pool<AsyncPgConnection>;
 
@@ -91,12 +90,9 @@ pub async fn connect(db_url: &str, auto_migrate: bool) -> Result<DbPool> {
     // Configure the connection manager
     let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
 
-    // Build the pool
+    // Build the pool with deadpool
     let pool = Pool::builder(config)
         .max_size(100)
-        .wait_timeout(Some(Duration::from_secs(30)))
-        .create_timeout(Some(Duration::from_secs(30)))
-        .recycle_timeout(Some(Duration::from_secs(300)))
         .build()
         .context("Failed to create database pool")?;
 

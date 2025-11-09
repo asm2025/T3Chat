@@ -19,7 +19,7 @@ interface UserProfile {
 }
 
 export function Profile() {
-    const { user } = useAuth();
+    const { user, forceRefresh } = useAuth();
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -80,6 +80,9 @@ export function Profile() {
             const updatedData = await api.getCurrentUser();
             setUserProfile(updatedData);
             setOriginalDisplayName(updatedData.display_name || "");
+
+            // Refresh the user data in the navbar
+            forceRefresh();
 
             setIsEditing(false);
             setSuccess("Profile updated successfully");

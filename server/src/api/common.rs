@@ -1,8 +1,9 @@
 use crate::db::prelude::*;
 use serde::Serialize;
+use utoipa::ToSchema;
 
 /// Common response type for user data
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     pub id: String,
     pub email: Option<String>,

@@ -4,9 +4,10 @@ use crate::{
 };
 use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserApiKeyResponse {
     pub id: Uuid,
     pub user_id: String,
@@ -35,7 +36,7 @@ impl From<UserApiKeyModel> for UserApiKeyResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateUserApiKeyRequest {
     pub provider: String,
     pub api_key: String,
@@ -43,6 +44,17 @@ pub struct CreateUserApiKeyRequest {
 }
 
 /// List all API keys for the authenticated user
+#[utoipa::path(
+    get,
+    path = "/api/v1/user-api-keys",
+    tag = "User API Keys",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "List of API keys", body = [UserApiKeyResponse]),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn list_keys(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -59,6 +71,19 @@ pub async fn list_keys(
 }
 
 /// Create a new API key for the authenticated user
+#[utoipa::path(
+    post,
+    path = "/api/v1/user-api-keys",
+    tag = "User API Keys",
+    security(("bearer_auth" = [])),
+    request_body = CreateUserApiKeyRequest,
+    responses(
+        (status = 200, description = "API key created", body = UserApiKeyResponse),
+        (status = 400, description = "Invalid provider"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn create_key(
     user: AuthenticatedUser,
     state: State<AppState>,
@@ -101,6 +126,21 @@ pub async fn create_key(
 }
 
 /// Delete an API key
+#[utoipa::path(
+    delete,
+    path = "/api/v1/user-api-keys/{id}",
+    tag = "User API Keys",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "API key identifier")
+    ),
+    responses(
+        (status = 204, description = "API key deleted"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "API key not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn delete_key(
     user: AuthenticatedUser,
     state: State<AppState>,

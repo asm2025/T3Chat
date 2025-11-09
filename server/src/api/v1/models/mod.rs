@@ -5,9 +5,10 @@ use axum::{
     response::Json,
 };
 use serde::Serialize;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ModelResponse {
     pub id: Uuid,
     pub provider: String,
@@ -51,6 +52,15 @@ impl From<AiModelModel> for ModelResponse {
 }
 
 /// List all active AI models
+#[utoipa::path(
+    get,
+    path = "/api/v1/models",
+    tag = "Models",
+    responses(
+        (status = 200, description = "List of AI models", body = [ModelResponse]),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn list_models(state: State<AppState>) -> Result<Json<Vec<ModelResponse>>, StatusCode> {
     let models = state
         .ai_model_repository
@@ -62,6 +72,19 @@ pub async fn list_models(state: State<AppState>) -> Result<Json<Vec<ModelRespons
 }
 
 /// Get a specific AI model by ID
+#[utoipa::path(
+    get,
+    path = "/api/v1/models/{id}",
+    tag = "Models",
+    params(
+        ("id" = Uuid, Path, description = "Model identifier")
+    ),
+    responses(
+        (status = 200, description = "AI model detail", body = ModelResponse),
+        (status = 404, description = "Model not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_model(
     state: State<AppState>,
     Path(id): Path<Uuid>,

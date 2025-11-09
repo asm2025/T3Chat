@@ -39,6 +39,10 @@ The Rust backend for T3Chat. Built with Axum, async Diesel, and Firebase Authent
 -   `POST /api/v1/user-api-keys` – Create a new API key
 -   `DELETE /api/v1/user-api-keys/{id}` – Delete an API key
 
+## API Documentation
+
+Interactive Swagger UI is available at `http://localhost:<port>/swagger-ui` when the server runs in the `development` or `staging` environments. The OpenAPI spec is served from `/swagger-ui/openapi.json`.
+
 ## Environment Variables
 
 The server reads these environment variables (typically via `.env` during development):
@@ -48,6 +52,18 @@ The server reads these environment variables (typically via `.env` during develo
 -   `FIREBASE_AUTH_EMULATOR_HOST` – Host/port for the Firebase Auth emulator (optional)
 -   `PORT` – Overrides the listening port (otherwise defaults to 3000 or `--port`)
 -   `CORS_ORIGINS` – Comma-separated list of allowed origins (defaults to `http://localhost`)
+-   `APP_ENV` – Optional override for the active environment (`development`, `staging`, or `release`); defaults to `development`
+
+### Environment files
+
+Environment variables are loaded from `.env` files based on `APP_ENV` using the following priority order:
+
+1. `server/.env.<APP_ENV>.local`
+2. `server/.env.<APP_ENV>`
+3. `server/.env.local`
+4. `server/.env`
+
+Create separate files such as `.env.development`, `.env.staging`, and `.env.release` to isolate configuration per environment. When running locally with the provided scripts you can pass `--env staging` (or set `APP_ENV=staging`) to switch to another configuration.
 
 ## Running the Server
 
