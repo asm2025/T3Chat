@@ -1,4 +1,3 @@
-pub mod types;
-pub mod providers;
 pub mod manager;
-
+pub mod providers;
+pub mod types;

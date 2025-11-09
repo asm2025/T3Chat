@@ -1,8 +1,10 @@
+use crate::ai::providers::{
+    AIProvider, anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider,
+};
+use crate::db::models::AiProvider;
+use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
-use anyhow::Result;
-use crate::db::schema::AiProvider;
-use crate::ai::providers::{AIProvider, openai::OpenAIProvider, anthropic::AnthropicProvider, google::GoogleProvider};
 
 pub enum ProviderWrapper {
     OpenAI(OpenAIProvider),
@@ -11,7 +13,10 @@ pub enum ProviderWrapper {
 }
 
 impl ProviderWrapper {
-    pub async fn chat(&self, request: crate::ai::types::ChatRequest) -> anyhow::Result<crate::ai::types::ChatResponse> {
+    pub async fn chat(
+        &self,
+        request: crate::ai::types::ChatRequest,
+    ) -> anyhow::Result<crate::ai::types::ChatResponse> {
         match self {
             ProviderWrapper::OpenAI(p) => p.chat(request).await,
             ProviderWrapper::Anthropic(p) => p.chat(request).await,
@@ -22,20 +27,27 @@ impl ProviderWrapper {
     pub async fn stream_chat(
         &self,
         request: crate::ai::types::ChatRequest,
-    ) -> anyhow::Result<Box<dyn futures::Stream<Item = anyhow::Result<crate::ai::types::ChatResponseChunk>> + Send + Unpin + '_>> {
+    ) -> anyhow::Result<
+        Box<
+            dyn futures::Stream<Item = anyhow::Result<crate::ai::types::ChatResponseChunk>>
+                + Send
+                + Unpin
+                + '_,
+        >,
+    > {
         match self {
             ProviderWrapper::OpenAI(p) => {
                 let stream = p.stream_chat(request).await?;
                 Ok(Box::new(stream))
-            },
+            }
             ProviderWrapper::Anthropic(p) => {
                 let stream = p.stream_chat(request).await?;
                 Ok(Box::new(stream))
-            },
+            }
             ProviderWrapper::Google(p) => {
                 let stream = p.stream_chat(request).await?;
                 Ok(Box::new(stream))
-            },
+            }
         }
     }
 
@@ -66,9 +78,15 @@ impl ProviderManager {
 
         for (provider, api_key) in api_keys {
             let provider_impl = match provider {
-                AiProvider::OpenAI => Arc::new(ProviderWrapper::OpenAI(OpenAIProvider::new(api_key))),
-                AiProvider::Anthropic => Arc::new(ProviderWrapper::Anthropic(AnthropicProvider::new(api_key))),
-                AiProvider::Google => Arc::new(ProviderWrapper::Google(GoogleProvider::new(api_key))),
+                AiProvider::OpenAI => {
+                    Arc::new(ProviderWrapper::OpenAI(OpenAIProvider::new(api_key)))
+                }
+                AiProvider::Anthropic => {
+                    Arc::new(ProviderWrapper::Anthropic(AnthropicProvider::new(api_key)))
+                }
+                AiProvider::Google => {
+                    Arc::new(ProviderWrapper::Google(GoogleProvider::new(api_key)))
+                }
                 _ => continue, // Skip unsupported providers for now
             };
             providers.insert(provider, provider_impl);
@@ -81,4 +99,3 @@ impl ProviderManager {
         self.providers.get(provider).cloned()
     }
 }
-

@@ -1,8 +1,8 @@
+use crate::ai::providers::AIProvider;
+use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 use async_trait::async_trait;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
-use crate::ai::providers::AIProvider;
-use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 
 pub struct OpenAIProvider {
     api_key: String,
@@ -58,9 +58,9 @@ impl AIProvider for OpenAIProvider {
             .into_iter()
             .map(|m| OpenAIMessage {
                 role: match m.role {
-                    crate::db::schema::MessageRole::User => "user".to_string(),
-                    crate::db::schema::MessageRole::Assistant => "assistant".to_string(),
-                    crate::db::schema::MessageRole::System => "system".to_string(),
+                    crate::db::models::MessageRole::User => "user".to_string(),
+                    crate::db::models::MessageRole::Assistant => "assistant".to_string(),
+                    crate::db::models::MessageRole::System => "system".to_string(),
                 },
                 content: m.content,
             })
@@ -153,4 +153,3 @@ impl AIProvider for OpenAIProvider {
         ]
     }
 }
-

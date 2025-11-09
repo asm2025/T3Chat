@@ -1,7 +1,7 @@
-use crate::db::schema::UpdateUserDto;
+use crate::db::models::UpdateUserDto;
+use crate::db::repositories::IUserRepository;
 use crate::{AppState, api::UserResponse, middleware::auth::AuthenticatedUser};
 use axum::{extract::State, http::StatusCode, response::Json};
-use emixdb::repositories::IRepository;
 use serde::Deserialize;
 
 /// Get current user profile

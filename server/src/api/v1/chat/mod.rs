@@ -187,4 +187,3 @@ pub async fn stream_chat(
         .body(Body::from(serde_json::to_string(&response.0).unwrap()))
         .unwrap())
 }
-

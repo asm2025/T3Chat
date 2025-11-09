@@ -1,5 +1,12 @@
 pub mod messages;
 
+use crate::{
+    AppState,
+    db::prelude::*,
+    db::dto::Pagination,
+    db::repositories::{IChatRepository, IMessageRepository},
+    middleware::auth::AuthenticatedUser,
+};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -7,7 +14,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*, db::repositories::{IChatRepository, IMessageRepository}, middleware::auth::AuthenticatedUser};
 
 #[derive(Debug, Serialize)]
 pub struct ChatResponse {
@@ -115,10 +121,7 @@ pub async fn list_chats(
     let pagination = params
         .page
         .zip(params.page_size)
-        .map(|(page, page_size)| emixdb::prelude::Pagination {
-            page,
-            page_size,
-        });
+        .map(|(page, page_size)| Pagination { page, page_size });
 
     let result = state
         .chat_repository
@@ -197,11 +200,15 @@ pub async fn update_chat(
 ) -> Result<Json<ChatResponse>, StatusCode> {
     let chat = state
         .chat_repository
-        .update(id, &user.0.id, UpdateChatDto {
-            title: payload.title,
-            model_provider: None,
-            model_id: None,
-        })
+        .update(
+            id,
+            &user.0.id,
+            UpdateChatDto {
+                title: payload.title,
+                model_provider: None,
+                model_id: None,
+            },
+        )
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -222,4 +229,3 @@ pub async fn delete_chat(
 
     Ok(StatusCode::NO_CONTENT)
 }
-

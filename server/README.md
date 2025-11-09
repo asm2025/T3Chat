@@ -1,53 +1,60 @@
 # Rust Backend Server
 
-A Rust backend server for T3Chat, converted from the Node.js Hono server. Built with Axum, SeaORM, and Firebase Authentication.
+The Rust backend for T3Chat. Built with Axum, async Diesel, and Firebase Authentication. This crate replaces the earlier Node.js Hono server while keeping the same HTTP surface area and data model.
 
-## 📋 Review & Compatibility Documentation
+## Status
 
-**NEW:** Comprehensive comparison with Node.js server available!
-
-- **🎯 [Quick Summary](REVIEW_SUMMARY.md)** - Start here! Overview of compatibility status
-- **📊 [Compatibility Matrix](COMPATIBILITY_MATRIX.md)** - Detailed feature-by-feature comparison
-- **📝 [Full Comparison Report](COMPARISON_REPORT.md)** - In-depth technical analysis
-- **🔧 [Action Plan](ACTION_PLAN.md)** - Step-by-step guide to fix remaining issues
-
-**TL;DR:** ✅ Works perfectly in development | ✅ Production-ready with JWKS-based Firebase auth
+✅ Works in local development with embedded PostgreSQL and Firebase emulator  
+✅ Production-ready authentication via JWKS  
+✅ Compatible with external PostgreSQL providers (Supabase, self-hosted, etc.)
 
 ## Features
 
-- **Axum Web Framework**: Fast, ergonomic async web framework
-- **SeaORM**: Type-safe ORM for PostgreSQL
-- **Firebase Authentication**: Full JWKS-based JWT token verification for production
-- **Graceful Shutdown**: Handles SIGINT/SIGTERM signals properly
-- **Structured Logging**: Using tracing and tracing-subscriber
-- **CORS Support**: Enabled for cross-origin requests
-- **Health Checks**: Database connectivity and API health endpoints
+-   **Axum Web Framework**: Fast, ergonomic async web framework
+-   **Diesel + diesel_async**: Type-safe PostgreSQL ORM with async pooling
+-   **Diesel migrations**: Embedded SQL migrations (`server/migrations`) with optional auto-run
+-   **Firebase Authentication**: JWKS-based JWT verification for production and emulator support
+-   **Repository pattern**: Dedicated repositories in `db/repositories` for query encapsulation
+-   **Graceful Shutdown**: Handles SIGINT/SIGTERM signals properly
+-   **Structured Logging**: `tracing` + daily rotating file appender
+-   **Static assets**: Serves `wwwroot` alongside API routes
 
 ## API Routes
 
-- `GET /` - Health check endpoint
-- `GET /api/v1/hello` - Hello world endpoint
-- `GET /api/v1/db-test` - Database connection test
-- `GET /api/v1/protected/me` - Get authenticated user info (requires Bearer token)
+-   `GET /` – Service & database health check
+-   `GET /api/v1/models` – List AI models (public)
+-   `GET /api/v1/models/{id}` – Fetch a single AI model (public)
+-   `GET /api/v1/chats` – List chats for the authenticated user
+-   `POST /api/v1/chats` – Create a chat
+-   `GET /api/v1/chats/{id}` – Retrieve a chat
+-   `PUT /api/v1/chats/{id}` – Update a chat
+-   `DELETE /api/v1/chats/{id}` – Delete a chat
+-   `GET /api/v1/chats/{id}/messages` – List chat messages
+-   `POST /api/v1/chats/{id}/messages` – Create a message
+-   `POST /api/v1/chat` – Synchronous chat completion
+-   `POST /api/v1/chat/stream` – Streaming chat completion (Server-Sent Events)
+-   `GET /api/v1/me` – Fetch authenticated user profile
+-   `PUT /api/v1/me` – Update authenticated user profile
+-   `GET /api/v1/user-api-keys` – List user API keys
+-   `POST /api/v1/user-api-keys` – Create a new API key
+-   `DELETE /api/v1/user-api-keys/{id}` – Delete an API key
 
 ## Environment Variables
 
-The server expects the following environment variables (can be set via `.env` file):
+The server reads these environment variables (typically via `.env` during development):
 
-- `DATABASE_URL` - PostgreSQL connection string (defaults to `postgresql://postgres:password@localhost:5502/postgres`)
-- `PORT` - Server port (defaults to `8787`)
-- `FIREBASE_PROJECT_ID` - Firebase project ID (required)
-- `FIREBASE_AUTH_EMULATOR_HOST` - Firebase Auth emulator host (for development, optional)
-- `NODE_ENV` - Set to `development` for emulator mode
-- `ALLOW_ANONYMOUS_USERS` - Allow anonymous Firebase users (defaults to `true`)
-- `AUTO_MIGRATE` - Set to `true` to automatically run migrations on startup (requires `with-migration` feature)
+-   `DATABASE_URL` – PostgreSQL connection string (required)
+-   `FIREBASE_PROJECT_ID` – Firebase project ID (required)
+-   `FIREBASE_AUTH_EMULATOR_HOST` – Host/port for the Firebase Auth emulator (optional)
+-   `PORT` – Overrides the listening port (otherwise defaults to 3000 or `--port`)
+-   `CORS_ORIGINS` – Comma-separated list of allowed origins (defaults to `http://localhost`)
 
 ## Running the Server
 
 ### Development
 
 ```bash
-cd server-rs
+cd server
 cargo run
 ```
 
@@ -60,114 +67,161 @@ cargo run -- --port 8788
 ### Production Build
 
 ```bash
+cd server
 cargo build --release
-./target/release/server-rs
+./target/release/t3chat-server
 ```
 
 ## Database Setup
 
-The server uses SeaORM migrations with automatic database creation and schema management.
+The server uses Diesel + `diesel_async` backed by PostgreSQL. Migrations are embedded from the `migrations/` directory and can run automatically during startup.
 
-### Auto-Migration (Recommended for Development)
+> **Windows MSVC:** make sure the PostgreSQL client libraries (`libpq.lib`/`libpq.dll`) are installed. See the root `README.md` for details.
 
-The server will automatically:
-1. Create the database if it doesn't exist (e.g., `t3chat`)
-2. Run all pending migrations
-3. Create tables and indexes in the `public` schema (default PostgreSQL schema)
+### Auto-migration (default behaviour)
 
-Simply set your `DATABASE_URL` in `.env` and run:
+When the server boots it will:
+
+1. Ensure the database defined in `DATABASE_URL` exists (creating it if needed)
+2. Run any pending Diesel migrations from `migrations/`
+
+Example `.env` snippet:
 
 ```bash
-# Example .env file
 DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
-
-# Run the server (auto_migrate is enabled by default in main.rs)
-cargo run
+FIREBASE_PROJECT_ID=t3chat-dev
 ```
 
-The auto-migration runs on startup when `auto_migrate` is `true` in the `db::connect()` call (enabled by default).
+Then run `cargo run` from `server/`. Auto-migrate is enabled by the call to `db::connect(&database_url, true)` in `main.rs`. Set the second argument to `false` if you want to manage migrations manually.
 
-### Manual Migration (For Production or Manual Control)
+### Manual migrations (recommended for CI/CD)
 
-If you prefer to run migrations manually:
+#### Windows: Setup libpq via vcpkg (Required for Diesel CLI)
+
+If you're on Windows and need to install `diesel_cli`, you must first install the PostgreSQL client library (`libpq`) using vcpkg:
+
+```powershell
+# Clone vcpkg (one-time setup)
+git clone https://github.com/microsoft/vcpkg.git C:\vcpkg
+cd C:\vcpkg
+.\bootstrap-vcpkg.bat
+
+# Install libpq for x64-windows
+.\vcpkg install libpq:x64-windows
+
+# Set environment variables (PowerShell - session only)
+$env:PQ_LIB_DIR = "C:\vcpkg\installed\x64-windows\lib"
+$env:PATH += ";C:\vcpkg\installed\x64-windows\bin"
+
+# Make environment variables permanent (PowerShell as Administrator)
+[System.Environment]::SetEnvironmentVariable("PQ_LIB_DIR", "C:\vcpkg\installed\x64-windows\lib", "User")
+$currentPath = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+[System.Environment]::SetEnvironmentVariable("PATH", "$currentPath;C:\vcpkg\installed\x64-windows\bin", "User")
+
+# Verify installation
+dir C:\vcpkg\installed\x64-windows\lib\libpq.lib
+dir C:\vcpkg\installed\x64-windows\bin\libpq.dll
+```
+
+**Updating vcpkg and packages:**
+
+```powershell
+# Update vcpkg itself
+cd C:\vcpkg
+git pull
+.\bootstrap-vcpkg.bat
+
+# Check for package updates
+.\vcpkg update
+
+# Update all installed packages
+.\vcpkg upgrade --no-dry-run
+
+# Or update a specific package
+.\vcpkg upgrade libpq:x64-windows --no-dry-run
+```
+
+After setting up vcpkg and libpq, you can install Diesel CLI:
 
 ```bash
-cd migration
-cargo run
+cd server
+cargo install diesel_cli --no-default-features --features postgres # one-time setup
+diesel migration run
 ```
 
-**Note:** Manual migration requires the database to already exist. You can create it with:
+You can also create the database manually if necessary:
+
 ```sql
 CREATE DATABASE t3chat;
 ```
 
-### Creating New Migrations
+### Creating new migrations
 
-See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed instructions on:
-- Running migrations
-- Creating new migrations
-- Best practices
-- Common patterns
+```bash
+cd server
+diesel migration generate add_feature_x
+# edit migrations/<timestamp>_add_feature_x/up.sql and down.sql
+diesel migration run
+```
 
-### Schema Information
-
-- **Schema**: `public` (default PostgreSQL schema, no custom schema required)
-- **Database Name**: Extracted from `DATABASE_URL` (e.g., `t3chat`)
-- **Tables**: Created via SeaORM migrations with proper indexes
+Update models in `src/db/models/` and, if needed, regenerate the Diesel schema with `diesel print-schema > src/db/schema.rs` (or manually update the file to match your changes).
 
 ## Differences from Node.js Version
 
-- Uses SeaORM instead of Drizzle ORM
-- Firebase token verification with proper JWKS-based JWT verification for production
-- Database connection pooling handled by SeaORM
-- Structured logging with tracing instead of console.log
-- Graceful shutdown handling for SIGINT/SIGTERM signals
-- No Cloudflare Workers support (standalone deployment only)
-- No Neon database support (use standard PostgreSQL or Supabase)
+-   Uses Diesel + `diesel_async` instead of Drizzle ORM
+-   Firebase token verification with JWKS-based JWT validation (production ready)
+-   Repository pattern replaces direct SQL queries from the Hono server
+-   Structured logging with `tracing` instead of console logging
+-   Graceful shutdown handling for SIGINT/SIGTERM signals
+-   No Cloudflare Workers support (standalone deployment only)
+-   No Neon serverless driver support (use standard PostgreSQL providers)
 
 ## ✅ Implementation Status
 
 ### ✅ Production Firebase Authentication - IMPLEMENTED
+
 Full production token verification with JWKS-based JWT verification is now implemented.
 
 **Status:** ✅ Complete  
 **Implementation:**
-- Proper JWKS fetching from Google's Firebase public keys
-- Token header kid (key ID) extraction
-- RSA key selection and validation
-- Full JWT verification with issuer and audience validation
-- Comprehensive error logging
+
+-   Proper JWKS fetching from Google's Firebase public keys
+-   Token header kid (key ID) extraction
+-   RSA key selection and validation
+-   Full JWT verification with issuer and audience validation
+-   Comprehensive error logging
 
 **Details:** See `src/middleware/auth.rs`
 
 ### ✅ Graceful Shutdown - IMPLEMENTED
+
 Server now properly handles SIGINT/SIGTERM signals for graceful shutdown.
 
 **Status:** ✅ Complete  
 **Implementation:**
-- Ctrl+C (SIGINT) handling on all platforms
-- SIGTERM handling on Unix-like systems
-- Proper connection cleanup
-- Informative shutdown logging
+
+-   Ctrl+C (SIGINT) handling on all platforms
+-   SIGTERM handling on Unix-like systems
+-   Proper connection cleanup
+-   Informative shutdown logging
 
 **Details:** See `src/main.rs`
 
 ## Development Status
 
-| Environment | Status | Notes |
-|-------------|--------|-------|
-| **Development** | ✅ Ready | Full compatibility with Firebase emulator |
-| **Production** | ✅ Ready | Full JWKS-based authentication + graceful shutdown |
+| Environment     | Status   | Notes                                              |
+| --------------- | -------- | -------------------------------------------------- |
+| **Development** | ✅ Ready | Full compatibility with Firebase emulator          |
+| **Production**  | ✅ Ready | Full JWKS-based authentication + graceful shutdown |
 
 ## 🚨 Known Limitations
 
 ### Neon Database Not Supported
+
 The Rust server uses standard PostgreSQL protocol and doesn't support Neon's serverless HTTP-based driver.
 
 **Supported databases:**
-- ✅ Standard PostgreSQL (localhost, cloud instances)
-- ✅ Supabase (uses standard Postgres protocol)
-- ❌ Neon Database (requires Node.js-specific serverless driver)
 
-**For detailed compatibility analysis, see [REVIEW_SUMMARY.md](REVIEW_SUMMARY.md)**
-
+-   ✅ Standard PostgreSQL (localhost, cloud instances)
+-   ✅ Supabase (uses standard Postgres protocol)
+-   ❌ Neon Database (requires Node.js-specific serverless driver)

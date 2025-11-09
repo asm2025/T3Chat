@@ -1,8 +1,8 @@
+use crate::ai::providers::AIProvider;
+use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 use async_trait::async_trait;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
-use crate::ai::providers::AIProvider;
-use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 
 pub struct GoogleProvider {
     api_key: String,
@@ -71,9 +71,9 @@ impl AIProvider for GoogleProvider {
             .into_iter()
             .map(|m| GoogleContent {
                 role: match m.role {
-                    crate::db::schema::MessageRole::User => "user".to_string(),
-                    crate::db::schema::MessageRole::Assistant => "model".to_string(),
-                    crate::db::schema::MessageRole::System => "user".to_string(),
+                    crate::db::models::MessageRole::User => "user".to_string(),
+                    crate::db::models::MessageRole::Assistant => "model".to_string(),
+                    crate::db::models::MessageRole::System => "user".to_string(),
                 },
                 parts: vec![GooglePart { text: m.content }],
             })
@@ -110,9 +110,7 @@ impl AIProvider for GoogleProvider {
                 .map(|p| p.text.clone())
                 .unwrap_or_default(),
             model: request.model.clone(),
-            tokens_used: response
-                .usage_metadata
-                .map(|u| u.total_token_count),
+            tokens_used: response.usage_metadata.map(|u| u.total_token_count),
             finish_reason: response
                 .candidates
                 .first()
@@ -171,4 +169,3 @@ impl AIProvider for GoogleProvider {
         ]
     }
 }
-

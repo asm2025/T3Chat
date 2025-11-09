@@ -1,179 +1,154 @@
+pub mod dto;
+pub mod models;
 pub mod repositories;
+
+// Diesel auto-generated schema
+#[allow(unused_imports)]
 pub mod schema;
 
-use anyhow::{Context, Result};
-use sea_orm::{prelude::*, *};
-use sea_orm_migration::prelude::*;
-use std::{fs, path::Path, time::Duration};
-
-use migration::{Migrator, MigratorTrait};
-
+// Re-export commonly used types
 pub mod prelude {
-    pub use super::repositories::*;
-    pub use super::schema::*;
+    pub use super::models::*;
 }
 
-/// Ensures the database exists and connects to it with auto-migration
-pub async fn connect(db_url: &str, auto_migrate: bool) -> Result<DatabaseConnection> {
-    tracing::info!("Connecting to database");
+use anyhow::{Context, Result};
+use diesel_async::{
+    AsyncPgConnection,
+    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
+};
+use std::time::Duration;
 
-    // Ensure the database exists before connecting
-    if auto_migrate {
-        ensure_database_exists(db_url).await?;
+pub type DbPool = Pool<AsyncPgConnection>;
+
+/// Ensures the database exists, creating it if necessary
+async fn ensure_database_exists(db_url: &str) -> Result<()> {
+    // Parse the database URL to extract database name and base URL
+    let url = url::Url::parse(db_url).context("Invalid DATABASE_URL format")?;
+
+    let db_name = url.path().trim_start_matches('/').to_string();
+
+    if db_name.is_empty() {
+        anyhow::bail!("Database name not specified in DATABASE_URL");
     }
 
-    let mut opt = ConnectOptions::new(db_url);
-    opt.max_connections(100)
-        .min_connections(5)
-        .connect_timeout(Duration::from_secs(30))
-        .acquire_timeout(Duration::from_secs(30))
-        .idle_timeout(Duration::from_secs(300)) // 5 minutes
-        .max_lifetime(Duration::from_secs(1800)); // 30 minutes
+    // Create a connection to the 'postgres' database to check/create our database
+    let mut base_url = url.clone();
+    base_url.set_path("/postgres");
+    let postgres_url = base_url.to_string();
 
-    // Connect to the database
-    let db = Database::connect(opt).await?;
+    tracing::info!("Checking if database '{}' exists", db_name);
+
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        use diesel::prelude::*;
+        use diesel::sql_query;
+        use diesel::sql_types::BigInt;
+
+        let mut conn = diesel::PgConnection::establish(&postgres_url)
+            .context("Failed to connect to postgres database")?;
+
+        // Check if database exists
+        #[derive(QueryableByName)]
+        struct DatabaseCount {
+            #[diesel(sql_type = BigInt)]
+            count: i64,
+        }
+
+        let result: DatabaseCount = sql_query(format!(
+            "SELECT COUNT(*) as count FROM pg_database WHERE datname = '{}'",
+            db_name
+        ))
+        .get_result(&mut conn)
+        .context("Failed to check if database exists")?;
+
+        if result.count == 0 {
+            tracing::info!("Database '{}' does not exist, creating it...", db_name);
+
+            // Create the database
+            sql_query(format!("CREATE DATABASE \"{}\"", db_name))
+                .execute(&mut conn)
+                .context("Failed to create database")?;
+
+            tracing::info!("Database '{}' created successfully", db_name);
+        } else {
+            tracing::info!("Database '{}' already exists", db_name);
+        }
+
+        Ok(())
+    })
+    .await
+    .context("Database existence check task failed")??;
+
+    Ok(())
+}
+
+/// Connects to the database and returns a connection pool
+pub async fn connect(db_url: &str, auto_migrate: bool) -> Result<DbPool> {
+    // Ensure the database exists before connecting
+    ensure_database_exists(db_url).await?;
+
+    tracing::info!("Connecting to database");
+
+    // Configure the connection manager
+    let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(db_url);
+
+    // Build the pool
+    let pool = Pool::builder(config)
+        .max_size(100)
+        .wait_timeout(Some(Duration::from_secs(30)))
+        .create_timeout(Some(Duration::from_secs(30)))
+        .recycle_timeout(Some(Duration::from_secs(300)))
+        .build()
+        .context("Failed to create database pool")?;
+
+    // Test the connection
+    let conn = pool
+        .get()
+        .await
+        .context("Failed to get a connection from pool")?;
+    drop(conn);
+
     tracing::info!("Connected to database at {}", db_url);
 
     if auto_migrate {
-        // Apply migrations
-        tracing::info!("Applying migrations...");
-        Migrator::up(&db, None).await?;
-        tracing::info!("Migrations applied successfully.");
+        tracing::info!("Running migrations...");
+        run_migrations(&pool).await?;
+        tracing::info!("Migrations completed successfully.");
     }
 
-    Ok(db)
+    Ok(pool)
 }
 
-/// Ensures the target database exists, creates it if it doesn't
-async fn ensure_database_exists(db_url: &str) -> Result<()> {
-    // Parse the database URL to extract database name
-    let db_name = extract_database_name(db_url)?;
+/// Run pending migrations
+async fn run_migrations(_pool: &DbPool) -> Result<()> {
+    use diesel::Connection;
+    use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 
-    tracing::info!("Checking if database '{}' exists...", db_name);
+    const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
-    let db_url_lower = db_url.to_lowercase();
+    // We need to use a synchronous connection for migrations
+    // Extract the database URL from the pool config
+    let database_url =
+        std::env::var("DATABASE_URL").context("DATABASE_URL must be set for migrations")?;
 
-    /*
-     Check if the db_url starts with "sqlite://" case insensitive.
-     If it does, we will add some logic to make sure the directory and file exist.
-    */
-    if db_url_lower.starts_with("sqlite://") {
-        let db_path = if let Some(pos) = db_url.find("://") {
-            &db_url[pos + 3..]
-        } else {
-            db_url
-        };
+    // Run migrations on a synchronous connection
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let mut conn = diesel::PgConnection::establish(&database_url)
+            .context("Failed to establish connection for migrations")?;
 
-        if !Path::new(db_path).exists() {
-            // Check if the parent directory exists
-            if let Some(parent) = Path::new(db_path).parent() {
-                if !parent.as_os_str().is_empty() {
-                    // Create the directory if it doesn't exist
-                    fs::create_dir_all(parent)?;
-                    tracing::info!("Created directory for database: {}", parent.display());
-                }
-            }
+        conn.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| anyhow::anyhow!("Failed to run migrations: {}", e))?;
 
-            // Touch the file to ensure it can be created
-            fs::File::create(db_path)?;
-            tracing::info!("Created database file: {}", db_path);
-        }
+        Ok(())
+    })
+    .await
+    .context("Migration task failed")??;
 
-        return Ok(());
-    }
-
-    if db_url_lower.starts_with("postgresql://") {
-        // Try connecting to common default databases to check/create the target database
-        // Common default database names: postgres, postgresql, template1
-        let default_databases = vec!["postgres", "postgresql", "template1"];
-        let mut db: Option<DatabaseConnection> = None;
-
-        for default_db in &default_databases {
-            let default_url = db_url.replace(&format!("/{}", db_name), &format!("/{}", default_db));
-
-            tracing::debug!("Trying to connect to default database '{}'...", default_db);
-            let mut opt = ConnectOptions::new(&default_url);
-            opt.connect_timeout(Duration::from_secs(10));
-
-            match Database::connect(opt).await {
-                Ok(connection) => {
-                    tracing::info!("Connected to default database '{}'", default_db);
-                    db = Some(connection);
-                    break;
-                }
-                Err(e) => {
-                    tracing::debug!("Failed to connect to '{}': {}", default_db, e);
-                    continue;
-                }
-            }
-        }
-
-        let db = db.context(format!(
-            "Failed to connect to PostgreSQL server. Tried connecting to default databases: {:?}. \
-         Please ensure PostgreSQL is running and accessible.",
-            default_databases
-        ))?;
-
-        // Check if the database exists
-        let query = format!("SELECT 1 FROM pg_database WHERE datname = '{}'", db_name);
-
-        let result = db
-            .query_one(Statement::from_string(DbBackend::Postgres, query))
-            .await;
-
-        match result {
-            Ok(Some(_)) => {
-                tracing::info!("Database '{}' already exists", db_name);
-            }
-            Ok(None) | Err(_) => {
-                // Database doesn't exist, create it
-                tracing::info!("Database '{}' does not exist. Creating...", db_name);
-
-                let create_db_query = format!("CREATE DATABASE {}", db_name);
-                db.execute(Statement::from_string(DbBackend::Postgres, create_db_query))
-                    .await
-                    .context(format!("Failed to create database '{}'", db_name))?;
-
-                tracing::info!("Database '{}' created successfully", db_name);
-            }
-        }
-
-        // Close the connection to the default database
-        db.close().await?;
-
-        return Ok(());
-    }
-
-    anyhow::bail!("Invalid database URL: {}", db_url);
+    Ok(())
 }
 
-/// Extracts the database name from a PostgreSQL connection URL
-fn extract_database_name(db_url: &str) -> Result<String> {
-    // URL format: postgres://user:password@host:port/database
-    let parts: Vec<&str> = db_url.split('/').collect();
-    let db_name = parts
-        .last()
-        .context("Invalid DATABASE_URL: missing database name")?
-        .split('?')
-        .next()
-        .context("Invalid DATABASE_URL format")?
-        .to_string();
-
-    if db_name.is_empty() {
-        anyhow::bail!("Database name is empty in DATABASE_URL");
-    }
-
-    Ok(db_name)
-}
-
-pub async fn test_database_connection(db: &DatabaseConnection) -> Result<bool> {
-    match db
-        .execute(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT 1".to_string(),
-        ))
-        .await
-    {
+/// Test database connection
+pub async fn test_database_connection(pool: &DbPool) -> Result<bool> {
+    match pool.get().await {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
     }

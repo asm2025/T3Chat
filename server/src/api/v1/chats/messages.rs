@@ -1,3 +1,10 @@
+use super::MessageResponse;
+use crate::{
+    AppState,
+    db::prelude::*,
+    db::repositories::{IChatRepository, IMessageRepository},
+    middleware::auth::AuthenticatedUser,
+};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -5,8 +12,6 @@ use axum::{
 };
 use serde::Deserialize;
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*, db::repositories::{IChatRepository, IMessageRepository}, middleware::auth::AuthenticatedUser};
-use super::MessageResponse;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateMessageRequest {
@@ -26,7 +31,9 @@ pub async fn get_messages(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(messages.into_iter().map(MessageResponse::from).collect()))
+    Ok(Json(
+        messages.into_iter().map(MessageResponse::from).collect(),
+    ))
 }
 
 /// Create a new message in a chat
@@ -71,4 +78,3 @@ pub async fn create_message(
 
     Ok(Json(MessageResponse::from(message)))
 }
-

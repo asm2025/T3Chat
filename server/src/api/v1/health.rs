@@ -8,4 +8,3 @@ pub async fn health_check() -> Json<Value> {
         "message": "API is running"
     }))
 }
-

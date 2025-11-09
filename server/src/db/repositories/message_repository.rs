@@ -1,9 +1,15 @@
 use async_trait::async_trait;
-use emixdb::{Error, Result, prelude::*};
-use sea_orm::{DatabaseTransaction, TransactionTrait};
+use diesel::dsl::max;
+use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
+use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
-use crate::db::schema::{CreateMessageDto, MessageEntity, MessageModel, MessageModelDto};
+use crate::db::models::{CreateMessageDto, MessageModel, NewMessage, UpdateMessage};
+use crate::db::{
+    DbPool,
+    schema::{chats, messages},
+};
 
 #[async_trait]
 pub trait IMessageRepository: Send + Sync {
@@ -14,88 +20,102 @@ pub trait IMessageRepository: Send + Sync {
 }
 
 pub struct MessageRepository {
-    db: sea_orm::DatabaseConnection,
+    pool: DbPool,
 }
 
 impl MessageRepository {
-    pub fn new(db: sea_orm::DatabaseConnection) -> Self {
-        Self { db }
-    }
-}
-
-#[async_trait]
-impl IHasDatabase for MessageRepository {
-    fn database(&self) -> &sea_orm::DatabaseConnection {
-        &self.db
-    }
-
-    async fn begin_transaction(&self) -> Result<DatabaseTransaction> {
-        self.db.begin().await.map_err(Error::from_std_error)
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
     }
 }
 
 #[async_trait]
 impl IMessageRepository for MessageRepository {
     async fn list_by_chat(&self, chat_id: Uuid, user_id: &str) -> Result<Vec<MessageModel>> {
-        // Verify chat belongs to user
-        let _chat = crate::db::schema::ChatEntity::find()
-            .filter(crate::db::schema::ChatColumn::Id.eq(chat_id))
-            .filter(crate::db::schema::ChatColumn::UserId.eq(user_id))
-            .one(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("Chat not found".to_owned()))
-            .map_err(Error::from_std_error)?;
+            .map_err(|e| Error::from_std_error(e))?;
 
-        MessageEntity::find()
-            .filter(crate::db::schema::MessageColumn::ChatId.eq(chat_id))
-            .order_by_asc(crate::db::schema::MessageColumn::SequenceNumber)
-            .all(self.database())
+        // Verify chat belongs to user
+        let _chat = chats::table
+            .filter(chats::id.eq(chat_id))
+            .filter(chats::user_id.eq(user_id))
+            .first::<crate::db::models::ChatModel>(&mut conn)
+            .await
+            .optional()
+            .map_err(Error::from_std_error)?
+            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+
+        messages::table
+            .filter(messages::chat_id.eq(chat_id))
+            .order(messages::sequence_number.asc())
+            .load::<MessageModel>(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
 
     async fn create(&self, model: CreateMessageDto) -> Result<MessageModel> {
-        let active_model: MessageModelDto = model.into();
-        active_model
-            .insert(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let new_message: NewMessage = model.into();
+
+        diesel::insert_into(messages::table)
+            .values(&new_message)
+            .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
 
     async fn get_next_sequence_number(&self, chat_id: Uuid) -> Result<i32> {
-        use sea_orm::{QuerySelect, prelude::Expr};
-        
-        let max_seq = MessageEntity::find()
-            .filter(crate::db::schema::MessageColumn::ChatId.eq(chat_id))
-            .select_only()
-            .column_as(
-                Expr::col(crate::db::schema::MessageColumn::SequenceNumber).max(),
-                "max_seq",
-            )
-            .into_tuple::<Option<i32>>()
-            .one(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let max_seq: Option<i32> = messages::table
+            .filter(messages::chat_id.eq(chat_id))
+            .select(max(messages::sequence_number))
+            .first::<Option<i32>>(&mut conn)
             .await
             .map_err(Error::from_std_error)?;
 
-        Ok(max_seq.and_then(|x| x).unwrap_or(0) + 1)
+        Ok(max_seq.unwrap_or(0) + 1)
     }
 
     async fn update_tokens_used(&self, id: Uuid, tokens: i32, model: &str) -> Result<()> {
-        let existing = MessageEntity::find_by_id(id)
-            .one(&self.db)
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Check if message exists
+        let _existing = messages::table
+            .find(id)
+            .first::<MessageModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("Message not found".to_owned()))
-            .map_err(Error::from_std_error)?;
-        let mut active_model: MessageModelDto = existing.into();
-        active_model.tokens_used = sea_orm::Set(Some(tokens));
-        active_model.model_used = sea_orm::Set(Some(model.to_string()));
-        active_model
-            .update(self.database())
+            .ok_or_else(|| Error::from_other_error("Message not found".to_string()))?;
+
+        let update = UpdateMessage {
+            tokens_used: Some(tokens),
+            model_used: Some(model.to_string()),
+        };
+
+        diesel::update(messages::table.find(id))
+            .set(&update)
+            .execute(&mut conn)
             .await
             .map_err(Error::from_std_error)?;
+
         Ok(())
     }
 }
-

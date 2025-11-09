@@ -1,12 +1,14 @@
 use async_trait::async_trait;
-use emixdb::{Error, Result, prelude::*};
-use sea_orm::{DatabaseTransaction, TransactionTrait};
+use diesel::prelude::*;
+use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
-use crate::db::schema::{
-    AiProvider, CreateUserApiKeyDto, UpdateUserApiKeyDto, UserApiKeyEntity, UserApiKeyModel,
-    UserApiKeyModelDto,
+use crate::db::models::{
+    AiProvider, CreateUserApiKeyDto, NewUserApiKey, UpdateUserApiKey, UpdateUserApiKeyDto,
+    UserApiKeyModel,
 };
+use crate::db::{DbPool, schema::user_api_keys};
 
 #[async_trait]
 pub trait IUserApiKeyRepository: Send + Sync {
@@ -23,32 +25,27 @@ pub trait IUserApiKeyRepository: Send + Sync {
 }
 
 pub struct UserApiKeyRepository {
-    db: sea_orm::DatabaseConnection,
+    pool: DbPool,
 }
 
 impl UserApiKeyRepository {
-    pub fn new(db: sea_orm::DatabaseConnection) -> Self {
-        Self { db }
-    }
-}
-
-#[async_trait]
-impl IHasDatabase for UserApiKeyRepository {
-    fn database(&self) -> &sea_orm::DatabaseConnection {
-        &self.db
-    }
-
-    async fn begin_transaction(&self) -> Result<DatabaseTransaction> {
-        self.db.begin().await.map_err(Error::from_std_error)
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
     }
 }
 
 #[async_trait]
 impl IUserApiKeyRepository for UserApiKeyRepository {
     async fn list_by_user(&self, user_id: &str) -> Result<Vec<UserApiKeyModel>> {
-        UserApiKeyEntity::find()
-            .filter(crate::db::schema::UserApiKeyColumn::UserId.eq(user_id))
-            .all(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        user_api_keys::table
+            .filter(user_api_keys::user_id.eq(user_id))
+            .load::<UserApiKeyModel>(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
@@ -58,78 +55,121 @@ impl IUserApiKeyRepository for UserApiKeyRepository {
         user_id: &str,
         provider: &AiProvider,
     ) -> Result<Option<UserApiKeyModel>> {
-        UserApiKeyEntity::find()
-            .filter(crate::db::schema::UserApiKeyColumn::UserId.eq(user_id))
-            .filter(crate::db::schema::UserApiKeyColumn::Provider.eq(provider.clone()))
-            .filter(crate::db::schema::UserApiKeyColumn::IsDefault.eq(true))
-            .one(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        user_api_keys::table
+            .filter(user_api_keys::user_id.eq(user_id))
+            .filter(user_api_keys::provider.eq(provider))
+            .filter(user_api_keys::is_default.eq(true))
+            .first::<UserApiKeyModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)
     }
 
     async fn create(&self, model: CreateUserApiKeyDto) -> Result<UserApiKeyModel> {
-        let active_model: UserApiKeyModelDto = model.into();
-        active_model
-            .insert(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let new_key: NewUserApiKey = model.into();
+
+        diesel::insert_into(user_api_keys::table)
+            .values(&new_key)
+            .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
 
     async fn update(&self, id: Uuid, model: UpdateUserApiKeyDto) -> Result<UserApiKeyModel> {
-        let existing = UserApiKeyEntity::find_by_id(id)
-            .one(&self.db)
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Check if key exists
+        let _existing = user_api_keys::table
+            .find(id)
+            .first::<UserApiKeyModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("User API key not found".to_owned()))
-            .map_err(Error::from_std_error)?;
-        let mut active_model: UserApiKeyModelDto = existing.into();
-        model.merge(&mut active_model);
-        active_model
-            .update(self.database())
+            .ok_or_else(|| Error::from_other_error("User API key not found".to_string()))?;
+
+        let update_key: UpdateUserApiKey = model.into();
+
+        diesel::update(user_api_keys::table.find(id))
+            .set(&update_key)
+            .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
 
     async fn delete(&self, id: Uuid) -> Result<()> {
-        UserApiKeyEntity::delete_by_id(id)
-            .exec(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::delete(user_api_keys::table.find(id))
+            .execute(&mut conn)
             .await
             .map_err(Error::from_std_error)?;
+
         Ok(())
     }
 
     async fn set_default(&self, id: Uuid, user_id: &str) -> Result<()> {
-        let txn = self.begin_transaction().await?;
-
-        // First, unset all defaults for this user and provider
-        let key = UserApiKeyEntity::find_by_id(id)
-            .one(&txn)
+        let mut conn = self
+            .pool
+            .get()
             .await
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("User API key not found".to_owned()))
-            .map_err(Error::from_std_error)?;
+            .map_err(|e| Error::from_std_error(e))?;
 
-        let provider = key.provider.clone();
-        let mut keys = UserApiKeyEntity::find()
-            .filter(crate::db::schema::UserApiKeyColumn::UserId.eq(user_id))
-            .filter(crate::db::schema::UserApiKeyColumn::Provider.eq(provider))
-            .all(&txn)
-            .await
-            .map_err(Error::from_std_error)?;
+        conn.transaction::<_, diesel::result::Error, _>(|conn| {
+            async move {
+                // Get the key to set as default
+                let key = user_api_keys::table
+                    .find(id)
+                    .first::<UserApiKeyModel>(conn)
+                    .await
+                    .optional()?
+                    .ok_or_else(|| diesel::result::Error::NotFound)?;
 
-        for key in &mut keys {
-            let mut active_model: UserApiKeyModelDto = key.clone().into();
-            active_model.is_default = sea_orm::Set(false);
-            active_model.update(&txn).await.map_err(Error::from_std_error)?;
-        }
+                let provider = key.provider;
 
-        // Then set this one as default
-        let mut active_model: UserApiKeyModelDto = key.into();
-        active_model.is_default = sea_orm::Set(true);
-        active_model.update(&txn).await.map_err(Error::from_std_error)?;
+                // Unset all defaults for this user and provider
+                diesel::update(
+                    user_api_keys::table
+                        .filter(user_api_keys::user_id.eq(user_id))
+                        .filter(user_api_keys::provider.eq(provider)),
+                )
+                .set(user_api_keys::is_default.eq(false))
+                .execute(conn)
+                .await?;
 
-        txn.commit().await.map_err(Error::from_std_error)?;
-        Ok(())
+                // Set this one as default
+                diesel::update(user_api_keys::table.find(id))
+                    .set((
+                        user_api_keys::is_default.eq(true),
+                        user_api_keys::updated_at.eq(chrono::Utc::now()),
+                    ))
+                    .execute(conn)
+                    .await?;
+
+                Ok(())
+            }
+            .scope_boxed()
+        })
+        .await
+        .map_err(Error::from_std_error)
     }
 }
-

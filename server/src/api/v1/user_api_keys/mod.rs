@@ -1,12 +1,10 @@
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    response::Json,
-    extract::State,
+use crate::{
+    AppState, db::prelude::*, db::repositories::IUserApiKeyRepository,
+    middleware::auth::AuthenticatedUser,
 };
+use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::{AppState, db::prelude::*, db::repositories::IUserApiKeyRepository, middleware::auth::AuthenticatedUser};
 
 #[derive(Debug, Serialize)]
 pub struct UserApiKeyResponse {
@@ -55,7 +53,9 @@ pub async fn list_keys(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(keys.into_iter().map(UserApiKeyResponse::from).collect()))
+    Ok(Json(
+        keys.into_iter().map(UserApiKeyResponse::from).collect(),
+    ))
 }
 
 /// Create a new API key for the authenticated user
@@ -125,4 +125,3 @@ pub async fn delete_key(
 
     Ok(StatusCode::NO_CONTENT)
 }
-

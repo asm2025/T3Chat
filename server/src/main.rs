@@ -6,8 +6,6 @@ use axum::{
 };
 use dotenvy::dotenv;
 use emix::env::{get_env, get_port_or};
-use sea_orm::prelude::*;
-use sea_orm_migration::prelude::*;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
@@ -25,7 +23,7 @@ pub mod middleware;
 /// NEVER derive Debug or Display for AppState.
 #[derive(Clone)]
 pub struct AppState {
-    pub db: DatabaseConnection,
+    pub db: db::DbPool,
     pub user_repository: Arc<db::repositories::UserRepository>,
     pub ai_model_repository: Arc<db::repositories::AiModelRepository>,
     pub user_api_key_repository: Arc<db::repositories::UserApiKeyRepository>,
@@ -63,22 +61,20 @@ async fn run() -> Result<()> {
         tracing::error!("DATABASE_URL is not set.");
         std::process::exit(1);
     })?;
-    let connection = db::connect(&database_url, true).await?;
+    let pool = db::connect(&database_url, true).await?;
 
     // Initialize repositories
     tracing::info!("Initializing repositories...");
 
-    let user_repository = Arc::new(db::repositories::UserRepository::new(connection.clone()));
-    let ai_model_repository =
-        Arc::new(db::repositories::AiModelRepository::new(connection.clone()));
-    let user_api_key_repository = Arc::new(db::repositories::UserApiKeyRepository::new(
-        connection.clone(),
-    ));
-    let chat_repository = Arc::new(db::repositories::ChatRepository::new(connection.clone()));
-    let message_repository = Arc::new(db::repositories::MessageRepository::new(connection.clone()));
+    let user_repository = Arc::new(db::repositories::UserRepository::new(pool.clone()));
+    let ai_model_repository = Arc::new(db::repositories::AiModelRepository::new(pool.clone()));
+    let user_api_key_repository =
+        Arc::new(db::repositories::UserApiKeyRepository::new(pool.clone()));
+    let chat_repository = Arc::new(db::repositories::ChatRepository::new(pool.clone()));
+    let message_repository = Arc::new(db::repositories::MessageRepository::new(pool.clone()));
 
     let state = AppState {
-        db: connection,
+        db: pool,
         user_repository,
         ai_model_repository,
         user_api_key_repository,

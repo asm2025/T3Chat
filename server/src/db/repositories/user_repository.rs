@@ -1,60 +1,74 @@
 use async_trait::async_trait;
-use emixdb::{Error, Result, prelude::*};
-use sea_orm::{DatabaseTransaction, PaginatorTrait, TransactionTrait};
+use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
+use emixdiesel::{Error, Result};
 
-use crate::db::schema::{CreateUserDto, UpdateUserDto, UserEntity, UserModel, UserModelDto};
+use crate::db::dto::{Pagination, ResultSet};
+use crate::db::models::{CreateUserDto, NewUser, UpdateUser, UpdateUserDto, UserModel};
+use crate::db::{DbPool, schema::users};
+
+// Placeholder trait for FilterCondition - not currently used
+pub trait FilterCondition<T>: Send + Sync {}
 
 #[async_trait]
-pub trait IUserRepository: IRepository<UserEntity, UpdateUserDto> + Send + Sync {
+pub trait IUserRepository: Send + Sync {
     async fn upsert(&self, model: CreateUserDto) -> Result<UserModel>;
+    async fn get(&self, id: String) -> Result<Option<UserModel>>;
+    async fn update(&self, id: String, model: UpdateUserDto) -> Result<UserModel>;
+    async fn delete(&self, id: String) -> Result<()>;
+    async fn list(
+        &self,
+        filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
+        pagination: Option<Pagination>,
+    ) -> Result<ResultSet<UserModel>>;
+    async fn count(
+        &self,
+        filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
+    ) -> Result<u64>;
+    async fn create(&self, model: UserModel) -> Result<UserModel>;
 }
 
 pub struct UserRepository {
-    db: DatabaseConnection,
+    pool: DbPool,
 }
 
 impl UserRepository {
-    pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
     }
 }
 
 #[async_trait]
-impl IHasDatabase for UserRepository {
-    fn database(&self) -> &DatabaseConnection {
-        &self.db
-    }
-
-    async fn begin_transaction(&self) -> Result<DatabaseTransaction> {
-        self.db.begin().await.map_err(Error::from_std_error)
-    }
-}
-
-#[async_trait]
-impl IRepository<UserEntity, UpdateUserDto> for UserRepository {
+impl IUserRepository for UserRepository {
     async fn list(
         &self,
-        filter: Option<Box<dyn FilterCondition<UserEntity> + Send + Sync>>,
+        _filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
         pagination: Option<Pagination>,
     ) -> Result<ResultSet<UserModel>> {
-        let mut query = <UserEntity as EntityTrait>::find();
-
-        if let Some(f) = &filter {
-            query = f.apply(query);
-        }
-
-        let total = query
-            .clone()
-            .count(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
-            .map_err(Error::from_std_error)?;
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Count total records
+        let total = users::table
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await
+            .map_err(Error::from_std_error)? as u64;
+
+        // Apply pagination
+        let mut query = users::table.into_boxed();
 
         if let Some(p) = pagination {
-            query = query.offset((p.page - 1) * p.page_size).limit(p.page_size);
+            query = query
+                .offset(((p.page - 1) * p.page_size) as i64)
+                .limit(p.page_size as i64);
         }
 
         let data = query
-            .all(self.database())
+            .load::<UserModel>(&mut conn)
             .await
             .map_err(Error::from_std_error)?;
 
@@ -67,109 +81,121 @@ impl IRepository<UserEntity, UpdateUserDto> for UserRepository {
 
     async fn count(
         &self,
-        filter: Option<Box<dyn FilterCondition<UserEntity> + Send + Sync>>,
+        _filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
     ) -> Result<u64> {
-        let mut query = <UserEntity as EntityTrait>::find();
-
-        if let Some(f) = &filter {
-            query = f.apply(query);
-        }
-
-        query
-            .clone()
-            .count(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        users::table
+            .count()
+            .get_result::<i64>(&mut conn)
+            .await
+            .map(|c| c as u64)
             .map_err(Error::from_std_error)
     }
 
     async fn get(&self, id: String) -> Result<Option<UserModel>> {
-        UserEntity::find_by_id(id)
-            .one(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        users::table
+            .find(id)
+            .first::<UserModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)
     }
 
-    async fn create(
-        &self,
-        model: <UserEntity as EntityTrait>::Model,
-    ) -> Result<<UserEntity as EntityTrait>::Model> {
-        let active_model: <UserEntity as EntityTrait>::ActiveModel = model.into();
-        active_model
-            .insert(self.database())
+    async fn create(&self, model: UserModel) -> Result<UserModel> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let new_user = NewUser {
+            id: model.id,
+            email: model.email,
+            display_name: model.display_name,
+            image_url: model.image_url,
+            created_at: model.created_at,
+            updated_at: model.updated_at,
+        };
+
+        diesel::insert_into(users::table)
+            .values(&new_user)
+            .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
 
     async fn update(&self, id: String, model: UpdateUserDto) -> Result<UserModel> {
-        let existing = UserEntity::find_by_id(id.clone())
-            .one(&self.db)
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Check if user exists
+        let _existing = users::table
+            .find(&id)
+            .first::<UserModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("User not found".to_owned()))
-            .map_err(Error::from_std_error)?;
-        
-        tracing::debug!("BEFORE UPDATE: existing.display_name = {:?}", existing.display_name);
-        tracing::debug!("UPDATE DTO: model.display_name = {:?}, model.image_url = {:?}", model.display_name, model.image_url);
-        
-        let mut active_model: UserModelDto = existing.into();
-        
-        tracing::debug!("ACTIVE MODEL BEFORE MERGE: display_name = {:?}", active_model.display_name);
-        
-        let changed = model.merge(&mut active_model);
-        
-        tracing::debug!("MERGE RESULT: changed = {}", changed);
-        tracing::debug!("ACTIVE MODEL AFTER MERGE: display_name = {:?}", active_model.display_name);
-        
-        let result = active_model
-            .update(self.database())
+            .ok_or_else(|| Error::from_other_error("User not found".to_string()))?;
+
+        let update_user: UpdateUser = model.into();
+
+        diesel::update(users::table.find(&id))
+            .set(&update_user)
+            .get_result(&mut conn)
             .await
-            .map_err(Error::from_std_error)?;
-        
-        tracing::debug!("AFTER UPDATE: result.display_name = {:?}", result.display_name);
-        
-        // Verify by fetching fresh from DB
-        let verified = UserEntity::find_by_id(id)
-            .one(self.database())
-            .await
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| sea_orm::DbErr::RecordNotFound("User not found".to_owned()))
-            .map_err(Error::from_std_error)?;
-        
-        tracing::debug!("VERIFIED FROM DB: display_name = {:?}", verified.display_name);
-        
-        Ok(verified)
+            .map_err(Error::from_std_error)
     }
 
     async fn delete(&self, id: String) -> Result<()> {
-        UserEntity::delete_by_id(id)
-            .exec(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::delete(users::table.find(id))
+            .execute(&mut conn)
             .await
             .map_err(Error::from_std_error)?;
+
         Ok(())
     }
-}
 
-#[async_trait]
-impl IUserRepository for UserRepository {
     async fn upsert(&self, model: CreateUserDto) -> Result<UserModel> {
-        match UserEntity::find_by_id(model.id.clone())
-            .one(&self.db)
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let new_user: NewUser = model.into();
+        
+        // Use PostgreSQL's ON CONFLICT for atomic upsert
+        diesel::insert_into(users::table)
+            .values(&new_user)
+            .on_conflict(users::id)
+            .do_update()
+            .set((
+                users::display_name.eq(&new_user.display_name),
+                users::image_url.eq(&new_user.image_url),
+                users::updated_at.eq(&new_user.updated_at),
+            ))
+            .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)
-        {
-            Ok(Some(existing)) => {
-                let mut active_model: UserModelDto = existing.into();
-                model.merge(&mut active_model);
-                active_model
-                    .update(self.database())
-                    .await
-                    .map_err(Error::from_std_error)
-            }
-            Ok(None) => self
-                .create(model.into())
-                .await
-                .map_err(Error::from_std_error),
-            Err(e) => Err(e),
-        }
     }
 }

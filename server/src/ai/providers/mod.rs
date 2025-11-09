@@ -1,6 +1,6 @@
+use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 use async_trait::async_trait;
 use futures::Stream;
-use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 
 #[async_trait]
 pub trait AIProvider: Send + Sync {
@@ -13,7 +13,6 @@ pub trait AIProvider: Send + Sync {
     fn list_models(&self) -> Vec<ModelInfo>;
 }
 
-pub mod openai;
 pub mod anthropic;
 pub mod google;
-
+pub mod openai;

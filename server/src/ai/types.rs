@@ -1,5 +1,5 @@
+use crate::db::models::MessageRole;
 use serde::{Deserialize, Serialize};
-use crate::db::schema::MessageRole;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatRequest {
@@ -39,4 +39,3 @@ pub struct ModelInfo {
     pub supports_streaming: bool,
     pub supports_images: bool,
 }
-

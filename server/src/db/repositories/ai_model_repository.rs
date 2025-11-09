@@ -1,9 +1,11 @@
 use async_trait::async_trait;
-use emixdb::{Error, Result, prelude::*};
-use sea_orm::{DatabaseTransaction, TransactionTrait};
+use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
+use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
-use crate::db::schema::{AiModelEntity, AiModelModel, AiProvider};
+use crate::db::models::{AiModelModel, AiProvider};
+use crate::db::{DbPool, schema::ai_models};
 
 #[async_trait]
 pub trait IAiModelRepository: Send + Sync {
@@ -17,32 +19,27 @@ pub trait IAiModelRepository: Send + Sync {
 }
 
 pub struct AiModelRepository {
-    db: sea_orm::DatabaseConnection,
+    pool: DbPool,
 }
 
 impl AiModelRepository {
-    pub fn new(db: sea_orm::DatabaseConnection) -> Self {
-        Self { db }
-    }
-}
-
-#[async_trait]
-impl IHasDatabase for AiModelRepository {
-    fn database(&self) -> &sea_orm::DatabaseConnection {
-        &self.db
-    }
-
-    async fn begin_transaction(&self) -> Result<DatabaseTransaction> {
-        self.db.begin().await.map_err(Error::from_std_error)
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
     }
 }
 
 #[async_trait]
 impl IAiModelRepository for AiModelRepository {
     async fn list_active(&self) -> Result<Vec<AiModelModel>> {
-        AiModelEntity::find()
-            .filter(crate::db::schema::AiModelColumn::IsActive.eq(true))
-            .all(self.database())
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        ai_models::table
+            .filter(ai_models::is_active.eq(true))
+            .load::<AiModelModel>(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
@@ -52,19 +49,33 @@ impl IAiModelRepository for AiModelRepository {
         provider: &AiProvider,
         model_id: &str,
     ) -> Result<Option<AiModelModel>> {
-        AiModelEntity::find()
-            .filter(crate::db::schema::AiModelColumn::Provider.eq(provider.clone()))
-            .filter(crate::db::schema::AiModelColumn::ModelId.eq(model_id))
-            .one(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        ai_models::table
+            .filter(ai_models::provider.eq(provider))
+            .filter(ai_models::model_id.eq(model_id))
+            .first::<AiModelModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)
     }
 
     async fn get_by_id(&self, id: Uuid) -> Result<Option<AiModelModel>> {
-        AiModelEntity::find_by_id(id)
-            .one(self.database())
+        let mut conn = self
+            .pool
+            .get()
             .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        ai_models::table
+            .find(id)
+            .first::<AiModelModel>(&mut conn)
+            .await
+            .optional()
             .map_err(Error::from_std_error)
     }
 }
-

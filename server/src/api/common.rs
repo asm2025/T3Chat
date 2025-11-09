@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::db::prelude::*;
+use serde::Serialize;
 
 /// Common response type for user data
 #[derive(Debug, Serialize)]
@@ -24,4 +24,3 @@ impl From<UserModel> for UserResponse {
         }
     }
 }
-
