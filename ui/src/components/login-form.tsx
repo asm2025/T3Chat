@@ -25,6 +25,29 @@ const GoogleIcon = () => (
   </svg>
 )
 
+type FirebaseError = {
+  code: string
+  message?: string
+}
+
+const isFirebaseError = (error: unknown): error is FirebaseError => {
+  if (!error || typeof error !== "object") {
+    return false
+  }
+  const candidate = error as { code?: unknown }
+  return typeof candidate.code === "string"
+}
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message
+  }
+  if (typeof error === "string") {
+    return error
+  }
+  return "An unexpected error occurred."
+}
+
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -49,9 +72,9 @@ export function LoginForm() {
       try {
         await signInWithEmailAndPassword(auth, email, password);
         return; // Exit early if sign-in succeeds
-      } catch (signInErr: any) {
+      } catch (signInErr: unknown) {
         // If user doesn't exist, decide whether to create or upgrade
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+        if (isFirebaseError(signInErr) && (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential')) {
           // Account doesn't exist - check if we should upgrade anonymous user
           if (currentUser && currentUser.isAnonymous) {
             // Upgrade anonymous user with email/password
@@ -73,8 +96,9 @@ export function LoginForm() {
           throw signInErr;
         }
       }
-    } catch (err: any) {
-      setError(`Authentication failed: ${err.message}`);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setError(`Authentication failed: ${message}`);
       console.error('Auth error:', err);
     } finally {
       setIsLoading(false);
@@ -100,9 +124,12 @@ export function LoginForm() {
           await result.user.getIdToken(true); // Force token refresh
           forceRefresh();
           return;
-        } catch (linkError: any) {
-          if (linkError.code === 'auth/credential-already-in-use' || 
-              linkError.code === 'auth/account-exists-with-different-credential') {
+        } catch (linkError: unknown) {
+          if (
+            isFirebaseError(linkError) &&
+            (linkError.code === 'auth/credential-already-in-use' ||
+              linkError.code === 'auth/account-exists-with-different-credential')
+          ) {
             // Google account already exists - show prompt for user to confirm
             setShowExistingAccountPrompt(true);
             console.log('Google account exists, showing user prompt');
@@ -118,7 +145,7 @@ export function LoginForm() {
         // Non-anonymous users: Regular sign-in
         await signInWithPopup(auth, googleProvider);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError("Failed to sign in with Google.");
       console.error('Google auth error:', err);
     } finally {
@@ -133,7 +160,7 @@ export function LoginForm() {
     
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError("Failed to sign in with Google.");
       console.error('Google auth error:', err);
     } finally {
@@ -142,7 +169,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-[450px]">
+    <Card className="w-full max-w-md rounded-2xl border border-border bg-card shadow-lg">
       <CardHeader>
         <CardTitle>Authentication</CardTitle>
         <CardDescription>Choose how you'd like to access your account.</CardDescription>
@@ -150,12 +177,12 @@ export function LoginForm() {
       
       <CardContent className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 h-12">
-            <TabsTrigger value="register" className="flex items-center gap-2 text-base">
+          <TabsList className="grid h-11 w-full grid-cols-2 rounded-full border border-border bg-background">
+            <TabsTrigger value="register" className="flex items-center gap-2 text-sm">
               <UserPlus className="w-4 h-4" />
               Register
             </TabsTrigger>
-            <TabsTrigger value="signin" className="flex items-center gap-2 text-base">
+            <TabsTrigger value="signin" className="flex items-center gap-2 text-sm">
               <LogIn className="w-4 h-4" />
               Sign In
             </TabsTrigger>
@@ -169,10 +196,10 @@ export function LoginForm() {
                 </p>
               </div>
               
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full bg-white hover:bg-gray-50 text-gray-900 hover:text-gray-900 dark:bg-white dark:hover:bg-gray-50 dark:text-gray-900 dark:hover:text-gray-900 flex gap-2 items-center justify-center"
+              <Button
+                type="button"
+                variant="outline"
+                className="flex w-full items-center justify-center gap-2 rounded-full border-border bg-background text-foreground shadow-sm hover:bg-muted"
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
               >
@@ -238,10 +265,10 @@ export function LoginForm() {
                 </p>
               </div>
               
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full bg-white hover:bg-gray-50 text-gray-900 hover:text-gray-900 dark:bg-white dark:hover:bg-gray-50 dark:text-gray-900 dark:hover:text-gray-900 flex gap-2 items-center justify-center"
+              <Button
+                type="button"
+                variant="outline"
+                className="flex w-full items-center justify-center gap-2 rounded-full border-border bg-background text-foreground shadow-sm hover:bg-muted"
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
               >
@@ -304,16 +331,16 @@ export function LoginForm() {
         
         {/* Error Display */}
         {error && (
-          <div className="p-3 border rounded-lg bg-red-50 border-red-200">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="rounded-xl border border-border bg-background p-3 shadow-sm">
+            <p className="text-sm text-foreground">{error}</p>
           </div>
         )}
         
         {/* Existing Account Prompt */}
         {showExistingAccountPrompt && (
-          <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
-            <h4 className="font-medium text-blue-900 mb-2">Existing Google Account Detected</h4>
-            <p className="text-sm text-blue-800 mb-3">
+          <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+            <h4 className="mb-2 font-medium text-foreground">Existing Google Account Detected</h4>
+            <p className="mb-3 text-sm text-muted-foreground">
               This Google account already exists. Signing in will switch to your existing account 
               (your current session will be lost).
             </p>

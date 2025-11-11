@@ -20,14 +20,15 @@ export function Settings() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your account settings and preferences.
-          </p>
-        </div>
+    <div className="h-screen overflow-y-auto border-l border-border bg-background">
+      <div className="container mx-auto p-6 max-w-4xl">
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">Settings</h1>
+            <p className="text-muted-foreground">
+              Manage your account settings and preferences.
+            </p>
+          </div>
 
         <Separator />
 
@@ -72,6 +73,7 @@ export function Settings() {
           <Button onClick={handleSave} className="w-full md:w-auto">
             Save Changes
           </Button>
+        </div>
         </div>
       </div>
     </div>

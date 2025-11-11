@@ -125,60 +125,67 @@ export function Profile() {
 
     if (loading) {
         return (
-            <div className="container mx-auto p-6 max-w-2xl">
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-4">
-                            <Skeleton className="h-20 w-20 rounded-full" />
-                            <div className="space-y-2 flex-1">
-                                <Skeleton className="h-6 w-48" />
-                                <Skeleton className="h-4 w-64" />
+            <div className="h-screen overflow-y-auto border-l border-border bg-background">
+                <div className="container mx-auto p-6 max-w-2xl">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-4">
+                                <Skeleton className="h-20 w-20 rounded-full" />
+                                <div className="space-y-2 flex-1">
+                                    <Skeleton className="h-6 w-48" />
+                                    <Skeleton className="h-4 w-64" />
+                                </div>
                             </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                            <Skeleton className="h-4 w-1/2" />
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         );
     }
 
     if (error && !userProfile) {
         return (
-            <div className="container mx-auto p-6 max-w-2xl">
-                <Card>
-                    <CardContent className="pt-6">
-                        <p className="text-destructive">{error}</p>
-                    </CardContent>
-                </Card>
+            <div className="h-screen overflow-y-auto border-l border-border bg-background">
+                <div className="container mx-auto p-6 max-w-2xl">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <p className="text-destructive">{error}</p>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         );
     }
 
     if (!userProfile) {
         return (
-            <div className="container mx-auto p-6 max-w-2xl">
-                <Card>
-                    <CardContent className="pt-6">
-                        <p className="text-muted-foreground">No user profile available</p>
-                    </CardContent>
-                </Card>
+            <div className="h-screen overflow-y-auto border-l border-border bg-background">
+                <div className="container mx-auto p-6 max-w-2xl">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <p className="text-muted-foreground">No user profile available</p>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto p-6 max-w-2xl">
-            <div className="space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold">Profile</h1>
-                    <p className="text-muted-foreground mt-2">View and manage your account information</p>
-                </div>
+        <div className="h-screen overflow-y-auto border-l border-border bg-background">
+            <div className="container mx-auto p-6 max-w-2xl">
+                <div className="space-y-6">
+                    <div>
+                        <h1 className="text-3xl font-bold">Profile</h1>
+                        <p className="text-muted-foreground mt-2">View and manage your account information</p>
+                    </div>
 
                 <Card>
                     <CardHeader>
@@ -196,7 +203,7 @@ export function Profile() {
                     <CardContent className="space-y-6">
                         {!isEditing ? (
                             <>
-                                {success && <p className="text-sm text-green-600 dark:text-green-400">{success}</p>}
+                                {success && <p className="text-sm text-foreground">{success}</p>}
                                 {error && <p className="text-sm text-destructive">{error}</p>}
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -241,7 +248,7 @@ export function Profile() {
                                 </div>
 
                                 {error && <p className="text-sm text-destructive">{error}</p>}
-                                {success && <p className="text-sm text-green-600 dark:text-green-400">{success}</p>}
+                                {success && <p className="text-sm text-foreground">{success}</p>}
 
                                 <div className="border-t pt-4 space-y-2">
                                     <div className="flex justify-between items-center py-2">
@@ -275,6 +282,7 @@ export function Profile() {
                         )}
                     </CardContent>
                 </Card>
+                </div>
             </div>
         </div>
     );

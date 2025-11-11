@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '@/hooks/useChat';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
@@ -38,12 +38,22 @@ export function ChatView({ chatId }: { chatId: string | null }) {
 
   // Set selected model based on chat or default
   useEffect(() => {
-    if (chat && models.length > 0) {
-      const model = models.find(m => 
-        m.provider === chat.model_provider && m.model_id === chat.model_id
+    if (models.length === 0) {
+      return;
+    }
+
+    if (chat) {
+      const match = models.find(
+        (m) => m.provider === chat.model_provider && m.model_id === chat.model_id
       );
-      setSelectedModel(model || models[0]);
-    } else if (models.length > 0 && !selectedModel) {
+      const nextModel = match ?? models[0];
+      if (!selectedModel || selectedModel.id !== nextModel.id) {
+        setSelectedModel(nextModel);
+      }
+      return;
+    }
+
+    if (!selectedModel) {
       setSelectedModel(models[0]);
     }
   }, [chat, models, selectedModel]);
@@ -121,94 +131,75 @@ export function ChatView({ chatId }: { chatId: string | null }) {
     }
   };
 
-  if (loading && chatId) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="border-b p-4 flex items-center justify-end">
-          <Button
-            onClick={handleNewChat}
-            size="icon"
-            variant="ghost"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+  const renderShell = (content: ReactNode) => (
+    <div className="flex h-full flex-col bg-background px-4 py-6 sm:px-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="flex-1 space-y-2">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Model</p>
+              <div className="min-w-[220px] max-w-xs">
+                {models.length > 0 && selectedModel ? (
+                  <ModelSelector
+                    models={models}
+                    selectedModel={selectedModel}
+                    onSelect={setSelectedModel}
+                  />
+                ) : (
+                  <div className="h-10 rounded-lg border border-dashed border-border bg-background" />
+                )}
+              </div>
+            </div>
+            <Button
+              onClick={handleNewChat}
+              variant="outline"
+              className="w-full rounded-full border-border bg-background text-sm font-medium shadow-sm md:w-auto"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New chat
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center justify-center flex-1">Loading...</div>
+        {content}
+      </div>
+    </div>
+  );
+
+  if (loading && chatId) {
+    return renderShell(
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
+        Loading conversation…
       </div>
     );
   }
 
   if (error && chatId) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="border-b p-4 flex items-center justify-end">
-          <Button
-            onClick={handleNewChat}
-            size="icon"
-            variant="ghost"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center justify-center flex-1 text-destructive">Error: {error.message}</div>
+    return renderShell(
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-destructive">
+        Error: {error.message}
       </div>
     );
   }
 
   if (!chat && chatId) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="border-b p-4 flex items-center justify-end">
-          <Button
-            onClick={handleNewChat}
-            size="icon"
-            variant="ghost"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center justify-center flex-1">Chat not found</div>
+    return renderShell(
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
+        Chat not found
       </div>
     );
   }
 
   if (!chatId) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="border-b p-4 flex items-center justify-end">
-          <Button
-            onClick={handleNewChat}
-            size="icon"
-            variant="ghost"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center justify-center flex-1 text-muted-foreground">
-          Select a chat or create a new one
-        </div>
+    return renderShell(
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-center text-sm text-muted-foreground">
+        Select a conversation or start a new one to begin.
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="border-b p-4 flex items-center justify-between">
-        <ModelSelector
-          models={models}
-          selectedModel={selectedModel}
-          onSelect={setSelectedModel}
-        />
-        <Button
-          onClick={handleNewChat}
-          size="icon"
-          variant="ghost"
-          className="ml-auto"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex-1 overflow-hidden">
+  return renderShell(
+    <div className="flex flex-1 flex-col gap-5">
+      <div className="relative flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <MessageList messages={messages} />
       </div>
       <MessageInput onSend={handleSendMessage} disabled={streaming} />

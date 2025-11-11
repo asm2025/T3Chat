@@ -39,7 +39,7 @@ export async function* streamChat(data: ChatRequest): AsyncGenerator<string, voi
           try {
             const parsed = JSON.parse(data);
             yield parsed.content || '';
-          } catch (e) {
+          } catch {
             // Skip invalid JSON
           }
         }

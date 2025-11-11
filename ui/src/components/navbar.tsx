@@ -42,52 +42,62 @@ export function Navbar({ onSignInClick }: NavbarProps = {}) {
     .slice(0, 2);
 
   return (
-    <header className="sticky top-0 z-50 flex items-center h-12 px-2 border-b shrink-0 bg-background">
-      <div className="flex items-center">
-        <SidebarTrigger className="size-8">
-          <Menu className="w-5 h-5" />
-        </SidebarTrigger>
-        <span className="font-semibold ml-3">My App</span>
-      </div>
-      <div className="flex items-center gap-3 ml-auto">
-        <ModeToggle />
-        {user && !isAnonymous ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 h-8 px-2">
-                <span className="text-sm">{displayName}</span>
-                <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-xs">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={handleProfileClick} className="cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                variant="destructive"
-                className="cursor-pointer"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSignInClick}
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+      <div className="flex h-16 items-center gap-3 px-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="flex size-10 items-center justify-center rounded-full border border-border text-muted-foreground hover:text-foreground sm:size-9">
+            <Menu className="h-5 w-5" />
+          </SidebarTrigger>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex flex-col text-left leading-tight"
           >
-            Login
-          </Button>
-        )}
+            <span className="text-base font-semibold tracking-tight sm:text-lg">T3.chat</span>
+            <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Conversations reimagined</span>
+          </button>
+        </div>
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <ModeToggle />
+          {user && !isAnonymous ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 rounded-full px-2.5 py-1.5 text-sm hover:bg-muted">
+                  <span className="hidden text-sm sm:inline">{displayName}</span>
+                  <Avatar className="h-8 w-8 border border-border bg-muted shadow-sm">
+                    <AvatarFallback className="text-xs font-medium tracking-wide">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={handleProfileClick} className="cursor-pointer gap-2">
+                  <User className="h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  variant="destructive"
+                  className="cursor-pointer gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSignInClick}
+              className="rounded-full border-border px-4 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
+            >
+              Login
+            </Button>
+          )}
+        </div>
       </div>
     </header>
   );

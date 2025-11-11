@@ -1,19 +1,193 @@
-import { useParams } from 'react-router-dom';
-import { ChatView } from '@/components/chat/ChatView';
-import { ChatList } from '@/components/chat/ChatList';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth-context';
+import { useChat } from '@/hooks/useChat';
+import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { MessageList } from '@/components/chat/MessageList';
+import { MessageInput } from '@/components/chat/MessageInput';
+import { ChatPlaceholder } from '@/components/chat/ChatPlaceholder';
+import { ModeToggle } from '@/components/mode-toggle';
+import { useModels } from '@/hooks/useModels';
+import * as api from '@/lib/serverComm';
+import type { AIModel } from '@/types/model';
+import type { Message } from '@/types/chat';
 
 export function Chat() {
   const { chatId } = useParams<{ chatId?: string }>();
-  
-  return (
-    <div className="flex h-[calc(100vh-3rem)]">
-      <div className="w-64 border-r">
-        <ChatList />
+  const { chat, loading, error } = useChat(chatId || null);
+  const { models } = useModels();
+  const { user, userProfile } = useAuth();
+  const navigate = useNavigate();
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const { sendMessage, streaming } = useStreamingChat();
+
+  // Update messages when chat loads
+  useEffect(() => {
+    if (chat) {
+      setMessages(chat.messages || []);
+    } else {
+      setMessages([]);
+    }
+  }, [chat]);
+
+  // Set selected model based on chat or default
+  useEffect(() => {
+    if (models.length === 0) {
+      return;
+    }
+
+    if (chat) {
+      const match = models.find(
+        (m) => m.provider === chat.model_provider && m.model_id === chat.model_id
+      );
+      const nextModel = match ?? models[0];
+      if (!selectedModel || selectedModel.id !== nextModel.id) {
+        setSelectedModel(nextModel);
+      }
+      return;
+    }
+
+    if (!selectedModel) {
+      setSelectedModel(models[0]);
+    }
+  }, [chat, models, selectedModel]);
+
+  const handleSendMessage = async (content: string) => {
+    let currentChatId = chatId;
+
+    // If no chat exists, create one
+    if (!currentChatId && selectedModel) {
+      try {
+        const newChat = await api.createChat({
+          model_provider: selectedModel.provider,
+          model_id: selectedModel.model_id,
+        });
+        currentChatId = newChat.id;
+        navigate(`/chat/${newChat.id}`);
+      } catch (err) {
+        console.error('Failed to create chat:', err);
+        return;
+      }
+    }
+
+    if (!currentChatId || !selectedModel) return;
+
+    try {
+      // Add user message optimistically
+      const userMessage: Message = {
+        id: `temp-${Date.now()}`,
+        chat_id: currentChatId,
+        role: 'user',
+        content,
+        sequence_number: messages.length,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      // Create user message on server
+      await api.createMessage(currentChatId, { content, role: 'user' });
+
+      // Create assistant message placeholder
+      const assistantMessageId = `temp-assistant-${Date.now()}`;
+      let assistantContent = '';
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        chat_id: currentChatId,
+        role: 'assistant',
+        content: '',
+        sequence_number: messages.length + 1,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Stream assistant response
+      await sendMessage(
+        {
+          chat_id: currentChatId,
+          message: content,
+          model_provider: selectedModel.provider,
+          model_id: selectedModel.model_id,
+          stream: true,
+        },
+        (chunk) => {
+          assistantContent += chunk;
+          // Update assistant message in real-time
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: assistantContent }
+              : msg
+          ));
+        },
+        async () => {
+          try {
+            // Save complete message to server
+            await api.createMessage(currentChatId!, {
+              content: assistantContent,
+              role: 'assistant',
+            });
+            // Reload chat to get proper IDs
+            if (currentChatId) {
+              const updatedChat = await api.getChat(currentChatId);
+              setMessages(updatedChat.messages);
+            }
+          } catch (err) {
+            console.error('Failed to save assistant message:', err);
+          }
+        }
+      );
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      // Remove optimistic messages on error
+      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
+    }
+  };
+
+  const handlePromptClick = (prompt: string) => {
+    handleSendMessage(prompt);
+  };
+
+  const displayName = userProfile?.display_name || user?.displayName || user?.email?.split('@')[0];
+  const hasMessages = messages.length > 0;
+
+  if (loading && chatId) {
+    return (
+      <div className="flex h-screen items-center justify-center border-l border-border bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
-      <div className="flex-1">
-        <ChatView chatId={chatId || null} />
+    );
+  }
+
+  if (error && chatId) {
+    return (
+      <div className="flex h-screen items-center justify-center border-l border-border bg-background">
+        <div className="text-destructive">Error: {error.message}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen flex-col border-l border-border bg-background">
+      {/* Mode Toggle at Top Right */}
+      <div className="flex justify-end p-4">
+        <ModeToggle />
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden px-6">
+        {hasMessages ? (
+          <div className="h-full overflow-y-auto">
+            <MessageList messages={messages} />
+          </div>
+        ) : (
+          <ChatPlaceholder userName={displayName} onPromptClick={handlePromptClick} />
+        )}
+      </div>
+
+      {/* Chat Input at Bottom */}
+      <div className="p-6">
+        <MessageInput onSend={handleSendMessage} disabled={streaming} />
       </div>
     </div>
   );
 }
-

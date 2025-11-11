@@ -14,7 +14,7 @@ export interface Message {
   chat_id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   parent_message_id?: string;
   sequence_number: number;
   created_at: string;
