@@ -141,3 +141,8 @@ button {
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom safe area offset for mobile devices */
+.top-safe-offset-2 {
+  top: calc(0.5rem + env(safe-area-inset-top, 0px));
+}
