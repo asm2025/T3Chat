@@ -50,17 +50,12 @@ export function RedesignedSidebar({ onSignInClick }: RedesignedSidebarProps = {}
         <aside className="flex h-screen w-full flex-col bg-background">
             {/* App Logo and Name with Toggle */}
             <div className="px-4 py-4 flex items-center gap-2">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => window.dispatchEvent(new CustomEvent('toggleSidebar'))}
-                    className="h-8 w-8 rounded-md hover:bg-gray-100 dark:hover:bg-accent shrink-0"
-                >
+                <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent("toggleSidebar"))} className="h-8 w-8 rounded-md hover:bg-gray-100 dark:hover:bg-accent shrink-0">
                     <PanelLeft className="h-4 w-4" />
                     <span className="sr-only">Toggle Sidebar</span>
                 </Button>
-                <button type="button" onClick={() => navigate("/")} className="flex flex-col text-left leading-tight">
-                    <span className="text-xl font-semibold tracking-tight">T3.chat</span>
+                <button type="button" onClick={() => navigate("/")} className="flex flex-col w-full text-center leading-tight">
+                    <span className="block text-xl font-semibold tracking-tight">T3.chat</span>
                 </button>
             </div>
 
