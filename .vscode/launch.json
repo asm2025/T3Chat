@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug T3Chat Server",
+            "cargo": {
+                "args": ["build", "--bin=t3chat-server", "--package=server", "--manifest-path=${workspaceFolder}/server/Cargo.toml"],
+                "filter": {
+                    "name": "t3chat-server",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/server",
+            "env": {
+                "RUST_BACKTRACE": "1",
+                "RUST_MIN_STACK": "8388608"
+            },
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug T3Chat Server (Attach to Process)",
+            "program": "${workspaceFolder}/server/target/debug/t3chat-server.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/server",
+            "env": {
+                "RUST_BACKTRACE": "1"
+            },
+            "stopOnEntry": false
+        }
+    ]
+}
