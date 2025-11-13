@@ -12,8 +12,8 @@ const parseCliArgs = () => {
     const useFirebaseEmulatorIndex = args.indexOf("--use-firebase-emulator");
 
     return {
-        port: portIndex !== -1 ? parseInt(args[portIndex + 1]) : 5173,
-        apiUrl: apiUrlIndex !== -1 ? args[apiUrlIndex + 1] : "http://localhost:8787",
+        port: portIndex !== -1 ? parseInt(args[portIndex + 1]) : 3010,
+        apiUrl: apiUrlIndex !== -1 ? args[apiUrlIndex + 1] : "http://localhost:3010",
         firebaseAuthPort: firebaseAuthPortIndex !== -1 ? args[firebaseAuthPortIndex + 1] : "5503",
         useFirebaseEmulator: useFirebaseEmulatorIndex !== -1 ? args[useFirebaseEmulatorIndex + 1] : "false",
     };

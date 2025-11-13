@@ -329,9 +329,9 @@ pnpm run dev
 
 This automatically assigns available ports and displays them on startup:
 
--   **Frontend**: Usually `http://localhost:5173` (or next available)
+-   **Frontend**: Usually `http://localhost:3010` (or next available)
 
--   **Backend API**: Usually `http://localhost:8787` (or next available)
+-   **Backend API**: Usually `http://localhost:3000` (or next available)
 
 -   **PostgreSQL**: Embedded database on dynamic port (starts from 5433)
 
@@ -497,7 +497,7 @@ cargo build --release
 ```bash
 ./target/release/t3chat-server
 # or with custom port
-./target/release/t3chat-server --port 8787
+./target/release/t3chat-server --port 3000
 ```
 
 **Environment variables required:**
@@ -506,7 +506,7 @@ cargo build --release
 
 -   `FIREBASE_PROJECT_ID` - Firebase project ID
 
--   `PORT` - Server port (optional, defaults to 8787)
+-   `PORT` - Server port (optional, defaults to 3000)
 
 **Note**: Cloudflare Workers deployment is not supported for the Rust backend. For serverless deployment, consider platforms like [Fly.io](http://Fly.io), Railway, or Render that support Rust applications.
 
@@ -530,7 +530,7 @@ cargo build --release
 
 -   `FIREBASE_PROJECT_ID` - Firebase project ID
 
--   `PORT` - Server port (optional, defaults to 8787)
+-   `PORT` - Server port (optional, defaults to 3000)
 
 -   `NODE_ENV` - Set to `production` for production mode
 

@@ -5,13 +5,15 @@ This document provides a developer-focused implementation plan with specific fil
 ## Project Structure Overview
 
 ### Existing Infrastructure (Leverage These)
-- **Backend**: Rust (Axum) with SeaORM, PostgreSQL
-- **Frontend**: React + TypeScript + Vite, Tailwind CSS, ShadCN
-- **Authentication**: Firebase Auth (already implemented)
-- **Database**: PostgreSQL with embedded local development
-- **Patterns**: Repository pattern, migration system, auth middleware
+
+-   **Backend**: Rust (Axum) with SeaORM, PostgreSQL
+-   **Frontend**: React + TypeScript + Vite, Tailwind CSS, ShadCN
+-   **Authentication**: Firebase Auth (already implemented)
+-   **Database**: PostgreSQL with embedded local development
+-   **Patterns**: Repository pattern, migration system, auth middleware
 
 ### Key Directories
+
 ```
 server/src/
 ├── api.rs                    # API route handlers
@@ -35,6 +37,7 @@ ui/src/
 ## Phase 1: MVP (Minimum Viable Product)
 
 ### MVP Scope
+
 1. Chat with multiple LLMs (OpenAI, Anthropic, Google)
 2. Chat history persistence
 3. Basic UI for chat interface
@@ -47,12 +50,14 @@ ui/src/
 ### 1.1 Database Schema & Migrations
 
 #### Files to Create:
-- `server/migration/src/m20250101_000002_create_ai_models_table.rs`
-- `server/migration/src/m20250101_000003_create_user_api_keys_table.rs`
-- `server/migration/src/m20250101_000004_create_chats_table.rs`
-- `server/migration/src/m20250101_000005_create_messages_table.rs`
+
+-   `server/migration/src/m20250101_000002_create_ai_models_table.rs`
+-   `server/migration/src/m20250101_000003_create_user_api_keys_table.rs`
+-   `server/migration/src/m20250101_000004_create_chats_table.rs`
+-   `server/migration/src/m20250101_000005_create_messages_table.rs`
 
 #### Migration: AI Models Table
+
 ```rust
 // m20250101_000002_create_ai_models_table.rs
 pub enum AiModels {
@@ -74,6 +79,7 @@ pub enum AiModels {
 ```
 
 #### Migration: User API Keys Table
+
 ```rust
 // m20250101_000003_create_user_api_keys_table.rs
 pub enum UserApiKeys {
@@ -89,6 +95,7 @@ pub enum UserApiKeys {
 ```
 
 #### Migration: Chats Table
+
 ```rust
 // m20250101_000004_create_chats_table.rs
 pub enum Chats {
@@ -105,6 +112,7 @@ pub enum Chats {
 ```
 
 #### Migration: Messages Table
+
 ```rust
 // m20250101_000005_create_messages_table.rs
 pub enum Messages {
@@ -123,6 +131,7 @@ pub enum Messages {
 ```
 
 #### Update Migration Registry
+
 ```rust
 // server/migration/src/lib.rs
 mod m20250101_000002_create_ai_models_table;
@@ -146,12 +155,14 @@ impl MigratorTrait for Migrator {
 ### 1.2 Database Models (SeaORM Entities)
 
 #### Files to Create:
-- `server/src/db/schema/ai_model.rs`
-- `server/src/db/schema/user_api_key.rs`
-- `server/src/db/schema/chat.rs`
-- `server/src/db/schema/message.rs`
+
+-   `server/src/db/schema/ai_model.rs`
+-   `server/src/db/schema/user_api_key.rs`
+-   `server/src/db/schema/chat.rs`
+-   `server/src/db/schema/message.rs`
 
 #### Model: AI Model
+
 ```rust
 // server/src/db/schema/ai_model.rs
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -193,6 +204,7 @@ pub enum AiProvider {
 ```
 
 #### Model: User API Key
+
 ```rust
 // server/src/db/schema/user_api_key.rs
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -211,6 +223,7 @@ pub struct Model {
 ```
 
 #### Model: Chat
+
 ```rust
 // server/src/db/schema/chat.rs
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -231,6 +244,7 @@ pub struct Model {
 ```
 
 #### Model: Message
+
 ```rust
 // server/src/db/schema/message.rs
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -267,6 +281,7 @@ pub enum MessageRole {
 ```
 
 #### Update Schema Module
+
 ```rust
 // server/src/db/schema/mod.rs
 pub mod user;
@@ -285,12 +300,14 @@ pub use message::*;
 ### 1.3 Repositories
 
 #### Files to Create:
-- `server/src/db/repositories/ai_model_repository.rs`
-- `server/src/db/repositories/user_api_key_repository.rs`
-- `server/src/db/repositories/chat_repository.rs`
-- `server/src/db/repositories/message_repository.rs`
+
+-   `server/src/db/repositories/ai_model_repository.rs`
+-   `server/src/db/repositories/user_api_key_repository.rs`
+-   `server/src/db/repositories/chat_repository.rs`
+-   `server/src/db/repositories/message_repository.rs`
 
 #### Repository: AI Model
+
 ```rust
 // server/src/db/repositories/ai_model_repository.rs
 #[async_trait]
@@ -302,6 +319,7 @@ pub trait IAiModelRepository: Send + Sync {
 ```
 
 #### Repository: User API Key
+
 ```rust
 // server/src/db/repositories/user_api_key_repository.rs
 #[async_trait]
@@ -316,6 +334,7 @@ pub trait IUserApiKeyRepository: Send + Sync {
 ```
 
 #### Repository: Chat
+
 ```rust
 // server/src/db/repositories/chat_repository.rs
 #[async_trait]
@@ -329,6 +348,7 @@ pub trait IChatRepository: Send + Sync {
 ```
 
 #### Repository: Message
+
 ```rust
 // server/src/db/repositories/message_repository.rs
 #[async_trait]
@@ -341,6 +361,7 @@ pub trait IMessageRepository: Send + Sync {
 ```
 
 #### Update Repositories Module
+
 ```rust
 // server/src/db/repositories/mod.rs
 pub mod user_repository;
@@ -359,15 +380,17 @@ pub use message_repository::*;
 ### 1.4 AI Provider Abstraction
 
 #### Files to Create:
-- `server/src/ai/mod.rs`
-- `server/src/ai/types.rs`
-- `server/src/ai/providers/mod.rs`
-- `server/src/ai/providers/openai.rs`
-- `server/src/ai/providers/anthropic.rs`
-- `server/src/ai/providers/google.rs`
-- `server/src/ai/manager.rs`
+
+-   `server/src/ai/mod.rs`
+-   `server/src/ai/types.rs`
+-   `server/src/ai/providers/mod.rs`
+-   `server/src/ai/providers/openai.rs`
+-   `server/src/ai/providers/anthropic.rs`
+-   `server/src/ai/providers/google.rs`
+-   `server/src/ai/manager.rs`
 
 #### Provider Trait
+
 ```rust
 // server/src/ai/providers/mod.rs
 #[async_trait]
@@ -380,6 +403,7 @@ pub trait AIProvider: Send + Sync {
 ```
 
 #### Types
+
 ```rust
 // server/src/ai/types.rs
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -416,6 +440,7 @@ pub struct ModelInfo {
 ```
 
 #### Provider Manager
+
 ```rust
 // server/src/ai/manager.rs
 pub struct ProviderManager {
@@ -431,13 +456,15 @@ impl ProviderManager {
 ### 1.5 API Routes
 
 #### Files to Create:
-- `server/src/api/models.rs`
-- `server/src/api/chats.rs`
-- `server/src/api/messages.rs`
-- `server/src/api/user_api_keys.rs`
-- `server/src/api/chat.rs` (for chat streaming)
+
+-   `server/src/api/models.rs`
+-   `server/src/api/chats.rs`
+-   `server/src/api/messages.rs`
+-   `server/src/api/user_api_keys.rs`
+-   `server/src/api/chat.rs` (for chat streaming)
 
 #### API: Models
+
 ```rust
 // server/src/api/models.rs
 // GET /api/v1/models - List all active models (public)
@@ -448,6 +475,7 @@ pub async fn get_model(state: State<AppState>, Path(id): Path<Uuid>) -> Result<J
 ```
 
 #### API: Chats
+
 ```rust
 // server/src/api/chats.rs
 // GET /api/v1/chats - List user's chats (authenticated)
@@ -467,6 +495,7 @@ pub async fn delete_chat(user: AuthenticatedUser, state: State<AppState>, Path(i
 ```
 
 #### API: Messages
+
 ```rust
 // server/src/api/messages.rs
 // GET /api/v1/chats/:id/messages - Get messages for a chat (authenticated)
@@ -477,6 +506,7 @@ pub async fn create_message(user: AuthenticatedUser, state: State<AppState>, Pat
 ```
 
 #### API: Chat Streaming
+
 ```rust
 // server/src/api/chat.rs
 // POST /api/v1/chat - Send chat message (non-streaming, authenticated)
@@ -487,6 +517,7 @@ pub async fn stream_chat(user: AuthenticatedUser, state: State<AppState>, Json(p
 ```
 
 #### API: User API Keys
+
 ```rust
 // server/src/api/user_api_keys.rs
 // GET /api/v1/user-api-keys - Get user's API keys (authenticated)
@@ -500,6 +531,7 @@ pub async fn delete_key(user: AuthenticatedUser, state: State<AppState>, Path(id
 ```
 
 #### Update API Module
+
 ```rust
 // server/src/api.rs
 pub mod me;
@@ -511,6 +543,7 @@ pub mod user_api_keys;
 ```
 
 #### Update Router
+
 ```rust
 // server/src/main.rs (update setup_router)
 let models_routes = Router::new()
@@ -544,6 +577,7 @@ Router::new()
 ```
 
 ### 1.6 Update AppState
+
 ```rust
 // server/src/main.rs
 #[derive(Clone)]
@@ -559,6 +593,7 @@ pub struct AppState {
 ```
 
 ### 1.7 Dependencies to Add
+
 ```toml
 # server/Cargo.toml
 [dependencies]
@@ -576,785 +611,763 @@ aes-gcm = "0"  # For API key encryption
 ### 1.1 Type Definitions
 
 #### Files to Create:
-- `ui/src/types/chat.ts`
-- `ui/src/types/model.ts`
-- `ui/src/types/api.ts`
+
+-   `ui/src/types/chat.ts`
+-   `ui/src/types/model.ts`
+-   `ui/src/types/api.ts`
 
 #### Types: Chat
+
 ```typescript
 // ui/src/types/chat.ts
 export interface Chat {
-  id: string;
-  user_id: string;
-  title: string;
-  model_provider: AiProvider;
-  model_id: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at?: string;
+    id: string;
+    user_id: string;
+    title: string;
+    model_provider: AiProvider;
+    model_id: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at?: string;
 }
 
 export interface Message {
-  id: string;
-  chat_id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  metadata?: Record<string, any>;
-  parent_message_id?: string;
-  sequence_number: number;
-  created_at: string;
-  tokens_used?: number;
-  model_used?: string;
+    id: string;
+    chat_id: string;
+    role: "user" | "assistant" | "system";
+    content: string;
+    metadata?: Record<string, any>;
+    parent_message_id?: string;
+    sequence_number: number;
+    created_at: string;
+    tokens_used?: number;
+    model_used?: string;
 }
 
 export interface ChatWithMessages extends Chat {
-  messages: Message[];
+    messages: Message[];
 }
 
-export type AiProvider = 'openai' | 'anthropic' | 'google' | 'deepseek' | 'ollama';
+export type AiProvider = "openai" | "anthropic" | "google" | "deepseek" | "ollama";
 ```
 
 #### Types: Model
+
 ```typescript
 // ui/src/types/model.ts
 export interface AIModel {
-  id: string;
-  provider: AiProvider;
-  model_id: string;
-  display_name: string;
-  description?: string;
-  context_window: number;
-  supports_streaming: boolean;
-  supports_images: boolean;
-  supports_functions: boolean;
-  cost_per_token?: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+    id: string;
+    provider: AiProvider;
+    model_id: string;
+    display_name: string;
+    description?: string;
+    context_window: number;
+    supports_streaming: boolean;
+    supports_images: boolean;
+    supports_functions: boolean;
+    cost_per_token?: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 ```
 
 #### Types: API
+
 ```typescript
 // ui/src/types/api.ts
 export interface CreateChatRequest {
-  model_provider: AiProvider;
-  model_id: string;
-  title?: string;
+    model_provider: AiProvider;
+    model_id: string;
+    title?: string;
 }
 
 export interface CreateMessageRequest {
-  content: string;
-  role?: 'user' | 'system';
+    content: string;
+    role?: "user" | "system";
 }
 
 export interface ChatRequest {
-  chat_id: string;
-  message: string;
-  model_provider: AiProvider;
-  model_id: string;
-  temperature?: number;
-  max_tokens?: number;
-  stream?: boolean;
+    chat_id: string;
+    message: string;
+    model_provider: AiProvider;
+    model_id: string;
+    temperature?: number;
+    max_tokens?: number;
+    stream?: boolean;
 }
 
 export interface ChatResponse {
-  content: string;
-  model: string;
-  tokens_used?: number;
-  finish_reason?: string;
+    content: string;
+    model: string;
+    tokens_used?: number;
+    finish_reason?: string;
 }
 
 export interface UserApiKey {
-  id: string;
-  user_id: string;
-  provider: AiProvider;
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
+    id: string;
+    user_id: string;
+    provider: AiProvider;
+    is_default: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface CreateUserApiKeyRequest {
-  provider: AiProvider;
-  api_key: string;
-  is_default?: boolean;
+    provider: AiProvider;
+    api_key: string;
+    is_default?: boolean;
 }
 ```
 
 ### 1.2 API Client
 
 #### Files to Create:
-- `ui/src/lib/api/models.ts`
-- `ui/src/lib/api/chats.ts`
-- `ui/src/lib/api/messages.ts`
-- `ui/src/lib/api/chat.ts`
-- `ui/src/lib/api/userApiKeys.ts`
+
+-   `ui/src/lib/api/models.ts`
+-   `ui/src/lib/api/chats.ts`
+-   `ui/src/lib/api/messages.ts`
+-   `ui/src/lib/api/chat.ts`
+-   `ui/src/lib/api/userApiKeys.ts`
 
 #### API Client: Models
+
 ```typescript
 // ui/src/lib/api/models.ts
-import { fetchWithAuth } from '../serverComm';
-import type { AIModel } from '@/types/model';
+import { fetchWithAuth } from "../serverComm";
+import type { AIModel } from "@/types/model";
 
 export async function listModels(): Promise<AIModel[]> {
-  const response = await fetchWithAuth('/api/v1/models');
-  return response.json();
+    const response = await fetchWithAuth("/api/v1/models");
+    return response.json();
 }
 
 export async function getModel(id: string): Promise<AIModel> {
-  const response = await fetchWithAuth(`/api/v1/models/${id}`);
-  return response.json();
+    const response = await fetchWithAuth(`/api/v1/models/${id}`);
+    return response.json();
 }
 ```
 
 #### API Client: Chats
+
 ```typescript
 // ui/src/lib/api/chats.ts
-import { fetchWithAuth } from '../serverComm';
-import type { Chat, ChatWithMessages } from '@/types/chat';
-import type { CreateChatRequest } from '@/types/api';
+import { fetchWithAuth } from "../serverComm";
+import type { Chat, ChatWithMessages } from "@/types/chat";
+import type { CreateChatRequest } from "@/types/api";
 
 export async function listChats(page = 1, pageSize = 20): Promise<{ data: Chat[]; total: number }> {
-  const response = await fetchWithAuth(`/api/v1/chats?page=${page}&page_size=${pageSize}`);
-  return response.json();
+    const response = await fetchWithAuth(`/api/v1/chats?page=${page}&page_size=${pageSize}`);
+    return response.json();
 }
 
 export async function getChat(id: string): Promise<ChatWithMessages> {
-  const response = await fetchWithAuth(`/api/v1/chats/${id}`);
-  return response.json();
+    const response = await fetchWithAuth(`/api/v1/chats/${id}`);
+    return response.json();
 }
 
 export async function createChat(data: CreateChatRequest): Promise<Chat> {
-  const response = await fetchWithAuth('/api/v1/chats', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+    const response = await fetchWithAuth("/api/v1/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    return response.json();
 }
 
 export async function updateChat(id: string, data: { title?: string }): Promise<Chat> {
-  const response = await fetchWithAuth(`/api/v1/chats/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+    const response = await fetchWithAuth(`/api/v1/chats/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    return response.json();
 }
 
 export async function deleteChat(id: string): Promise<void> {
-  await fetchWithAuth(`/api/v1/chats/${id}`, {
-    method: 'DELETE',
-  });
+    await fetchWithAuth(`/api/v1/chats/${id}`, {
+        method: "DELETE",
+    });
 }
 ```
 
 #### API Client: Messages
+
 ```typescript
 // ui/src/lib/api/messages.ts
-import { fetchWithAuth } from '../serverComm';
-import type { Message } from '@/types/chat';
-import type { CreateMessageRequest } from '@/types/api';
+import { fetchWithAuth } from "../serverComm";
+import type { Message } from "@/types/chat";
+import type { CreateMessageRequest } from "@/types/api";
 
 export async function getMessages(chatId: string): Promise<Message[]> {
-  const response = await fetchWithAuth(`/api/v1/chats/${chatId}/messages`);
-  return response.json();
+    const response = await fetchWithAuth(`/api/v1/chats/${chatId}/messages`);
+    return response.json();
 }
 
 export async function createMessage(chatId: string, data: CreateMessageRequest): Promise<Message> {
-  const response = await fetchWithAuth(`/api/v1/chats/${chatId}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+    const response = await fetchWithAuth(`/api/v1/chats/${chatId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    return response.json();
 }
 ```
 
 #### API Client: Chat
+
 ```typescript
 // ui/src/lib/api/chat.ts
-import { fetchWithAuth } from '../serverComm';
-import type { ChatRequest, ChatResponse } from '@/types/api';
+import { fetchWithAuth } from "../serverComm";
+import type { ChatRequest, ChatResponse } from "@/types/api";
 
 export async function sendChat(data: ChatRequest): Promise<ChatResponse> {
-  const response = await fetchWithAuth('/api/v1/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+    const response = await fetchWithAuth("/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    return response.json();
 }
 
 export async function* streamChat(data: ChatRequest): AsyncGenerator<string, void, unknown> {
-  const response = await fetchWithAuth('/api/v1/chat/stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...data, stream: true }),
-  });
+    const response = await fetchWithAuth("/api/v1/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, stream: true }),
+    });
 
-  if (!response.body) {
-    throw new Error('Response body is null');
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter(line => line.trim());
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
-          try {
-            const parsed = JSON.parse(data);
-            yield parsed.content || '';
-          } catch (e) {
-            // Skip invalid JSON
-          }
-        }
-      }
+    if (!response.body) {
+        throw new Error("Response body is null");
     }
-  } finally {
-    reader.releaseLock();
-  }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n").filter((line) => line.trim());
+
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    const data = line.slice(6);
+                    if (data === "[DONE]") return;
+                    try {
+                        const parsed = JSON.parse(data);
+                        yield parsed.content || "";
+                    } catch (e) {
+                        // Skip invalid JSON
+                    }
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
 }
 ```
 
 #### API Client: User API Keys
+
 ```typescript
 // ui/src/lib/api/userApiKeys.ts
-import { fetchWithAuth } from '../serverComm';
-import type { UserApiKey, CreateUserApiKeyRequest } from '@/types/api';
+import { fetchWithAuth } from "../serverComm";
+import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
 
 export async function listUserApiKeys(): Promise<UserApiKey[]> {
-  const response = await fetchWithAuth('/api/v1/user-api-keys');
-  return response.json();
+    const response = await fetchWithAuth("/api/v1/user-api-keys");
+    return response.json();
 }
 
 export async function createUserApiKey(data: CreateUserApiKeyRequest): Promise<UserApiKey> {
-  const response = await fetchWithAuth('/api/v1/user-api-keys', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+    const response = await fetchWithAuth("/api/v1/user-api-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    return response.json();
 }
 
 export async function deleteUserApiKey(id: string): Promise<void> {
-  await fetchWithAuth(`/api/v1/user-api-keys/${id}`, {
-    method: 'DELETE',
-  });
+    await fetchWithAuth(`/api/v1/user-api-keys/${id}`, {
+        method: "DELETE",
+    });
 }
 ```
 
 #### Update serverComm.ts
+
 ```typescript
 // ui/src/lib/serverComm.ts (add exports)
-export * from './api/models';
-export * from './api/chats';
-export * from './api/messages';
-export * from './api/chat';
-export * from './api/userApiKeys';
+export * from "./api/models";
+export * from "./api/chats";
+export * from "./api/messages";
+export * from "./api/chat";
+export * from "./api/userApiKeys";
 ```
 
 ### 1.3 React Hooks
 
 #### Files to Create:
-- `ui/src/hooks/useChats.ts`
-- `ui/src/hooks/useChat.ts`
-- `ui/src/hooks/useModels.ts`
-- `ui/src/hooks/useStreamingChat.ts`
-- `ui/src/hooks/useUserApiKeys.ts`
+
+-   `ui/src/hooks/useChats.ts`
+-   `ui/src/hooks/useChat.ts`
+-   `ui/src/hooks/useModels.ts`
+-   `ui/src/hooks/useStreamingChat.ts`
+-   `ui/src/hooks/useUserApiKeys.ts`
 
 #### Hook: useChats
+
 ```typescript
 // ui/src/hooks/useChats.ts
-import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
-import type { Chat } from '@/types/chat';
+import { useState, useEffect } from "react";
+import * as api from "@/lib/serverComm";
+import type { Chat } from "@/types/chat";
 
 export function useChats() {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-  const loadChats = async () => {
-    try {
-      setLoading(true);
-      const result = await api.listChats();
-      setChats(result.data);
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const loadChats = async () => {
+        try {
+            setLoading(true);
+            const result = await api.listChats();
+            setChats(result.data);
+        } catch (err) {
+            setError(err as Error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    loadChats();
-  }, []);
+    useEffect(() => {
+        loadChats();
+    }, []);
 
-  return { chats, loading, error, refresh: loadChats };
+    return { chats, loading, error, refresh: loadChats };
 }
 ```
 
 #### Hook: useChat
+
 ```typescript
 // ui/src/hooks/useChat.ts
-import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
-import type { ChatWithMessages } from '@/types/chat';
+import { useState, useEffect } from "react";
+import * as api from "@/lib/serverComm";
+import type { ChatWithMessages } from "@/types/chat";
 
 export function useChat(chatId: string | null) {
-  const [chat, setChat] = useState<ChatWithMessages | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+    const [chat, setChat] = useState<ChatWithMessages | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    if (!chatId) {
-      setChat(null);
-      setLoading(false);
-      return;
-    }
+    useEffect(() => {
+        if (!chatId) {
+            setChat(null);
+            setLoading(false);
+            return;
+        }
 
-    const loadChat = async () => {
-      try {
-        setLoading(true);
-        const data = await api.getChat(chatId);
-        setChat(data);
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
+        const loadChat = async () => {
+            try {
+                setLoading(true);
+                const data = await api.getChat(chatId);
+                setChat(data);
+            } catch (err) {
+                setError(err as Error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    loadChat();
-  }, [chatId]);
+        loadChat();
+    }, [chatId]);
 
-  return { chat, loading, error };
+    return { chat, loading, error };
 }
 ```
 
 #### Hook: useModels
+
 ```typescript
 // ui/src/hooks/useModels.ts
-import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
-import type { AIModel } from '@/types/model';
+import { useState, useEffect } from "react";
+import * as api from "@/lib/serverComm";
+import type { AIModel } from "@/types/model";
 
 export function useModels() {
-  const [models, setModels] = useState<AIModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+    const [models, setModels] = useState<AIModel[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        setLoading(true);
-        const data = await api.listModels();
-        setModels(data);
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    useEffect(() => {
+        const loadModels = async () => {
+            try {
+                setLoading(true);
+                const data = await api.listModels();
+                setModels(data);
+            } catch (err) {
+                setError(err as Error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    loadModels();
-  }, []);
+        loadModels();
+    }, []);
 
-  return { models, loading, error };
+    return { models, loading, error };
 }
 ```
 
 #### Hook: useStreamingChat
+
 ```typescript
 // ui/src/hooks/useStreamingChat.ts
-import { useState, useCallback } from 'react';
-import * as api from '@/lib/serverComm';
-import type { ChatRequest } from '@/types/api';
+import { useState, useCallback } from "react";
+import * as api from "@/lib/serverComm";
+import type { ChatRequest } from "@/types/api";
 
 export function useStreamingChat() {
-  const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+    const [streaming, setStreaming] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-  const sendMessage = useCallback(async (
-    request: ChatRequest,
-    onChunk: (chunk: string) => void,
-    onComplete: () => void
-  ) => {
-    try {
-      setStreaming(true);
-      setError(null);
+    const sendMessage = useCallback(async (request: ChatRequest, onChunk: (chunk: string) => void, onComplete: () => void) => {
+        try {
+            setStreaming(true);
+            setError(null);
 
-      for await (const chunk of api.streamChat(request)) {
-        onChunk(chunk);
-      }
+            for await (const chunk of api.streamChat(request)) {
+                onChunk(chunk);
+            }
 
-      onComplete();
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setStreaming(false);
-    }
-  }, []);
+            onComplete();
+        } catch (err) {
+            setError(err as Error);
+        } finally {
+            setStreaming(false);
+        }
+    }, []);
 
-  return { sendMessage, streaming, error };
+    return { sendMessage, streaming, error };
 }
 ```
 
 #### Hook: useUserApiKeys
+
 ```typescript
 // ui/src/hooks/useUserApiKeys.ts
-import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
-import type { UserApiKey, CreateUserApiKeyRequest } from '@/types/api';
+import { useState, useEffect } from "react";
+import * as api from "@/lib/serverComm";
+import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
 
 export function useUserApiKeys() {
-  const [keys, setKeys] = useState<UserApiKey[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+    const [keys, setKeys] = useState<UserApiKey[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
 
-  const loadKeys = async () => {
-    try {
-      setLoading(true);
-      const data = await api.listUserApiKeys();
-      setKeys(data);
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const loadKeys = async () => {
+        try {
+            setLoading(true);
+            const data = await api.listUserApiKeys();
+            setKeys(data);
+        } catch (err) {
+            setError(err as Error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    loadKeys();
-  }, []);
+    useEffect(() => {
+        loadKeys();
+    }, []);
 
-  const createKey = async (data: CreateUserApiKeyRequest) => {
-    const newKey = await api.createUserApiKey(data);
-    setKeys([...keys, newKey]);
-    return newKey;
-  };
+    const createKey = async (data: CreateUserApiKeyRequest) => {
+        const newKey = await api.createUserApiKey(data);
+        setKeys([...keys, newKey]);
+        return newKey;
+    };
 
-  const deleteKey = async (id: string) => {
-    await api.deleteUserApiKey(id);
-    setKeys(keys.filter(k => k.id !== id));
-  };
+    const deleteKey = async (id: string) => {
+        await api.deleteUserApiKey(id);
+        setKeys(keys.filter((k) => k.id !== id));
+    };
 
-  return { keys, loading, error, createKey, deleteKey, refresh: loadKeys };
+    return { keys, loading, error, createKey, deleteKey, refresh: loadKeys };
 }
 ```
 
 ### 1.4 Chat Components
 
 #### Files to Create:
-- `ui/src/components/chat/ChatView.tsx`
-- `ui/src/components/chat/ChatList.tsx`
-- `ui/src/components/chat/MessageList.tsx`
-- `ui/src/components/chat/MessageInput.tsx`
-- `ui/src/components/chat/MessageBubble.tsx`
-- `ui/src/components/model/ModelSelector.tsx`
-- `ui/src/components/model/ModelInfo.tsx`
+
+-   `ui/src/components/chat/ChatView.tsx`
+-   `ui/src/components/chat/ChatList.tsx`
+-   `ui/src/components/chat/MessageList.tsx`
+-   `ui/src/components/chat/MessageInput.tsx`
+-   `ui/src/components/chat/MessageBubble.tsx`
+-   `ui/src/components/model/ModelSelector.tsx`
+-   `ui/src/components/model/ModelInfo.tsx`
 
 #### Component: ChatView
+
 ```typescript
 // ui/src/components/chat/ChatView.tsx
-import { useState, useEffect, useRef } from 'react';
-import { useChat } from '@/hooks/useChat';
-import { useStreamingChat } from '@/hooks/useStreamingChat';
-import { MessageList } from './MessageList';
-import { MessageInput } from './MessageInput';
-import { ModelSelector } from '@/components/model/ModelSelector';
-import { useModels } from '@/hooks/useModels';
-import * as api from '@/lib/serverComm';
-import type { AIModel } from '@/types/model';
+import { useState, useEffect, useRef } from "react";
+import { useChat } from "@/hooks/useChat";
+import { useStreamingChat } from "@/hooks/useStreamingChat";
+import { MessageList } from "./MessageList";
+import { MessageInput } from "./MessageInput";
+import { ModelSelector } from "@/components/model/ModelSelector";
+import { useModels } from "@/hooks/useModels";
+import * as api from "@/lib/serverComm";
+import type { AIModel } from "@/types/model";
 
 export function ChatView({ chatId }: { chatId: string | null }) {
-  const { chat, loading } = useChat(chatId);
-  const { models } = useModels();
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-  const { sendMessage, streaming } = useStreamingChat();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+    const { chat, loading } = useChat(chatId);
+    const { models } = useModels();
+    const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+    const { sendMessage, streaming } = useStreamingChat();
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (chat && models.length > 0) {
-      const model = models.find(m => 
-        m.provider === chat.model_provider && m.model_id === chat.model_id
-      );
-      setSelectedModel(model || models[0]);
-    }
-  }, [chat, models]);
+    useEffect(() => {
+        if (chat && models.length > 0) {
+            const model = models.find((m) => m.provider === chat.model_provider && m.model_id === chat.model_id);
+            setSelectedModel(model || models[0]);
+        }
+    }, [chat, models]);
 
-  const handleSendMessage = async (content: string) => {
-    if (!chatId || !selectedModel) return;
+    const handleSendMessage = async (content: string) => {
+        if (!chatId || !selectedModel) return;
 
-    // Add user message
-    await api.createMessage(chatId, { content, role: 'user' });
+        // Add user message
+        await api.createMessage(chatId, { content, role: "user" });
 
-    // Stream assistant response
-    let assistantContent = '';
-    await sendMessage(
-      {
-        chat_id: chatId,
-        message: content,
-        model_provider: selectedModel.provider,
-        model_id: selectedModel.model_id,
-        stream: true,
-      },
-      (chunk) => {
-        assistantContent += chunk;
-        // Update message in real-time (optimistic update)
-      },
-      async () => {
-        // Save complete message
-        await api.createMessage(chatId, {
-          content: assistantContent,
-          role: 'assistant',
-        });
-      }
+        // Stream assistant response
+        let assistantContent = "";
+        await sendMessage(
+            {
+                chat_id: chatId,
+                message: content,
+                model_provider: selectedModel.provider,
+                model_id: selectedModel.model_id,
+                stream: true,
+            },
+            (chunk) => {
+                assistantContent += chunk;
+                // Update message in real-time (optimistic update)
+            },
+            async () => {
+                // Save complete message
+                await api.createMessage(chatId, {
+                    content: assistantContent,
+                    role: "assistant",
+                });
+            },
+        );
+    };
+
+    if (loading) return <div>Loading...</div>;
+    if (!chat) return <div>Select a chat or create a new one</div>;
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="border-b p-4">
+                <ModelSelector models={models} selectedModel={selectedModel} onSelect={setSelectedModel} />
+            </div>
+            <MessageList messages={chat.messages} />
+            <MessageInput onSend={handleSendMessage} disabled={streaming} />
+        </div>
     );
-  };
-
-  if (loading) return <div>Loading...</div>;
-  if (!chat) return <div>Select a chat or create a new one</div>;
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="border-b p-4">
-        <ModelSelector
-          models={models}
-          selectedModel={selectedModel}
-          onSelect={setSelectedModel}
-        />
-      </div>
-      <MessageList messages={chat.messages} />
-      <MessageInput onSend={handleSendMessage} disabled={streaming} />
-    </div>
-  );
 }
 ```
 
 #### Component: ChatList
+
 ```typescript
 // ui/src/components/chat/ChatList.tsx
-import { useChats } from '@/hooks/useChats';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import * as api from '@/lib/serverComm';
+import { useChats } from "@/hooks/useChats";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import * as api from "@/lib/serverComm";
 
 export function ChatList() {
-  const { chats, loading, refresh } = useChats();
-  const navigate = useNavigate();
+    const { chats, loading, refresh } = useChats();
+    const navigate = useNavigate();
 
-  const handleNewChat = async () => {
-    // Create new chat with default model
-    const newChat = await api.createChat({
-      model_provider: 'openai',
-      model_id: 'gpt-3.5-turbo',
-    });
-    navigate(`/chat/${newChat.id}`);
-  };
+    const handleNewChat = async () => {
+        // Create new chat with default model
+        const newChat = await api.createChat({
+            model_provider: "openai",
+            model_id: "gpt-3.5-turbo",
+        });
+        navigate(`/chat/${newChat.id}`);
+    };
 
-  if (loading) return <div>Loading chats...</div>;
+    if (loading) return <div>Loading chats...</div>;
 
-  return (
-    <div className="flex flex-col h-full">
-      <Button onClick={handleNewChat} className="m-4">
-        New Chat
-      </Button>
-      <div className="flex-1 overflow-y-auto">
-        {chats.map(chat => (
-          <div
-            key={chat.id}
-            onClick={() => navigate(`/chat/${chat.id}`)}
-            className="p-4 border-b cursor-pointer hover:bg-accent"
-          >
-            <div className="font-medium">{chat.title}</div>
-            <div className="text-sm text-muted-foreground">
-              {new Date(chat.updated_at).toLocaleDateString()}
+    return (
+        <div className="flex flex-col h-full">
+            <Button onClick={handleNewChat} className="m-4">
+                New Chat
+            </Button>
+            <div className="flex-1 overflow-y-auto">
+                {chats.map((chat) => (
+                    <div key={chat.id} onClick={() => navigate(`/chat/${chat.id}`)} className="p-4 border-b cursor-pointer hover:bg-accent">
+                        <div className="font-medium">{chat.title}</div>
+                        <div className="text-sm text-muted-foreground">{new Date(chat.updated_at).toLocaleDateString()}</div>
+                    </div>
+                ))}
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+        </div>
+    );
 }
 ```
 
 #### Component: MessageList
+
 ```typescript
 // ui/src/components/chat/MessageList.tsx
-import { useEffect, useRef } from 'react';
-import { MessageBubble } from './MessageBubble';
-import type { Message } from '@/types/chat';
+import { useEffect, useRef } from "react";
+import { MessageBubble } from "./MessageBubble";
+import type { Message } from "@/types/chat";
 
 export function MessageList({ messages }: { messages: Message[] }) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
-  return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-      {messages.map(message => (
-        <MessageBubble key={message.id} message={message} />
-      ))}
-      <div ref={messagesEndRef} />
-    </div>
-  );
+    return (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+            ))}
+            <div ref={messagesEndRef} />
+        </div>
+    );
 }
 ```
 
 #### Component: MessageBubble
+
 ```typescript
 // ui/src/components/chat/MessageBubble.tsx
-import type { Message } from '@/types/chat';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import type { Message } from "@/types/chat";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.role === 'user';
+    const isUser = message.role === "user";
 
-  return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      <Avatar>
-        <AvatarFallback>
-          {isUser ? 'U' : 'AI'}
-        </AvatarFallback>
-      </Avatar>
-      <div className={`flex-1 ${isUser ? 'text-right' : 'text-left'}`}>
-        <div className={`inline-block p-3 rounded-lg ${
-          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
-        }`}>
-          {message.content}
+    return (
+        <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+            <Avatar>
+                <AvatarFallback>{isUser ? "U" : "AI"}</AvatarFallback>
+            </Avatar>
+            <div className={`flex-1 ${isUser ? "text-right" : "text-left"}`}>
+                <div className={`inline-block p-3 rounded-lg ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{message.content}</div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
 ```
 
 #### Component: MessageInput
+
 ```typescript
 // ui/src/components/chat/MessageInput.tsx
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
-export function MessageInput({ 
-  onSend, 
-  disabled 
-}: { 
-  onSend: (content: string) => void;
-  disabled?: boolean;
-}) {
-  const [content, setContent] = useState('');
+export function MessageInput({ onSend, disabled }: { onSend: (content: string) => void; disabled?: boolean }) {
+    const [content, setContent] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (content.trim() && !disabled) {
-      onSend(content);
-      setContent('');
-    }
-  };
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (content.trim() && !disabled) {
+            onSend(content);
+            setContent("");
+        }
+    };
 
-  return (
-    <form onSubmit={handleSubmit} className="border-t p-4">
-      <div className="flex gap-2">
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Type your message..."
-          disabled={disabled}
-          rows={3}
-          className="flex-1"
-        />
-        <Button type="submit" disabled={disabled || !content.trim()}>
-          Send
-        </Button>
-      </div>
-    </form>
-  );
+    return (
+        <form onSubmit={handleSubmit} className="border-t p-4">
+            <div className="flex gap-2">
+                <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Type your message..." disabled={disabled} rows={3} className="flex-1" />
+                <Button type="submit" disabled={disabled || !content.trim()}>
+                    Send
+                </Button>
+            </div>
+        </form>
+    );
 }
 ```
 
 #### Component: ModelSelector
+
 ```typescript
 // ui/src/components/model/ModelSelector.tsx
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import type { AIModel } from '@/types/model';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { AIModel } from "@/types/model";
 
-export function ModelSelector({
-  models,
-  selectedModel,
-  onSelect,
-}: {
-  models: AIModel[];
-  selectedModel: AIModel | null;
-  onSelect: (model: AIModel) => void;
-}) {
-  return (
-    <Select
-      value={selectedModel?.id}
-      onValueChange={(value) => {
-        const model = models.find(m => m.id === value);
-        if (model) onSelect(model);
-      }}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder="Select a model" />
-      </SelectTrigger>
-      <SelectContent>
-        {models.map(model => (
-          <SelectItem key={model.id} value={model.id}>
-            {model.display_name} ({model.provider})
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+export function ModelSelector({ models, selectedModel, onSelect }: { models: AIModel[]; selectedModel: AIModel | null; onSelect: (model: AIModel) => void }) {
+    return (
+        <Select
+            value={selectedModel?.id}
+            onValueChange={(value) => {
+                const model = models.find((m) => m.id === value);
+                if (model) onSelect(model);
+            }}>
+            <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a model" />
+            </SelectTrigger>
+            <SelectContent>
+                {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                        {model.display_name} ({model.provider})
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
 }
 ```
 
 ### 1.5 Pages
 
 #### Files to Create:
-- `ui/src/pages/Chat.tsx`
+
+-   `ui/src/pages/Chat.tsx`
 
 #### Update App.tsx
+
 ```typescript
 // ui/src/App.tsx (add route)
 <Route path="/chat/:chatId?" element={<Chat />} />
 ```
 
 #### Page: Chat
+
 ```typescript
 // ui/src/pages/Chat.tsx
-import { useParams } from 'react-router-dom';
-import { ChatView } from '@/components/chat/ChatView';
+import { useParams } from "react-router-dom";
+import { ChatView } from "@/components/chat/ChatView";
 
 export function Chat() {
-  const { chatId } = useParams<{ chatId?: string }>();
-  return <ChatView chatId={chatId || null} />;
+    const { chatId } = useParams<{ chatId?: string }>();
+    return <ChatView chatId={chatId || null} />;
 }
 ```
 
 ### 1.6 Update Sidebar
+
 ```typescript
 // ui/src/components/appSidebar.tsx (add Chat link)
 <NavItem title="Chat" url="/chat" />
@@ -1365,6 +1378,7 @@ export function Chat() {
 ## Phase 2: Additional Features
 
 ### Phase 2 Scope
+
 1. Syntax highlighting
 2. Markdown rendering
 3. Attachment support (images)
@@ -1381,11 +1395,13 @@ export function Chat() {
 ### 2.1 Database Schema & Migrations
 
 #### Files to Create:
-- `server/migration/src/m20250101_000006_create_chat_branches_table.rs`
-- `server/migration/src/m20250101_000007_create_attachments_table.rs`
-- `server/migration/src/m20250101_000008_create_shared_chats_table.rs`
+
+-   `server/migration/src/m20250101_000006_create_chat_branches_table.rs`
+-   `server/migration/src/m20250101_000007_create_attachments_table.rs`
+-   `server/migration/src/m20250101_000008_create_shared_chats_table.rs`
 
 #### Migration: Chat Branches
+
 ```rust
 // m20250101_000006_create_chat_branches_table.rs
 pub enum ChatBranches {
@@ -1399,6 +1415,7 @@ pub enum ChatBranches {
 ```
 
 #### Migration: Attachments
+
 ```rust
 // m20250101_000007_create_attachments_table.rs
 pub enum Attachments {
@@ -1416,6 +1433,7 @@ pub enum Attachments {
 ```
 
 #### Migration: Shared Chats
+
 ```rust
 // m20250101_000008_create_shared_chats_table.rs
 pub enum SharedChats {
@@ -1434,31 +1452,35 @@ pub enum SharedChats {
 ### 2.2 Database Models
 
 #### Files to Create:
-- `server/src/db/schema/chat_branch.rs`
-- `server/src/db/schema/attachment.rs`
-- `server/src/db/schema/shared_chat.rs`
+
+-   `server/src/db/schema/chat_branch.rs`
+-   `server/src/db/schema/attachment.rs`
+-   `server/src/db/schema/shared_chat.rs`
 
 ### 2.3 Repositories
 
 #### Files to Create:
-- `server/src/db/repositories/chat_branch_repository.rs`
-- `server/src/db/repositories/attachment_repository.rs`
-- `server/src/db/repositories/shared_chat_repository.rs`
+
+-   `server/src/db/repositories/chat_branch_repository.rs`
+-   `server/src/db/repositories/attachment_repository.rs`
+-   `server/src/db/repositories/shared_chat_repository.rs`
 
 ### 2.4 API Routes
 
 #### Files to Create/Update:
-- `server/src/api/branches.rs`
-- `server/src/api/attachments.rs`
-- `server/src/api/shared_chats.rs`
-- `server/src/api/search.rs` (for web search)
+
+-   `server/src/api/branches.rs`
+-   `server/src/api/attachments.rs`
+-   `server/src/api/shared_chats.rs`
+-   `server/src/api/search.rs` (for web search)
 
 ### 2.5 File Storage
 
 #### Files to Create:
-- `server/src/storage/mod.rs`
-- `server/src/storage/local.rs`
-- `server/src/storage/s3.rs` (optional for production)
+
+-   `server/src/storage/mod.rs`
+-   `server/src/storage/local.rs`
+-   `server/src/storage/s3.rs` (optional for production)
 
 ---
 
@@ -1467,51 +1489,58 @@ pub enum SharedChats {
 ### 2.1 Markdown & Syntax Highlighting
 
 #### Dependencies to Add:
+
 ```json
 // ui/package.json
 {
-  "dependencies": {
-    "react-markdown": "^9",
-    "remark-gfm": "^4",
-    "react-syntax-highlighter": "^15",
-    "@types/react-syntax-highlighter": "^15"
-  }
+    "dependencies": {
+        "react-markdown": "^9",
+        "remark-gfm": "^4",
+        "react-syntax-highlighter": "^15",
+        "@types/react-syntax-highlighter": "^15"
+    }
 }
 ```
 
 #### Files to Create:
-- `ui/src/components/chat/MarkdownRenderer.tsx`
-- `ui/src/components/chat/CodeBlock.tsx`
+
+-   `ui/src/components/chat/MarkdownRenderer.tsx`
+-   `ui/src/components/chat/CodeBlock.tsx`
 
 ### 2.2 Attachment Components
 
 #### Files to Create:
-- `ui/src/components/chat/FileUpload.tsx`
-- `ui/src/components/chat/AttachmentPreview.tsx`
-- `ui/src/components/chat/ImageViewer.tsx`
+
+-   `ui/src/components/chat/FileUpload.tsx`
+-   `ui/src/components/chat/AttachmentPreview.tsx`
+-   `ui/src/components/chat/ImageViewer.tsx`
 
 ### 2.3 Branching Components
 
 #### Files to Create:
-- `ui/src/components/chat/BranchSelector.tsx`
-- `ui/src/components/chat/BranchTree.tsx`
+
+-   `ui/src/components/chat/BranchSelector.tsx`
+-   `ui/src/components/chat/BranchTree.tsx`
 
 ### 2.4 Sharing Components
 
 #### Files to Create:
-- `ui/src/components/chat/ShareDialog.tsx`
-- `ui/src/pages/SharedChat.tsx`
+
+-   `ui/src/components/chat/ShareDialog.tsx`
+-   `ui/src/pages/SharedChat.tsx`
 
 ### 2.5 Settings Components
 
 #### Files to Update:
-- `ui/src/pages/Settings.tsx` (add API key management UI)
+
+-   `ui/src/pages/Settings.tsx` (add API key management UI)
 
 ---
 
 ## Implementation Order
 
 ### Week 1-2: MVP Backend
+
 1. Database migrations (1.1)
 2. Database models (1.2)
 3. Repositories (1.3)
@@ -1519,6 +1548,7 @@ pub enum SharedChats {
 5. API routes (1.5)
 
 ### Week 1-2: MVP Frontend (Parallel)
+
 1. Type definitions (1.1)
 2. API client (1.2)
 3. React hooks (1.3)
@@ -1526,12 +1556,14 @@ pub enum SharedChats {
 5. Pages and routing (1.5-1.6)
 
 ### Week 3: Integration & Testing
+
 1. Connect frontend to backend
 2. End-to-end testing
 3. Bug fixes
 4. UI polish
 
 ### Week 4+: Additional Features
+
 1. Implement Phase 2 features incrementally
 2. Test each feature before moving to next
 
@@ -1551,10 +1583,11 @@ pub enum SharedChats {
 ## Environment Variables
 
 ### Backend (.env)
+
 ```bash
 DATABASE_URL=postgresql://user:password@localhost:5432/t3chat
 FIREBASE_PROJECT_ID=your-project-id
-CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+CORS_ORIGINS=http://localhost:3000,http://localhost:3000,http://localhost:3010,http://localhost:3010
 # API keys for default providers (optional)
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
@@ -1562,8 +1595,9 @@ GOOGLE_API_KEY=...
 ```
 
 ### Frontend (.env)
+
 ```bash
-VITE_API_URL=http://localhost:8787
+VITE_API_URL=http://localhost:3010
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=...
 VITE_FIREBASE_PROJECT_ID=...
@@ -1575,20 +1609,21 @@ VITE_ALLOW_ANONYMOUS_USERS=true
 ## Testing Checklist
 
 ### MVP Testing
-- [ ] Create new chat
-- [ ] Send message and receive response
-- [ ] Switch between models
-- [ ] View chat history
-- [ ] Delete chat
-- [ ] Add/remove API keys
-- [ ] Streaming chat works
+
+-   [ ] Create new chat
+-   [ ] Send message and receive response
+-   [ ] Switch between models
+-   [ ] View chat history
+-   [ ] Delete chat
+-   [ ] Add/remove API keys
+-   [ ] Streaming chat works
 
 ### Additional Features Testing
-- [ ] Syntax highlighting works
-- [ ] Markdown renders correctly
-- [ ] File upload works
-- [ ] Image preview works
-- [ ] Create branch from message
-- [ ] Share chat link works
-- [ ] Web search integration works
 
+-   [ ] Syntax highlighting works
+-   [ ] Markdown renders correctly
+-   [ ] File upload works
+-   [ ] Image preview works
+-   [ ] Create branch from message
+-   [ ] Share chat link works
+-   [ ] Web search integration works

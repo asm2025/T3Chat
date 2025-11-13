@@ -8,19 +8,19 @@ const __dirname = path.dirname(__filename);
 export const DEFAULT_APP_ENV = "development";
 
 /**
- * Finds a clean block of 5 consecutive available ports starting from base port 5000
+ * Finds a clean block of 5 consecutive available ports starting from base port 3000
  * @returns {Promise<Object>} Object with service names mapped to available ports
  */
 export async function getAvailablePorts() {
     const defaultPorts = {
-        backend: 5000,
-        frontend: 5001,
+        backend: 3000,
+        frontend: 3010,
         postgres: 5002,
         firebaseAuth: 5003,
         firebaseUI: 5004,
     };
 
-    let basePort = 5000;
+    let basePort = 3000;
 
     // Try to find a clean block of 5 consecutive ports
     while (basePort < 10000) {
@@ -88,12 +88,7 @@ export function createFirebaseConfig(availablePorts) {
 
 function getServerEnvCandidates(appEnv = DEFAULT_APP_ENV) {
     const serverDir = path.join(__dirname, "../server");
-    return [
-        path.join(serverDir, `.env.${appEnv}.local`),
-        path.join(serverDir, `.env.${appEnv}`),
-        path.join(serverDir, ".env.local"),
-        path.join(serverDir, ".env"),
-    ];
+    return [path.join(serverDir, `.env.${appEnv}.local`), path.join(serverDir, `.env.${appEnv}`), path.join(serverDir, ".env.local"), path.join(serverDir, ".env")];
 }
 
 function findExistingServerEnvPath(appEnv = DEFAULT_APP_ENV) {
