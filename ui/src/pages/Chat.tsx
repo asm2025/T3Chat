@@ -169,7 +169,7 @@ export function Chat() {
                 </div>
 
                 {/* Chat Input at Bottom - Pinned with no margins/padding */}
-                <div className="w-full shrink-0 pb-4">
+                <div className="w-full shrink-0 pb-1">
                     <MessageInput onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />
                 </div>
             </div>

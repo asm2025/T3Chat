@@ -61,7 +61,7 @@ export function RedesignedSidebar({ onSignInClick }: RedesignedSidebarProps = {}
 
             {/* New Chat Button */}
             <div className="px-4 pb-3">
-                <Button onClick={handleNewChat} className="w-full rounded-lg" size="default">
+                <Button onClick={handleNewChat} className="bg-foreground text-background hover:bg-foreground/90 w-full rounded-lg" size="default">
                     New Chat
                 </Button>
             </div>

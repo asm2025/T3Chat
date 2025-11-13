@@ -291,7 +291,7 @@ function AppContent() {
                     {sidebarOpen && (
                         <div
                             ref={sidebarRef}
-                            className="flex border-r border-gray-300 dark:border-border bg-white dark:bg-background relative select-none"
+                            className="flex bg-background dark:bg-background relative select-none"
                             style={{
                                 width: `${sidebarWidthPx}px`,
                                 minWidth: `${sidebarWidthPx}px`,
@@ -307,45 +307,61 @@ function AppContent() {
                     )}
 
                     {/* Main Content */}
-                    <main className="flex-1 overflow-hidden bg-background">
-                        <Routes>
-                            <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
-                            <Route path="/chat/:chatId?" element={<Chat />} />
-                            <Route path="/profile" element={<Profile />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route
-                                path="/history"
-                                element={
-                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                        <h1 className="text-2xl font-semibold">History & Sync</h1>
-                                    </div>
-                                }
-                            />
-                            <Route
-                                path="/models"
-                                element={
-                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                        <h1 className="text-2xl font-semibold">Models</h1>
-                                    </div>
-                                }
-                            />
-                            <Route
-                                path="/api-keys"
-                                element={
-                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                        <h1 className="text-2xl font-semibold">API Keys</h1>
-                                    </div>
-                                }
-                            />
-                            <Route
-                                path="/attachments"
-                                element={
-                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                        <h1 className="text-2xl font-semibold">Attachments</h1>
-                                    </div>
-                                }
-                            />
-                        </Routes>
+                    <main className="min-h-pwa relative flex w-full flex-1 flex-col overflow-hidden transition-[width,height] print:absolute print:top-0 print:left-0 print:h-auto print:min-h-auto print:overflow-visible">
+                        <div
+                            className="border-chat-border bg-chat-background ease-snappy absolute top-0 bottom-0 w-full overflow-hidden border-t border-l bg-fixed pb-[140px] transition-all select-none max-sm:border-none sm:translate-y-3.5 sm:rounded-tl-xl print:hidden"
+                            data-aria-hidden="true"
+                            aria-hidden="true">
+                            <div className="bg-noise ease-snappy absolute inset-0 -top-3.5 bg-fixed [background-position:right_bottom] transition-transform"></div>
+                        </div>
+                        <div
+                            className="border-chat-border bg-gradient-noise-top/80 ease-snappy blur-fallback:bg-gradient-noise-top absolute inset-x-3 top-0 z-10 box-content overflow-hidden border-b backdrop-blur-md transition-[transform,border] max-sm:hidden sm:h-3.5 print:hidden"
+                            data-aria-hidden="true"
+                            aria-hidden="true">
+                            <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 left-0 h-full w-8 bg-linear-to-r to-transparent"></div>
+                            <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 right-24 h-full w-8 bg-linear-to-l to-transparent"></div>
+                            <div className="bg-gradient-noise-top blur-fallback:hidden absolute top-0 right-0 h-full w-24"></div>
+                        </div>
+                        <div className="absolute top-0 bottom-0 w-full print:static print:h-auto print:overflow-visible" data-aria-hidden="true" aria-hidden="true">
+                            <Routes>
+                                <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
+                                <Route path="/chat/:chatId?" element={<Chat />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/settings" element={<Settings />} />
+                                <Route
+                                    path="/history"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">History & Sync</h1>
+                                        </div>
+                                    }
+                                />
+                                <Route
+                                    path="/models"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">Models</h1>
+                                        </div>
+                                    }
+                                />
+                                <Route
+                                    path="/api-keys"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">API Keys</h1>
+                                        </div>
+                                    }
+                                />
+                                <Route
+                                    path="/attachments"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">Attachments</h1>
+                                        </div>
+                                    }
+                                />
+                            </Routes>
+                        </div>
                     </main>
                 </>
             )}
