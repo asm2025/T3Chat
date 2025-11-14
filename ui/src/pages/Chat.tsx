@@ -6,7 +6,7 @@ import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { MessageList } from "@/components/chat/MessageList";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { ChatPlaceholder } from "@/components/chat/ChatPlaceholder";
-import { ModeToggle } from "@/components/mode-toggle";
+import { MasterLayout } from "@/components/MasterLayout";
 import { useModels } from "@/hooks/useModels";
 import * as api from "@/lib/serverComm";
 import type { AIModel } from "@/types/model";
@@ -142,37 +142,28 @@ export function Chat() {
 
     if (loading && chatId) {
         return (
-            <div className="flex h-screen items-center justify-center border-l border-border bg-background">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <MasterLayout>
+                <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            </MasterLayout>
         );
     }
 
     if (error && chatId) {
         return (
-            <div className="flex h-screen items-center justify-center border-l border-border bg-background">
-                <div className="text-destructive">Error: {error.message}</div>
-            </div>
+            <MasterLayout>
+                <div className="flex items-center justify-center h-full">
+                    <div className="text-destructive">Error: {error.message}</div>
+                </div>
+            </MasterLayout>
         );
     }
 
     return (
-        <div className="flex h-screen flex-col bg-background">
-            {/* Mode Toggle at Top Right */}
-            <div className="flex justify-end p-4 shrink-0">
-                <ModeToggle />
-            </div>
-            {/* Main Content Area */}
-            <div className="flex flex-1 flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-6 py-4">
-                    <div className="mx-auto w-full max-w-4xl">{hasMessages ? <MessageList messages={messages} /> : <ChatPlaceholder userName={displayName} onPromptClick={handlePromptClick} />}</div>
-                </div>
-
-                {/* Chat Input at Bottom - Pinned with no margins/padding */}
-                <div className="w-full shrink-0 pb-1">
-                    <MessageInput onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />
-                </div>
-            </div>
-        </div>
+        <MasterLayout
+            bottomSection={<MessageInput onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />}>
+            <div className="mx-auto w-full max-w-4xl">{hasMessages ? <MessageList messages={messages} /> : <ChatPlaceholder userName={displayName} onPromptClick={handlePromptClick} />}</div>
+        </MasterLayout>
     );
 }

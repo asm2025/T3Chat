@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Edit2, X } from "lucide-react";
+import { MasterLayout } from "@/components/MasterLayout";
 
 interface UserProfile {
     id: string;
@@ -87,7 +88,7 @@ export function Profile() {
             setIsEditing(false);
             setSuccess("Profile updated successfully");
             // Clear success message after 3 seconds
-            setTimeout(() => setSuccess(""), 3000);
+            setTimeout(() => setSuccess(""), 3010);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to update profile";
             setError(errorMessage);
@@ -125,8 +126,8 @@ export function Profile() {
 
     if (loading) {
         return (
-            <div className="h-screen overflow-y-auto border-l border-border bg-background">
-                <div className="container mx-auto p-6 max-w-2xl">
+            <MasterLayout contentClassName="px-0">
+                <div className="container mx-auto px-6 max-w-2xl">
                     <Card>
                         <CardHeader>
                             <div className="flex items-center gap-4">
@@ -146,144 +147,144 @@ export function Profile() {
                         </CardContent>
                     </Card>
                 </div>
-            </div>
+            </MasterLayout>
         );
     }
 
     if (error && !userProfile) {
         return (
-            <div className="h-screen overflow-y-auto border-l border-border bg-background">
-                <div className="container mx-auto p-6 max-w-2xl">
+            <MasterLayout contentClassName="px-0">
+                <div className="container mx-auto px-6 max-w-2xl">
                     <Card>
                         <CardContent className="pt-6">
                             <p className="text-destructive">{error}</p>
                         </CardContent>
                     </Card>
                 </div>
-            </div>
+            </MasterLayout>
         );
     }
 
     if (!userProfile) {
         return (
-            <div className="h-screen overflow-y-auto border-l border-border bg-background">
-                <div className="container mx-auto p-6 max-w-2xl">
+            <MasterLayout contentClassName="px-0">
+                <div className="container mx-auto px-6 max-w-2xl">
                     <Card>
                         <CardContent className="pt-6">
                             <p className="text-muted-foreground">No user profile available</p>
                         </CardContent>
                     </Card>
                 </div>
-            </div>
+            </MasterLayout>
         );
     }
 
     return (
-        <div className="h-screen overflow-y-auto border-l border-border bg-background">
-            <div className="container mx-auto p-6 max-w-2xl">
+        <MasterLayout contentClassName="px-0">
+            <div className="container mx-auto px-6 max-w-2xl">
                 <div className="space-y-6">
                     <div>
                         <h1 className="text-3xl font-bold">Profile</h1>
                         <p className="text-muted-foreground mt-2">View and manage your account information</p>
                     </div>
 
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-20 w-20">
-                                {userProfile.image_url && <AvatarImage src={userProfile.image_url} alt={userProfile.display_name || "User"} />}
-                                <AvatarFallback className="text-2xl">{getInitials(userProfile.display_name, userProfile.email)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <CardTitle className="text-2xl">{userProfile.display_name || "User"}</CardTitle>
-                                <CardDescription className="text-base">{userProfile.email || "No email address"}</CardDescription>
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-20 w-20">
+                                    {userProfile.image_url && <AvatarImage src={userProfile.image_url} alt={userProfile.display_name || "User"} />}
+                                    <AvatarFallback className="text-2xl">{getInitials(userProfile.display_name, userProfile.email)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <CardTitle className="text-2xl">{userProfile.display_name || "User"}</CardTitle>
+                                    <CardDescription className="text-base">{userProfile.email || "No email address"}</CardDescription>
+                                </div>
                             </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {!isEditing ? (
-                            <>
-                                {success && <p className="text-sm text-foreground">{success}</p>}
-                                {error && <p className="text-sm text-destructive">{error}</p>}
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="displayName">Display Name</Label>
-                                        <div className="text-sm py-2 px-3 rounded-md border bg-muted/50">{userProfile.display_name || "Not set"}</div>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {!isEditing ? (
+                                <>
+                                    {success && <p className="text-sm text-foreground">{success}</p>}
+                                    {error && <p className="text-sm text-destructive">{error}</p>}
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="displayName">Display Name</Label>
+                                            <div className="text-sm py-2 px-3 rounded-md border bg-muted/50">{userProfile.display_name || "Not set"}</div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="border-t pt-4 space-y-2">
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">User ID</span>
-                                        <span className="text-sm font-mono">{userProfile.id}</span>
+                                    <div className="border-t pt-4 space-y-2">
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">User ID</span>
+                                            <span className="text-sm font-mono">{userProfile.id}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Email</span>
+                                            <span className="text-sm">{userProfile.email || "Not set"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Member Since</span>
+                                            <span className="text-sm">{formatDate(userProfile.created_at)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
+                                            <span className="text-sm">{formatDate(userProfile.updated_at)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Email</span>
-                                        <span className="text-sm">{userProfile.email || "Not set"}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Member Since</span>
-                                        <span className="text-sm">{formatDate(userProfile.created_at)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
-                                        <span className="text-sm">{formatDate(userProfile.updated_at)}</span>
-                                    </div>
-                                </div>
 
-                                <div className="flex justify-end pt-4">
-                                    <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
-                                        <Edit2 className="h-4 w-4" />
-                                        Edit
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="displayName">Display Name</Label>
-                                        <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your display name" />
+                                    <div className="flex justify-end pt-4">
+                                        <Button onClick={handleEdit} variant="outline" className="flex items-center gap-2">
+                                            <Edit2 className="h-4 w-4" />
+                                            Edit
+                                        </Button>
                                     </div>
-                                </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="displayName">Display Name</Label>
+                                            <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your display name" />
+                                        </div>
+                                    </div>
 
-                                {error && <p className="text-sm text-destructive">{error}</p>}
-                                {success && <p className="text-sm text-foreground">{success}</p>}
+                                    {error && <p className="text-sm text-destructive">{error}</p>}
+                                    {success && <p className="text-sm text-foreground">{success}</p>}
 
-                                <div className="border-t pt-4 space-y-2">
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">User ID</span>
-                                        <span className="text-sm font-mono">{userProfile.id}</span>
+                                    <div className="border-t pt-4 space-y-2">
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">User ID</span>
+                                            <span className="text-sm font-mono">{userProfile.id}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Email</span>
+                                            <span className="text-sm">{userProfile.email || "Not set"}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Member Since</span>
+                                            <span className="text-sm">{formatDate(userProfile.created_at)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
+                                            <span className="text-sm">{formatDate(userProfile.updated_at)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Email</span>
-                                        <span className="text-sm">{userProfile.email || "Not set"}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Member Since</span>
-                                        <span className="text-sm">{formatDate(userProfile.created_at)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
-                                        <span className="text-sm">{formatDate(userProfile.updated_at)}</span>
-                                    </div>
-                                </div>
 
-                                <div className="flex justify-end gap-2 pt-4">
-                                    <Button onClick={handleCancel} variant="outline" disabled={saving} className="flex items-center gap-2">
-                                        <X className="h-4 w-4" />
-                                        Cancel
-                                    </Button>
-                                    <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
-                                        {saving ? "Saving..." : "Save Changes"}
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                                    <div className="flex justify-end gap-2 pt-4">
+                                        <Button onClick={handleCancel} variant="outline" disabled={saving} className="flex items-center gap-2">
+                                            <X className="h-4 w-4" />
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
+                                            {saving ? "Saving..." : "Save Changes"}
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
-        </div>
+        </MasterLayout>
     );
 }

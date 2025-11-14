@@ -1,50 +1,31 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LoginForm } from "@/components/login-form";
-import { RedesignedSidebar } from "@/components/sidebar";
 import { Home } from "@/pages/Home";
 import { Settings } from "@/pages/Settings";
 import { Chat } from "@/pages/Chat";
 import { Profile } from "@/pages/Profile";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { PanelRight } from "lucide-react";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Sidebar } from "@/components/sidebar";
+import { MobileWarningBanner } from "@/components/mobile-warning-banner";
+import { FloatingToolbar } from "@/components/floating-toolbar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "t3chat-sidebar-width";
-// Sidebar width constraints as percentages of viewport width
-const DEFAULT_SIDEBAR_WIDTH_PERCENT = 20; // 20% of viewport width
-const MIN_SIDEBAR_WIDTH_PERCENT = 5; // 5% of viewport width
-const MAX_SIDEBAR_WIDTH_PERCENT = 95; // 95% of viewport width
-
-// Helper function to get viewport width
-const getViewportWidth = () => {
-    return window.innerWidth || document.documentElement.clientWidth;
-};
+const DEFAULT_SIDEBAR_WIDTH = 20; // 20% of viewport width
+const MIN_SIDEBAR_WIDTH = 5; // 5% of viewport width
+const MAX_SIDEBAR_WIDTH = 95; // 95% of viewport width
 
 function AppContent() {
     const { user, loading, profileLoading } = useAuth();
     const [showLoginForAnonymous, setShowLoginForAnonymous] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    // Store width as percentage, but convert to pixels for rendering
-    const [sidebarWidthPercent, setSidebarWidthPercent] = useState(DEFAULT_SIDEBAR_WIDTH_PERCENT);
-    const [viewportWidth, setViewportWidth] = useState(getViewportWidth());
-    const sidebarRef = useRef<HTMLDivElement>(null);
-    const isResizingRef = useRef(false);
-    const animationFrameRef = useRef<number | null>(null);
+    const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+    const isMobile = useIsMobile();
     const saveTimeoutRef = useRef<number | null>(null);
-    // Initialize ref with default pixel width (will be updated by useMemo)
-    const currentWidthPxRef = useRef((getViewportWidth() * DEFAULT_SIDEBAR_WIDTH_PERCENT) / 100);
-
-    // Calculate current pixel width from percentage (memoized for performance)
-    const sidebarWidthPx = useMemo(() => {
-        return (viewportWidth * sidebarWidthPercent) / 100;
-    }, [viewportWidth, sidebarWidthPercent]);
-
-    // Update pixel ref when pixel width changes
-    useEffect(() => {
-        currentWidthPxRef.current = sidebarWidthPx;
-    }, [sidebarWidthPx]);
 
     // Load sidebar width from localStorage on mount
     useEffect(() => {
@@ -52,22 +33,8 @@ function AppContent() {
             const savedWidth = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
             if (savedWidth) {
                 const widthValue = parseFloat(savedWidth);
-                if (!isNaN(widthValue)) {
-                    // If value is > 100, it's likely old pixel value - convert to percentage
-                    let widthPercent: number;
-                    if (widthValue > 100) {
-                        // Old pixel format - convert to percentage based on current viewport
-                        const currentViewportWidth = getViewportWidth();
-                        widthPercent = (widthValue / currentViewportWidth) * 100;
-                    } else {
-                        // New percentage format
-                        widthPercent = widthValue;
-                    }
-
-                    // Clamp to valid range
-                    const clampedPercent = Math.max(MIN_SIDEBAR_WIDTH_PERCENT, Math.min(MAX_SIDEBAR_WIDTH_PERCENT, widthPercent));
-
-                    setSidebarWidthPercent(clampedPercent);
+                if (!isNaN(widthValue) && widthValue >= MIN_SIDEBAR_WIDTH && widthValue <= MAX_SIDEBAR_WIDTH) {
+                    setSidebarWidth(widthValue);
                 }
             }
         } catch (error) {
@@ -75,62 +42,39 @@ function AppContent() {
         }
     }, []);
 
-    // Handle window resize to update viewport width and pixel width
-    useEffect(() => {
-        const handleResize = () => {
-            const newViewportWidth = getViewportWidth();
-            setViewportWidth(newViewportWidth);
-
-            // Update the DOM directly if sidebar is open and we're not currently resizing
-            if (sidebarRef.current && !isResizingRef.current) {
-                const newWidthPx = (newViewportWidth * sidebarWidthPercent) / 100;
-                sidebarRef.current.style.width = `${newWidthPx}px`;
-                sidebarRef.current.style.minWidth = `${newWidthPx}px`;
-                sidebarRef.current.style.maxWidth = `${newWidthPx}px`;
-            }
-        };
-
-        // Throttle resize events for better performance
-        let resizeTimeout: number | null = null;
-        const throttledHandleResize = () => {
-            if (resizeTimeout) {
-                cancelAnimationFrame(resizeTimeout);
-            }
-            resizeTimeout = requestAnimationFrame(handleResize);
-        };
-
-        window.addEventListener("resize", throttledHandleResize);
-        return () => {
-            window.removeEventListener("resize", throttledHandleResize);
-            if (resizeTimeout) {
-                cancelAnimationFrame(resizeTimeout);
-            }
-        };
-    }, [sidebarWidthPercent]);
-
-    // Save sidebar width percentage to localStorage (debounced)
-    const saveSidebarWidth = useCallback((widthPercent: number) => {
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
+    // Save sidebar width to localStorage (debounced)
+    const handleSidebarResize = (sizes: number[]) => {
+        // Only update width when sidebar is open and we have the expected number of panels
+        // When sidebar is collapsed, sizes.length will be 1 (only main panel)
+        // When sidebar is open, sizes.length will be 2 (sidebar + main panel)
+        if (!sidebarOpen || sizes.length < 2) {
+            return;
         }
-        saveTimeoutRef.current = window.setTimeout(() => {
-            try {
-                // Store as percentage for better cross-device compatibility
-                localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, widthPercent.toString());
-            } catch (error) {
-                console.error("Failed to save sidebar width to localStorage:", error);
-            }
-        }, 150);
-    }, []);
+        
+        const newWidth = sizes[0];
+        // Validate the width is within bounds
+        if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH && newWidth !== sidebarWidth) {
+            setSidebarWidth(newWidth);
 
-    // Cleanup timeouts on unmount
+            // Debounce localStorage saves
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+            saveTimeoutRef.current = window.setTimeout(() => {
+                try {
+                    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, newWidth.toString());
+                } catch (error) {
+                    console.error("Failed to save sidebar width to localStorage:", error);
+                }
+            }, 150);
+        }
+    };
+
+    // Cleanup timeout on unmount
     useEffect(() => {
         return () => {
             if (saveTimeoutRef.current) {
                 clearTimeout(saveTimeoutRef.current);
-            }
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
             }
         };
     }, []);
@@ -141,101 +85,6 @@ function AppContent() {
             setShowLoginForAnonymous(false);
         }
     }, [user]);
-
-    // Listen for sidebar toggle events from within the sidebar
-    useEffect(() => {
-        const handleToggle = () => setSidebarOpen((prev) => !prev);
-        window.addEventListener("toggleSidebar", handleToggle);
-        return () => window.removeEventListener("toggleSidebar", handleToggle);
-    }, []);
-
-    // Handle resize start - defined as useCallback to maintain hook order
-    const handleResizeStart = useCallback(
-        (e: React.MouseEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (!sidebarRef.current) return;
-
-            isResizingRef.current = true;
-            const startX = e.clientX;
-            const startWidthPx = currentWidthPxRef.current;
-            const currentViewportWidth = getViewportWidth();
-
-            // Calculate min/max pixel widths based on current viewport
-            const minWidthPx = (currentViewportWidth * MIN_SIDEBAR_WIDTH_PERCENT) / 100;
-            const maxWidthPx = (currentViewportWidth * MAX_SIDEBAR_WIDTH_PERCENT) / 100;
-
-            // Prevent text selection during resize
-            document.body.style.userSelect = "none";
-            document.body.style.cursor = "col-resize";
-
-            const updateWidth = (clientX: number) => {
-                if (!sidebarRef.current || !isResizingRef.current) return;
-
-                const diff = clientX - startX;
-                // Clamp to percentage-based min/max
-                const newWidthPx = Math.max(minWidthPx, Math.min(maxWidthPx, startWidthPx + diff));
-
-                // Direct DOM manipulation for smoother updates (bypasses React re-render during drag)
-                // This gives us 60fps smooth dragging without React re-renders
-                sidebarRef.current.style.width = `${newWidthPx}px`;
-                sidebarRef.current.style.minWidth = `${newWidthPx}px`;
-                sidebarRef.current.style.maxWidth = `${newWidthPx}px`;
-
-                // Update ref immediately for next frame calculation
-                currentWidthPxRef.current = newWidthPx;
-            };
-
-            const handleMouseMove = (event: MouseEvent) => {
-                if (!isResizingRef.current) return;
-
-                // Use requestAnimationFrame for smooth, throttled updates
-                if (animationFrameRef.current !== null) {
-                    cancelAnimationFrame(animationFrameRef.current);
-                }
-
-                animationFrameRef.current = requestAnimationFrame(() => {
-                    updateWidth(event.clientX);
-                });
-            };
-
-            const handleMouseUp = () => {
-                if (!isResizingRef.current) return;
-
-                const finalWidthPx = currentWidthPxRef.current;
-                isResizingRef.current = false;
-
-                // Convert final pixel width to percentage based on current viewport
-                const currentViewportWidth = getViewportWidth();
-                const finalWidthPercent = (finalWidthPx / currentViewportWidth) * 100;
-
-                // Update React state only after drag is complete (prevents re-renders during drag)
-                setSidebarWidthPercent(finalWidthPercent);
-                saveSidebarWidth(finalWidthPercent);
-
-                // Restore body styles
-                document.body.style.userSelect = "";
-                document.body.style.cursor = "";
-
-                // Clean up animation frame
-                if (animationFrameRef.current !== null) {
-                    cancelAnimationFrame(animationFrameRef.current);
-                    animationFrameRef.current = null;
-                }
-
-                // Remove event listeners
-                document.removeEventListener("mousemove", handleMouseMove);
-                document.removeEventListener("mouseup", handleMouseUp);
-            };
-
-            // Add event listeners
-            // Use capture phase for mouseup to catch it even if mouse leaves the window
-            document.addEventListener("mousemove", handleMouseMove, { passive: true });
-            document.addEventListener("mouseup", handleMouseUp, true);
-        },
-        [saveSidebarWidth],
-    );
 
     // Show loading while authentication or profile is loading
     if (loading || profileLoading) {
@@ -266,106 +115,135 @@ function AppContent() {
     };
 
     return (
-        <div className="flex min-h-screen w-full bg-background">
-            {shouldShowLogin ? (
-                <main className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6">
-                    <LoginForm />
-                </main>
-            ) : (
-                <>
-                    {/* Sidebar Toggle Button */}
-                    {!sidebarOpen && (
-                        <div className="top-safe-offset-2 pointer-events-auto fixed left-2 z-50 flex flex-row gap-0.5 p-1">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setSidebarOpen(!sidebarOpen)}
-                                className="h-8 w-8 rounded-md bg-white dark:bg-background border border-gray-300 dark:border-border shadow-sm hover:bg-gray-50 dark:hover:bg-accent">
-                                <PanelRight className="h-4 w-4" />
-                                <span className="sr-only">Toggle Sidebar</span>
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* Sidebar */}
-                    {sidebarOpen && (
-                        <div
-                            ref={sidebarRef}
-                            className="flex bg-background dark:bg-background relative select-none"
-                            style={{
-                                width: `${sidebarWidthPx}px`,
-                                minWidth: `${sidebarWidthPx}px`,
-                                maxWidth: `${sidebarWidthPx}px`,
-                            }}>
-                            <div className="flex-1 overflow-hidden">
-                                <RedesignedSidebar onSignInClick={handleSignInClick} />
-                            </div>
-
-                            {/* Resizer */}
-                            <div data-resizer className="absolute top-0 right-0 h-full w-2 cursor-col-resize bg-transparent hover:bg-gray-300 dark:hover:bg-border active:bg-gray-400 dark:active:bg-border z-10" onMouseDown={handleResizeStart} />
-                        </div>
-                    )}
-
-                    {/* Main Content */}
-                    <main className="min-h-pwa relative flex w-full flex-1 flex-col overflow-hidden transition-[width,height] print:absolute print:top-0 print:left-0 print:h-auto print:min-h-auto print:overflow-visible">
-                        <div
-                            className="border-chat-border bg-chat-background ease-snappy absolute top-0 bottom-0 w-full overflow-hidden border-t border-l bg-fixed pb-[140px] transition-all select-none max-sm:border-none sm:translate-y-3.5 sm:rounded-tl-xl print:hidden"
-                            data-aria-hidden="true"
-                            aria-hidden="true">
-                            <div className="bg-noise ease-snappy absolute inset-0 -top-3.5 bg-fixed [background-position:right_bottom] transition-transform"></div>
-                        </div>
-                        <div
-                            className="border-chat-border bg-gradient-noise-top/80 ease-snappy blur-fallback:bg-gradient-noise-top absolute inset-x-3 top-0 z-10 box-content overflow-hidden border-b backdrop-blur-md transition-[transform,border] max-sm:hidden sm:h-3.5 print:hidden"
-                            data-aria-hidden="true"
-                            aria-hidden="true">
-                            <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 left-0 h-full w-8 bg-linear-to-r to-transparent"></div>
-                            <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 right-24 h-full w-8 bg-linear-to-l to-transparent"></div>
-                            <div className="bg-gradient-noise-top blur-fallback:hidden absolute top-0 right-0 h-full w-24"></div>
-                        </div>
-                        <div className="absolute top-0 bottom-0 w-full print:static print:h-auto print:overflow-visible" data-aria-hidden="true" aria-hidden="true">
-                            <Routes>
-                                <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
-                                <Route path="/chat/:chatId?" element={<Chat />} />
-                                <Route path="/profile" element={<Profile />} />
-                                <Route path="/settings" element={<Settings />} />
-                                <Route
-                                    path="/history"
-                                    element={
-                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                            <h1 className="text-2xl font-semibold">History & Sync</h1>
-                                        </div>
-                                    }
-                                />
-                                <Route
-                                    path="/models"
-                                    element={
-                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                            <h1 className="text-2xl font-semibold">Models</h1>
-                                        </div>
-                                    }
-                                />
-                                <Route
-                                    path="/api-keys"
-                                    element={
-                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                            <h1 className="text-2xl font-semibold">API Keys</h1>
-                                        </div>
-                                    }
-                                />
-                                <Route
-                                    path="/attachments"
-                                    element={
-                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                            <h1 className="text-2xl font-semibold">Attachments</h1>
-                                        </div>
-                                    }
-                                />
-                            </Routes>
-                        </div>
+        <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <div className="flex min-h-screen w-full bg-background">
+                <MobileWarningBanner />
+                {shouldShowLogin ? (
+                    <main className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6">
+                        <LoginForm />
                     </main>
-                </>
-            )}
-        </div>
+                ) : (
+                    <>
+                        {/* Mobile: Use ShadCN Sidebar with Sheet */}
+                        {isMobile ? (
+                            <>
+                                {!sidebarOpen && (
+                                    <div className="fixed left-2 top-2 z-50 md:hidden">
+                                        <SidebarTrigger />
+                                    </div>
+                                )}
+                                <Sidebar variant="sidebar" collapsible="offcanvas" onSignInClick={handleSignInClick} />
+                                <SidebarInset className="h-screen">
+                                    <Routes>
+                                        <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
+                                        <Route path="/chat/:chatId?" element={<Chat />} />
+                                        <Route path="/profile" element={<Profile />} />
+                                        <Route path="/settings" element={<Settings />} />
+                                        <Route
+                                            path="/history"
+                                            element={
+                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                    <h1 className="text-2xl font-semibold">History & Sync</h1>
+                                                </div>
+                                            }
+                                        />
+                                        <Route
+                                            path="/models"
+                                            element={
+                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                    <h1 className="text-2xl font-semibold">Models</h1>
+                                                </div>
+                                            }
+                                        />
+                                        <Route
+                                            path="/api-keys"
+                                            element={
+                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                    <h1 className="text-2xl font-semibold">API Keys</h1>
+                                                </div>
+                                            }
+                                        />
+                                        <Route
+                                            path="/attachments"
+                                            element={
+                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                    <h1 className="text-2xl font-semibold">Attachments</h1>
+                                                </div>
+                                            }
+                                        />
+                                    </Routes>
+                                </SidebarInset>
+                            </>
+                        ) : (
+                            // Desktop: Use ResizablePanelGroup with ShadCN Sidebar
+                            <ResizablePanelGroup key={sidebarOpen ? "open" : "closed"} direction="horizontal" className="min-h-screen" onLayout={handleSidebarResize}>
+                                {sidebarOpen && (
+                                    <>
+                                        <ResizablePanel 
+                                            id="sidebar-panel"
+                                            defaultSize={Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth))} 
+                                            minSize={MIN_SIDEBAR_WIDTH} 
+                                            maxSize={MAX_SIDEBAR_WIDTH} 
+                                            className="hidden md:flex flex-shrink-0 overflow-hidden">
+                                            <Sidebar variant="sidebar" collapsible="none" className="h-full w-full flex flex-col" style={{ width: "100%", minWidth: 0 }} onSignInClick={handleSignInClick} />
+                                        </ResizablePanel>
+                                        <ResizableHandle withHandle className="hidden md:flex w-1 bg-transparent hover:bg-border transition-colors cursor-col-resize" />
+                                    </>
+                                )}
+                                <ResizablePanel 
+                                    id="main-panel"
+                                    defaultSize={sidebarOpen ? Math.max(5, Math.min(95, 100 - Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth)))) : 100} 
+                                    minSize={5} 
+                                    maxSize={sidebarOpen ? 95 : 100}
+                                    className="flex-1">
+                                    <SidebarInset className="h-screen overflow-hidden">
+                                        <FloatingToolbar />
+                                        <Routes>
+                                            <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
+                                            <Route path="/chat/:chatId?" element={<Chat />} />
+                                            <Route path="/profile" element={<Profile />} />
+                                            <Route path="/settings" element={<Settings />} />
+                                            <Route
+                                                path="/history"
+                                                element={
+                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                        <h1 className="text-2xl font-semibold">History & Sync</h1>
+                                                    </div>
+                                                }
+                                            />
+                                            <Route
+                                                path="/models"
+                                                element={
+                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                        <h1 className="text-2xl font-semibold">Models</h1>
+                                                    </div>
+                                                }
+                                            />
+                                            <Route
+                                                path="/api-keys"
+                                                element={
+                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                        <h1 className="text-2xl font-semibold">API Keys</h1>
+                                                    </div>
+                                                }
+                                            />
+                                            <Route
+                                                path="/attachments"
+                                                element={
+                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                        <h1 className="text-2xl font-semibold">Attachments</h1>
+                                                    </div>
+                                                }
+                                            />
+                                        </Routes>
+                                    </SidebarInset>
+                                </ResizablePanel>
+                            </ResizablePanelGroup>
+                        )}
+                    </>
+                )}
+            </div>
+        </SidebarProvider>
     );
 }
 

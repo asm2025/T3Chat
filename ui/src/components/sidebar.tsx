@@ -1,23 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Search, User, History, Brain, Key, Paperclip, Settings, LogOut, PanelLeft } from "lucide-react";
 import { useState } from "react";
+import { Sidebar as ShadcnSidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarInput, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 
-interface RedesignedSidebarProps {
+interface AppSidebarProps {
     onSignInClick?: () => void;
+    variant?: "sidebar" | "floating" | "inset";
+    collapsible?: "offcanvas" | "icon" | "none";
+    className?: string;
+    style?: React.CSSProperties;
 }
 
-export function RedesignedSidebar({ onSignInClick }: RedesignedSidebarProps = {}) {
+export function Sidebar({ onSignInClick, variant = "sidebar", collapsible = "offcanvas", className, style }: AppSidebarProps) {
     const { user, logout, userProfile } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
     const [searchQuery, setSearchQuery] = useState("");
+    const { open, toggleSidebar, isMobile } = useSidebar();
 
     const handleLogout = () => {
         logout();
@@ -47,43 +51,53 @@ export function RedesignedSidebar({ onSignInClick }: RedesignedSidebarProps = {}
     ];
 
     return (
-        <aside className="flex h-screen w-full flex-col bg-background">
-            {/* App Logo and Name with Toggle */}
-            <div className="px-4 py-4 flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => window.dispatchEvent(new CustomEvent("toggleSidebar"))} className="h-8 w-8 rounded-md hover:bg-gray-100 dark:hover:bg-accent shrink-0">
-                    <PanelLeft className="h-4 w-4" />
-                    <span className="sr-only">Toggle Sidebar</span>
-                </Button>
-                <button type="button" onClick={() => navigate("/")} className="flex flex-col w-full text-center leading-tight">
-                    <span className="block text-xl font-semibold tracking-tight">T3.chat</span>
-                </button>
-            </div>
-
-            {/* New Chat Button */}
-            <div className="px-4 pb-3">
-                <Button onClick={handleNewChat} className="bg-foreground text-background hover:bg-foreground/90 w-full rounded-lg" size="default">
-                    New Chat
-                </Button>
-            </div>
-
-            {/* Search Chat History */}
-            <div className="px-4 pb-3">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input type="text" placeholder="Search your threads..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+        <ShadcnSidebar variant={variant} collapsible={collapsible} className={className} style={style}>
+            <SidebarHeader>
+                <div className="flex items-center gap-2">
+                    <SidebarTrigger className="md:hidden" />
+                    {!isMobile && open && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                            onClick={toggleSidebar}>
+                            <PanelLeft className="h-4 w-4" />
+                            <span className="sr-only">Toggle Sidebar</span>
+                        </Button>
+                    )}
+                    <button type="button" onClick={() => navigate("/")} className="flex flex-col flex-1 text-center leading-tight">
+                        <span className="block text-xl font-semibold tracking-tight">T3.chat</span>
+                    </button>
                 </div>
-            </div>
-
-            {/* Chat History List */}
-            <div className="flex-1 overflow-y-auto px-4">
-                <div className="space-y-1">
-                    {/* Placeholder for chat history items */}
-                    {/* This will be populated with actual chat history */}
-                </div>
-            </div>
-
-            {/* User Section at Bottom */}
-            <div className="px-4 py-3">
+            </SidebarHeader>
+            <SidebarContent>
+                <SidebarGroup>
+                    <SidebarGroupContent>
+                        {/* New Chat Button */}
+                        <Button onClick={handleNewChat} className="bg-foreground text-background hover:bg-foreground/90 w-full rounded-lg" size="default">
+                            New Chat
+                        </Button>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+                <SidebarGroup>
+                    <SidebarGroupContent>
+                        {/* Search Chat History */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                            <SidebarInput type="text" placeholder="Search your threads..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+                        </div>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+                <SidebarGroup>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {/* Placeholder for chat history items */}
+                            {/* This will be populated with actual chat history */}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+            </SidebarContent>
+            <SidebarFooter>
                 {user && !isAnonymous ? (
                     <Popover>
                         <PopoverTrigger asChild>
@@ -115,7 +129,7 @@ export function RedesignedSidebar({ onSignInClick }: RedesignedSidebarProps = {}
                         Login
                     </Button>
                 )}
-            </div>
-        </aside>
+            </SidebarFooter>
+        </ShadcnSidebar>
     );
 }

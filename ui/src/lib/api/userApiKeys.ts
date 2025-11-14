@@ -1,9 +1,9 @@
-import { fetchWithAuth } from '../serverComm';
+import { fetchWithAuth, safeJsonParse } from '../serverComm';
 import type { UserApiKey, CreateUserApiKeyRequest } from '@/types/api';
 
 export async function listUserApiKeys(): Promise<UserApiKey[]> {
   const response = await fetchWithAuth('/api/v1/user-api-keys');
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function createUserApiKey(data: CreateUserApiKeyRequest): Promise<UserApiKey> {
@@ -12,7 +12,7 @@ export async function createUserApiKey(data: CreateUserApiKeyRequest): Promise<U
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function deleteUserApiKey(id: string): Promise<void> {

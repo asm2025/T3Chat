@@ -1,15 +1,15 @@
-import { fetchWithAuth } from '../serverComm';
+import { fetchWithAuth, safeJsonParse } from '../serverComm';
 import type { Chat, ChatWithMessages } from '@/types/chat';
 import type { CreateChatRequest } from '@/types/api';
 
 export async function listChats(page = 1, pageSize = 20): Promise<{ data: Chat[]; total: number }> {
   const response = await fetchWithAuth(`/api/v1/chats?page=${page}&page_size=${pageSize}`);
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function getChat(id: string): Promise<ChatWithMessages> {
   const response = await fetchWithAuth(`/api/v1/chats/${id}`);
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function createChat(data: CreateChatRequest): Promise<Chat> {
@@ -18,7 +18,7 @@ export async function createChat(data: CreateChatRequest): Promise<Chat> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function updateChat(id: string, data: { title?: string }): Promise<Chat> {
@@ -27,7 +27,7 @@ export async function updateChat(id: string, data: { title?: string }): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function deleteChat(id: string): Promise<void> {

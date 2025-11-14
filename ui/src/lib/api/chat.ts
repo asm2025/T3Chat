@@ -1,4 +1,4 @@
-import { fetchWithAuth } from '../serverComm';
+import { fetchWithAuth, safeJsonParse } from '../serverComm';
 import type { ChatRequest, ChatResponse } from '@/types/api';
 
 export async function sendChat(data: ChatRequest): Promise<ChatResponse> {
@@ -7,7 +7,7 @@ export async function sendChat(data: ChatRequest): Promise<ChatResponse> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  return safeJsonParse(response);
 }
 
 export async function* streamChat(data: ChatRequest): AsyncGenerator<string, void, unknown> {

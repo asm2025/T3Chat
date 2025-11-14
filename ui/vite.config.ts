@@ -13,7 +13,7 @@ const parseCliArgs = () => {
 
     return {
         port: portIndex !== -1 ? parseInt(args[portIndex + 1]) : 3010,
-        apiUrl: apiUrlIndex !== -1 ? args[apiUrlIndex + 1] : "http://localhost:3010",
+        apiUrl: apiUrlIndex !== -1 ? args[apiUrlIndex + 1] : "http://localhost:3000",
         firebaseAuthPort: firebaseAuthPortIndex !== -1 ? args[firebaseAuthPortIndex + 1] : "5503",
         useFirebaseEmulator: useFirebaseEmulatorIndex !== -1 ? args[useFirebaseEmulatorIndex + 1] : "false",
     };
