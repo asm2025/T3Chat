@@ -5,18 +5,16 @@ import { cn } from "@/lib/utils";
 
 interface MasterLayoutProps {
     children: ReactNode;
-    bottomSection?: ReactNode;
-    contentClassName?: string;
+    footer?: ReactNode;
 }
 
-export function MasterLayout({ children, bottomSection, contentClassName = "" }: MasterLayoutProps) {
+export function MasterLayout({ children, footer }: MasterLayoutProps) {
     const { open: sidebarOpen, isMobile } = useSidebar();
     // Only apply collapsed styles on desktop when sidebar is closed
     const isCollapsed = !sidebarOpen && !isMobile;
 
     return (
         <div className="flex h-screen flex-col bg-background relative">
-            {/* Background with noise texture and border */}
             <div
                 className={cn(
                     "bg-chat-background ease-snappy absolute top-0 bottom-0 left-0 right-0 overflow-hidden bg-fixed pb-[140px] transition-all select-none print:hidden",
@@ -64,16 +62,14 @@ export function MasterLayout({ children, bottomSection, contentClassName = "" }:
                     </div>
                 )}
 
-                {/* Message Input Container */}
-                {bottomSection && (
+                {footer && (
                     <div className="pointer-events-none absolute bottom-0 z-10 w-full px-2">
                         <div className="relative mx-auto flex w-full max-w-3xl flex-col text-center">
-                            <div className="pointer-events-auto">{bottomSection}</div>
+                            <div className="pointer-events-auto">{footer}</div>
                         </div>
                     </div>
                 )}
 
-                {/* Chat Scroll Container */}
                 <div
                     id="chat-scroll-container"
                     className="absolute inset-0 overflow-y-auto pt-8 sm:pt-3.5 print:visible print:static print:inset-auto print:block print:h-auto print:scroll-pb-0! print:overflow-visible print:pt-2 print:pb-0!"
@@ -111,9 +107,8 @@ export function MasterLayout({ children, bottomSection, contentClassName = "" }:
                         </div>
                     </div>
 
-                    {/* Chat Messages */}
-                    <div role="log" aria-label="Chat messages" aria-live="polite" className="pt-safe-offset-10 mx-auto flex w-full max-w-3xl flex-col space-y-12 px-4 pb-10 print:space-y-0 print:pt-0">
-                        <div className={contentClassName}>{children}</div>
+                    <div role="log" aria-live="polite" className="pt-safe-offset-10 mx-auto flex w-full max-w-3xl flex-col space-y-12 px-4 pb-10 print:space-y-0 print:pt-0">
+                        {children}
                     </div>
                 </div>
             </div>

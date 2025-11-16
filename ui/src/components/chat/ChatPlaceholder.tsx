@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { Sparkles, Compass, Code, GraduationCap } from "lucide-react";
+import { Sparkles, Newspaper, Code, GraduationCap } from "lucide-react";
 
 interface ChatPlaceholderProps {
     userName?: string;
@@ -11,7 +10,7 @@ export function ChatPlaceholder({ userName, onPromptClick }: ChatPlaceholderProp
 
     const actionButtons = [
         { label: "Create", icon: Sparkles },
-        { label: "Explore", icon: Compass },
+        { label: "Explore", icon: Newspaper },
         { label: "Code", icon: Code },
         { label: "Learn", icon: GraduationCap },
     ];
@@ -19,32 +18,34 @@ export function ChatPlaceholder({ userName, onPromptClick }: ChatPlaceholderProp
     const prompts = ["How does AI work?", "Are black holes real?", 'How many Rs are in the word "strawberry"?', "What is the meaning of life?"];
 
     return (
-        <div className="flex h-full items-center justify-center px-6">
-            <div className="w-full max-w-2xl space-y-8 text-center">
-                {/* Greeting */}
-                <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{greeting}</h2>
+        <div className="flex h-[calc(100vh-20rem)] items-start justify-center">
+            <div className="animate-in fade-in-50 zoom-in-95 w-full space-y-6 px-2 pt-[calc(max(15vh,2.5rem))] duration-300 sm:px-8">
+                <h2 className="text-3xl font-semibold">{greeting}</h2>
 
-                {/* Action Buttons */}
-                <div className="flex flex-wrap justify-center gap-3">
-                    {actionButtons.map(({ label, icon: Icon }) => (
-                        <Button key={label} variant="outline" size="lg" className="gap-2 rounded-full">
-                            <Icon className="h-4 w-4" />
-                            {label}
-                        </Button>
-                    ))}
+                <div className="flex flex-row flex-wrap gap-2.5 text-sm max-sm:justify-evenly">
+                    {actionButtons.map(({ label, icon: Icon }) => {
+                        return (
+                            <button
+                                key={label}
+                                data-selected="false"
+                                className="focus-visible:ring-ring justify-center text-sm whitespace-nowrap transition-colors focus-visible:ring-1 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground disabled:hover:bg-primary shadow-sm hover:bg-pink-600/90 h-9 outline-secondary/70 data-[selected=false]:bg-secondary/30 data-[selected=false]:text-secondary-foreground/90 data-[selected=false]:hover:bg-secondary flex items-center gap-1 rounded-xl px-5 py-2 font-semibold outline-1 backdrop-blur-xl data-[selected=false]:outline-solid max-sm:size-16 max-sm:flex-col sm:gap-2 sm:rounded-full">
+                                <Icon className="max-sm:block" />
+                                <div>{label}</div>
+                            </button>
+                        );
+                    })}
                 </div>
 
-                {/* Prompt Questions */}
-                <div className="flex flex-col pt-4">
-                    {prompts.map((prompt) => (
-                        <Button
-                            key={prompt}
-                            variant="ghost"
-                            className="h-auto justify-start rounded-none border-b border-border bg-background px-4 py-3 text-left text-sm font-normal text-muted-foreground hover:border-foreground/20 hover:bg-muted hover:text-foreground"
-                            onClick={() => onPromptClick?.(prompt)}>
-                            {prompt}
-                        </Button>
-                    ))}
+                <div className="text-foreground flex flex-col">
+                    {prompts.map((prompt) => {
+                        return (
+                            <div key={prompt} className="border-secondary/40 flex items-start gap-2 border-t py-1 first:border-none">
+                                <button className="text-secondary-foreground hover:bg-secondary/50 w-full rounded-md py-2 text-left sm:px-3" onClick={() => onPromptClick?.(prompt)}>
+                                    <span>{prompt}</span>
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>

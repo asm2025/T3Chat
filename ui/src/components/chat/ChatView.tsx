@@ -26,7 +26,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
       model_provider: 'openai',
       model_id: 'gpt-3.5-turbo',
     });
-    navigate(`/chat/${newChat.id}`);
+    navigate(`/${newChat.id}`);
   };
 
   // Update messages when chat loads

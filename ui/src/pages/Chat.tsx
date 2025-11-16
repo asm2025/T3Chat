@@ -63,7 +63,7 @@ export function Chat() {
                     model_id: selectedModel.model_id,
                 });
                 currentChatId = newChat.id;
-                navigate(`/chat/${newChat.id}`);
+                navigate(`/${newChat.id}`);
             } catch (err) {
                 console.error("Failed to create chat:", err);
                 return;
@@ -161,8 +161,7 @@ export function Chat() {
     }
 
     return (
-        <MasterLayout
-            bottomSection={<MessageInput onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />}>
+        <MasterLayout footer={<MessageInput onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />}>
             <div className="mx-auto w-full max-w-4xl">{hasMessages ? <MessageList messages={messages} /> : <ChatPlaceholder userName={displayName} onPromptClick={handlePromptClick} />}</div>
         </MasterLayout>
     );

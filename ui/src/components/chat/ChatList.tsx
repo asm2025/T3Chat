@@ -28,7 +28,7 @@ export function ChatList() {
         model_id: 'gpt-3.5-turbo',
       });
       await refresh();
-      navigate(`/chat/${newChat.id}`);
+      navigate(`/${newChat.id}`);
     } catch (error) {
       console.error('Failed to create chat', error);
     }
@@ -76,7 +76,7 @@ export function ChatList() {
               return (
                 <button
                   key={chat.id}
-                  onClick={() => navigate(`/chat/${chat.id}`)}
+                  onClick={() => navigate(`/${chat.id}`)}
                   className={`w-full rounded-xl border px-3.5 py-2.5 text-left transition ${
                     active
                       ? 'border-foreground/20 bg-foreground text-background shadow-sm'

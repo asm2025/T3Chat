@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LoginForm } from "@/components/login-form";
-import { Home } from "@/pages/Home";
 import { Settings } from "@/pages/Settings";
 import { Chat } from "@/pages/Chat";
 import { Profile } from "@/pages/Profile";
@@ -50,7 +49,7 @@ function AppContent() {
         if (!sidebarOpen || sizes.length < 2) {
             return;
         }
-        
+
         const newWidth = sizes[0];
         // Validate the width is within bounds
         if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= MAX_SIDEBAR_WIDTH && newWidth !== sidebarWidth) {
@@ -135,8 +134,7 @@ function AppContent() {
                                 <Sidebar variant="sidebar" collapsible="offcanvas" onSignInClick={handleSignInClick} />
                                 <SidebarInset className="h-screen">
                                     <Routes>
-                                        <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
-                                        <Route path="/chat/:chatId?" element={<Chat />} />
+                                        <Route path="/:chatId?" element={<Chat />} />
                                         <Route path="/profile" element={<Profile />} />
                                         <Route path="/settings" element={<Settings />} />
                                         <Route
@@ -179,28 +177,27 @@ function AppContent() {
                             <ResizablePanelGroup key={sidebarOpen ? "open" : "closed"} direction="horizontal" className="min-h-screen" onLayout={handleSidebarResize}>
                                 {sidebarOpen && (
                                     <>
-                                        <ResizablePanel 
+                                        <ResizablePanel
                                             id="sidebar-panel"
-                                            defaultSize={Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth))} 
-                                            minSize={MIN_SIDEBAR_WIDTH} 
-                                            maxSize={MAX_SIDEBAR_WIDTH} 
+                                            defaultSize={Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth))}
+                                            minSize={MIN_SIDEBAR_WIDTH}
+                                            maxSize={MAX_SIDEBAR_WIDTH}
                                             className="hidden md:flex flex-shrink-0 overflow-hidden">
                                             <Sidebar variant="sidebar" collapsible="none" className="h-full w-full flex flex-col" style={{ width: "100%", minWidth: 0 }} onSignInClick={handleSignInClick} />
                                         </ResizablePanel>
                                         <ResizableHandle withHandle className="hidden md:flex w-1 bg-transparent hover:bg-border transition-colors cursor-col-resize" />
                                     </>
                                 )}
-                                <ResizablePanel 
+                                <ResizablePanel
                                     id="main-panel"
-                                    defaultSize={sidebarOpen ? Math.max(5, Math.min(95, 100 - Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth)))) : 100} 
-                                    minSize={5} 
+                                    defaultSize={sidebarOpen ? Math.max(5, Math.min(95, 100 - Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth)))) : 100}
+                                    minSize={5}
                                     maxSize={sidebarOpen ? 95 : 100}
                                     className="flex-1">
                                     <SidebarInset className="h-screen overflow-hidden">
                                         <FloatingToolbar />
                                         <Routes>
-                                            <Route path="/" element={<Home onSignInClick={handleSignInClick} />} />
-                                            <Route path="/chat/:chatId?" element={<Chat />} />
+                                            <Route path="/:chatId?" element={<Chat />} />
                                             <Route path="/profile" element={<Profile />} />
                                             <Route path="/settings" element={<Settings />} />
                                             <Route
