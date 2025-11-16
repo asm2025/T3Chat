@@ -6,6 +6,7 @@ use axum::{
 };
 use emix::env::{get_env, get_port_or};
 use std::{net::SocketAddr, sync::Arc};
+use tokio::task::spawn_blocking;
 use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
@@ -97,35 +98,47 @@ async fn run() -> Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     // Create shutdown signal handler
     let graceful_shutdown = async {
-        let ctrl_c = async {
+        let wait_for_ctrl_c = || async {
             tokio::signal::ctrl_c()
                 .await
-                .expect("failed to install Ctrl+C handler");
+                .expect("failed to install Ctrl+C handler")
         };
 
         #[cfg(unix)]
-        let terminate = async {
+        let wait_for_sigterm = || async {
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
                 .expect("failed to install SIGTERM handler")
                 .recv()
-                .await;
+                .await
         };
 
         #[cfg(not(unix))]
-        let terminate = std::future::pending::<()>();
+        let wait_for_sigterm = || std::future::pending::<()>();
 
-        tokio::select! {
-            _ = ctrl_c => {
-                tracing::info!("Received Ctrl+C signal, shutting down gracefully...");
-            },
-            _ = terminate => {
-                tracing::info!("Received SIGTERM signal, shutting down gracefully...");
-            },
+        loop {
+            tokio::select! {
+                _ = wait_for_ctrl_c() => {
+                    if confirm_shutdown("Terminate server (Y/N)? ").await {
+                        tracing::info!("Confirmed Ctrl+C shutdown; shutting down gracefully...");
+                        break;
+                    } else {
+                        tracing::info!("Shutdown canceled; continuing to run.");
+                    }
+                },
+                _ = wait_for_sigterm() => {
+                    if confirm_shutdown("Terminate server (Y/N)? ").await {
+                        tracing::info!("Confirmed SIGTERM shutdown; shutting down gracefully...");
+                        break;
+                    } else {
+                        tracing::info!("Shutdown canceled; continuing to run.");
+                    }
+                },
+            }
         }
     };
 
     // Serve with graceful shutdown
-    tracing::info!("Server listening on http://{}", addr);
+    tracing::info!("Server listening on http://localhost:{}", port);
     axum::serve(listener, app)
         .with_graceful_shutdown(graceful_shutdown)
         .await?;
@@ -206,6 +219,7 @@ fn setup_router(state: AppState) -> Router {
         .allow_credentials(true);
     let models_routes = Router::new()
         .route("/", get(api::v1::models::list_models))
+        .route("/all", get(api::v1::models::list_all_models))
         .route("/{id}", get(api::v1::models::get_model));
 
     let chats_routes = Router::new()
@@ -290,4 +304,27 @@ fn swagger_docs_router() -> Router {
     let swagger: Router =
         Into::<Router>::into(utoipa_swagger_ui::SwaggerUi::new("/").url("/openapi.json", open_api));
     swagger
+}
+
+async fn confirm_shutdown(prompt: &str) -> bool {
+    // Use a blocking read in a background thread to avoid stalling the async runtime
+    let prompt_owned = prompt.to_owned();
+    match spawn_blocking(move || {
+        use std::io::{Write, stdin, stdout};
+        let prompt = prompt_owned;
+        print!("{prompt}");
+        let _ = stdout().flush();
+        let mut input = String::new();
+        if stdin().read_line(&mut input).is_ok() {
+            let first = input.trim().chars().next().unwrap_or('n');
+            first == 'y' || first == 'Y'
+        } else {
+            false
+        }
+    })
+    .await
+    {
+        Ok(confirm) => confirm,
+        Err(_) => false,
+    }
 }

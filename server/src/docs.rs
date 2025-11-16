@@ -26,6 +26,7 @@ impl Modify for BearerAuthAddon {
     paths(
         crate::api::v1::health::health_check,
         crate::api::v1::models::list_models,
+        crate::api::v1::models::list_all_models,
         crate::api::v1::models::get_model,
         crate::api::v1::chats::list_chats,
         crate::api::v1::chats::create_chat,

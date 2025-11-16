@@ -71,6 +71,28 @@ pub async fn list_models(state: State<AppState>) -> Result<Json<Vec<ModelRespons
     Ok(Json(models.into_iter().map(ModelResponse::from).collect()))
 }
 
+/// List all AI models (active and inactive)
+#[utoipa::path(
+    get,
+    path = "/api/v1/models/all",
+    tag = "Models",
+    responses(
+        (status = 200, description = "List of all AI models", body = [ModelResponse]),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn list_all_models(
+    state: State<AppState>,
+) -> Result<Json<Vec<ModelResponse>>, StatusCode> {
+    let models = state
+        .ai_model_repository
+        .list_all()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(models.into_iter().map(ModelResponse::from).collect()))
+}
+
 /// Get a specific AI model by ID
 #[utoipa::path(
     get,
