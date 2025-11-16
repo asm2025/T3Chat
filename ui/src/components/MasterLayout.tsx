@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 interface MasterLayoutProps {
     children: ReactNode;
     footer?: ReactNode;
+    contentClassName?: string;
 }
 
-export function MasterLayout({ children, footer }: MasterLayoutProps) {
+export function MasterLayout({ children, footer, contentClassName }: MasterLayoutProps) {
     const { open: sidebarOpen, isMobile } = useSidebar();
     // Only apply collapsed styles on desktop when sidebar is closed
     const isCollapsed = !sidebarOpen && !isMobile;
@@ -108,7 +109,9 @@ export function MasterLayout({ children, footer }: MasterLayoutProps) {
                     </div>
 
                     <div role="log" aria-live="polite" className="pt-safe-offset-10 mx-auto flex w-full max-w-3xl flex-col space-y-12 px-4 pb-10 print:space-y-0 print:pt-0">
-                        {children}
+                        <div className={cn(contentClassName)}>
+                            {children}
+                        </div>
                     </div>
                 </div>
             </div>

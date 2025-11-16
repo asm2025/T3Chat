@@ -114,7 +114,9 @@ export function FloatingToolbar() {
                     "text-muted-foreground size-8 translate-x-0 transition-[transform,opacity] delay-150 duration-150",
                     "pointer-events-none opacity-25"
                 )}
-                disabled
+                aria-disabled="true"
+                tabIndex={-1}
+                onClick={(e) => e.preventDefault()}
                 href="/"
                 data-discover="true">
                 <Plus className="h-4 w-4" />

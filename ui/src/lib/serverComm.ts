@@ -29,7 +29,7 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 // Helper function to safely parse JSON from a response
-export async function safeJsonParse(response: Response): Promise<any> {
+export async function safeJsonParse<T = unknown>(response: Response): Promise<T> {
     const contentType = response.headers.get("content-type");
 
     // Clone the response so we can read it multiple times if needed (for error messages)
@@ -57,7 +57,7 @@ export async function safeJsonParse(response: Response): Promise<any> {
 
     // Content-Type suggests JSON, try to parse it
     try {
-        return await response.json();
+        return (await response.json()) as T;
     } catch (error) {
         // If JSON parsing fails, read the text from the clone to see what we actually got
         // (We can't read from response again since it's already consumed)
@@ -89,7 +89,7 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
     }
 
     if (!response.ok) {
-        const errorData = await safeJsonParse(response).catch((parseError) => {
+        const errorData = await safeJsonParse<{ error?: string; message?: string; code?: string; user_id?: string }>(response).catch((parseError) => {
             // If parsing fails, return a basic error structure
             return {
                 error: response.statusText || "Unknown error",
@@ -97,7 +97,11 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
             };
         });
 
-        throw createAPIError(response.status, errorData.error || errorData.message || `API request failed: ${response.statusText}`, errorData.code, errorData.user_id);
+        const message = (errorData as { error?: string; message?: string }).error || (errorData as { message?: string }).message || `API request failed: ${response.statusText}`;
+        const code = "code" in (errorData as object) ? (errorData as { code?: string }).code : undefined;
+        const userId = "user_id" in (errorData as object) ? (errorData as { user_id?: string }).user_id : undefined;
+
+        throw createAPIError(response.status, message, code, userId);
     }
 
     return response;
@@ -113,7 +117,14 @@ export async function getCurrentUser(): Promise<{
     updated_at: string;
 }> {
     const response = await fetchWithAuth("/api/v1/me");
-    return safeJsonParse(response);
+    return safeJsonParse<{
+        id: string;
+        email: string | null;
+        display_name: string | null;
+        image_url: string | null;
+        created_at: string;
+        updated_at: string;
+    }>(response);
 }
 
 export async function updateUser(data: { display_name?: string | null; image_url?: string | null }): Promise<{
@@ -131,7 +142,14 @@ export async function updateUser(data: { display_name?: string | null; image_url
         },
         body: JSON.stringify(data),
     });
-    return safeJsonParse(response);
+    return safeJsonParse<{
+        id: string;
+        email: string | null;
+        display_name: string | null;
+        image_url: string | null;
+        created_at: string;
+        updated_at: string;
+    }>(response);
 }
 
 // Example of how to add more API endpoints:

@@ -30,11 +30,7 @@ Start with everything running locally on your machine, then progressively connec
 
 **Local Development (Default):**
 
--   ⚡ Runs UI + Server + DB + Auth on your computer
-
--   🏠 Embedded PostgreSQL database
-
--   🔧 Firebase Auth emulator
+-   ⚡ Runs UI + Server + Auth emulator on your computer
 
 -   ✅ Zero sign-ins or accounts needed
 
@@ -321,7 +317,7 @@ pg_config --version
 
 ## 🛠️ **Development**
 
-Start both frontend and backend (with embedded PostgreSQL database and Firebase emulator):
+Start both frontend and backend (with Firebase emulator):
 
 ```bash
 pnpm run dev
@@ -333,9 +329,7 @@ This automatically assigns available ports and displays them on startup:
 
 -   **Backend API**: Usually `http://localhost:3000` (or next available)
 
--   **PostgreSQL**: Embedded database on dynamic port (starts from 5433)
-
-The system handles port conflicts automatically. For multiple projects, use separate folders.
+-   The system handles port conflicts automatically. For multiple projects, use separate folders.
 
 > **📋 Port Management**: See `[docs/PORT_HANDLING.md](docs/PORT_HANDLING.md)` for details on running multiple instances and port conflict resolution.
 
@@ -426,10 +420,7 @@ pnpm connection:status
 │   ├── wwwroot/    # Static files served by the backend
 │   ├── Cargo.toml    # Rust dependencies
 │   └── .env    # Backend environment variables (local only)
-├── database-server/    # Embedded PostgreSQL bootstrap (Node.js)
-│   └── src/    # Embedded Postgres lifecycle helpers
 ├── data/    # Local development data
-│   ├── postgres/    # Embedded PostgreSQL data
 │   └── firebase-emulator/    # Firebase emulator data (auto-backed up)
 └── scripts/    # Workspace automation
     ├── run-dev.js    # Development server runner
@@ -479,7 +470,7 @@ See `[server/README.md](server/README.md)` for detailed guidance.
 
 ## 🚀 **Deployment**
 
-> **Note**: Embedded PostgreSQL is for local development only. Production deployments require an external database (configured during setup).
+> **Note**: Use an external PostgreSQL (e.g., Supabase) for production.
 
 ### Backend (Rust Server)
 
