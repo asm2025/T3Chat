@@ -1,5 +1,5 @@
 use crate::{
-    AppState, db::prelude::*, db::repositories::IUserApiKeyRepository,
+    AppState, db::prelude::*, db::repositories::TUserApiKeyRepository,
     middleware::auth::AuthenticatedUser,
 };
 use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
@@ -61,7 +61,7 @@ pub async fn list_keys(
 ) -> Result<Json<Vec<UserApiKeyResponse>>, StatusCode> {
     let keys = state
         .user_api_key_repository
-        .list_by_user(&user.0.id)
+        .list(&user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -149,7 +149,7 @@ pub async fn delete_key(
     // Verify key belongs to user
     let keys = state
         .user_api_key_repository
-        .list_by_user(&user.0.id)
+        .list(&user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

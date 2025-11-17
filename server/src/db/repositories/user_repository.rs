@@ -11,11 +11,7 @@ use crate::db::{DbPool, schema::users};
 pub trait FilterCondition<T>: Send + Sync {}
 
 #[async_trait]
-pub trait IUserRepository: Send + Sync {
-    async fn upsert(&self, model: CreateUserDto) -> Result<UserModel>;
-    async fn get(&self, id: String) -> Result<Option<UserModel>>;
-    async fn update(&self, id: String, model: UpdateUserDto) -> Result<UserModel>;
-    async fn delete(&self, id: String) -> Result<()>;
+pub trait TUserRepository: Send + Sync {
     async fn list(
         &self,
         filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
@@ -25,7 +21,11 @@ pub trait IUserRepository: Send + Sync {
         &self,
         filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
     ) -> Result<u64>;
+    async fn get(&self, id: String) -> Result<Option<UserModel>>;
     async fn create(&self, model: UserModel) -> Result<UserModel>;
+    async fn update(&self, id: String, model: UpdateUserDto) -> Result<UserModel>;
+    async fn upsert(&self, model: CreateUserDto) -> Result<UserModel>;
+    async fn delete(&self, id: String) -> Result<()>;
 }
 
 pub struct UserRepository {
@@ -39,7 +39,7 @@ impl UserRepository {
 }
 
 #[async_trait]
-impl IUserRepository for UserRepository {
+impl TUserRepository for UserRepository {
     async fn list(
         &self,
         _filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
@@ -160,21 +160,6 @@ impl IUserRepository for UserRepository {
             .map_err(Error::from_std_error)
     }
 
-    async fn delete(&self, id: String) -> Result<()> {
-        let mut conn = self
-            .pool
-            .get()
-            .await
-            .map_err(|e| Error::from_std_error(e))?;
-
-        diesel::delete(users::table.find(id))
-            .execute(&mut conn)
-            .await
-            .map_err(Error::from_std_error)?;
-
-        Ok(())
-    }
-
     async fn upsert(&self, model: CreateUserDto) -> Result<UserModel> {
         let mut conn = self
             .pool
@@ -197,5 +182,20 @@ impl IUserRepository for UserRepository {
             .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)
+    }
+
+    async fn delete(&self, id: String) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::delete(users::table.find(id))
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
     }
 }

@@ -14,6 +14,7 @@ import {
   GoogleAuthProvider
 } from "firebase/auth"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "@/lib/toast"
 import { Loader2, UserPlus, LogIn } from "lucide-react"
 
 const GoogleIcon = () => (
@@ -51,7 +52,6 @@ const getErrorMessage = (error: unknown) => {
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showExistingAccountPrompt, setShowExistingAccountPrompt] = useState(false)
   const { user, forceRefresh } = useAuth()
@@ -62,7 +62,6 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
     setIsLoading(true)
     
     try {
@@ -98,7 +97,9 @@ export function LoginForm() {
       }
     } catch (err: unknown) {
       const message = getErrorMessage(err);
-      setError(`Authentication failed: ${message}`);
+      toast.error("Authentication failed", {
+        description: message,
+      });
       console.error('Auth error:', err);
     } finally {
       setIsLoading(false);
@@ -107,7 +108,6 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
-    setError("")
     
     try {
       const currentUser = auth.currentUser;
@@ -136,7 +136,10 @@ export function LoginForm() {
             return;
           } else {
             // Other linking errors
-            setError("Failed to link Google account.");
+            const errorMessage = linkError instanceof Error ? linkError.message : "Failed to link Google account";
+            toast.error("Failed to link Google account", {
+              description: errorMessage,
+            });
             console.error('Google link error:', linkError);
             return;
           }
@@ -146,7 +149,10 @@ export function LoginForm() {
         await signInWithPopup(auth, googleProvider);
       }
     } catch (err: unknown) {
-      setError("Failed to sign in with Google.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign in with Google";
+      toast.error("Failed to sign in with Google", {
+        description: errorMessage,
+      });
       console.error('Google auth error:', err);
     } finally {
       setIsLoading(false);
@@ -155,13 +161,15 @@ export function LoginForm() {
 
   const handleSignIntoExistingAccount = async () => {
     setIsLoading(true)
-    setError("")
     setShowExistingAccountPrompt(false)
     
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: unknown) {
-      setError("Failed to sign in with Google.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to sign in with Google";
+      toast.error("Failed to sign in with Google", {
+        description: errorMessage,
+      });
       console.error('Google auth error:', err);
     } finally {
       setIsLoading(false);
@@ -328,13 +336,6 @@ export function LoginForm() {
             </TabsContent>
           </div>
         </Tabs>
-        
-        {/* Error Display */}
-        {error && (
-          <div className="rounded-xl border border-border bg-background p-3 shadow-sm">
-            <p className="text-sm text-foreground">{error}</p>
-          </div>
-        )}
         
         {/* Existing Account Prompt */}
         {showExistingAccountPrompt && (

@@ -2,7 +2,7 @@ use crate::{
     AppState,
     ai::types::{ChatMessage, ChatRequest as AIChatRequest},
     db::prelude::*,
-    db::repositories::{IChatRepository, IMessageRepository, IUserApiKeyRepository},
+    db::repositories::{TChatRepository, TUserApiKeyRepository},
     middleware::auth::AuthenticatedUser,
 };
 use axum::{
@@ -56,7 +56,7 @@ pub async fn chat(
     // Verify chat belongs to user
     let _chat = state
         .chat_repository
-        .get_by_id(payload.chat_id, &user.0.id)
+        .get(payload.chat_id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -84,8 +84,8 @@ pub async fn chat(
 
     // Get messages for context
     let messages = state
-        .message_repository
-        .list_by_chat(payload.chat_id, &user.0.id)
+        .chat_repository
+        .list_messages(payload.chat_id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -131,14 +131,14 @@ pub async fn chat(
 
     // Save user message
     let user_seq = state
-        .message_repository
+        .chat_repository
         .get_next_sequence_number(payload.chat_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     state
-        .message_repository
-        .create(CreateMessageDto {
+        .chat_repository
+        .create_message(CreateMessageDto {
             chat_id: payload.chat_id,
             role: MessageRole::User,
             content: payload.message,
@@ -151,14 +151,14 @@ pub async fn chat(
 
     // Save assistant response
     let assistant_seq = state
-        .message_repository
+        .chat_repository
         .get_next_sequence_number(payload.chat_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let assistant_message = state
-        .message_repository
-        .create(CreateMessageDto {
+        .chat_repository
+        .create_message(CreateMessageDto {
             chat_id: payload.chat_id,
             role: MessageRole::Assistant,
             content: ai_response.content.clone(),
@@ -172,7 +172,7 @@ pub async fn chat(
     // Update token usage if available
     if let Some(tokens) = ai_response.tokens_used {
         state
-            .message_repository
+            .chat_repository
             .update_tokens_used(assistant_message.id, tokens as i32, &ai_response.model)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
+import { t3ChatClient } from '@/lib/t3-chat-client';
 import type { Chat } from '@/types/chat';
 
 export function useChats() {
@@ -10,7 +10,7 @@ export function useChats() {
   const loadChats = async () => {
     try {
       setLoading(true);
-      const result = await api.listChats();
+      const result = await t3ChatClient.listChats();
       setChats(result.data);
     } catch (err) {
       setError(err as Error);

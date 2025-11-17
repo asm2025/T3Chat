@@ -69,8 +69,20 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    user_features (id) {
+        id -> Uuid,
+        user_id -> Text,
+        feature -> Text,
+        enabled -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
 diesel::joinable!(chats -> users (user_id));
 diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(user_api_keys -> users (user_id));
+diesel::joinable!(user_features -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(users, ai_models, user_api_keys, chats, messages,);
+diesel::allow_tables_to_appear_in_same_query!(users, ai_models, user_api_keys, chats, messages, user_features);

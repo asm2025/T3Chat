@@ -8,3 +8,5 @@ mod chat;
 pub use chat::*;
 mod message;
 pub use message::*;
+mod feature;
+pub use feature::*;

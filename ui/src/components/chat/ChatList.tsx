@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search } from 'lucide-react';
-import * as api from '@/lib/serverComm';
+import { t3ChatClient } from '@/lib/t3-chat-client';
 
 export function ChatList() {
   const { chats, loading, refresh } = useChats();
@@ -23,7 +23,7 @@ export function ChatList() {
 
   const handleNewChat = async () => {
     try {
-      const newChat = await api.createChat({
+      const newChat = await t3ChatClient.createChat({
         model_provider: 'openai',
         model_id: 'gpt-3.5-turbo',
       });

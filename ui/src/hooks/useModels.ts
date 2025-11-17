@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
+import { t3ChatClient } from '@/lib/t3-chat-client';
 import type { AIModel } from '@/types/model';
 
 export function useModels() {
@@ -11,7 +11,7 @@ export function useModels() {
     const loadModels = async () => {
       try {
         setLoading(true);
-        const data = await api.listModels();
+        const data = await t3ChatClient.listModels();
         setModels(data);
       } catch (err) {
         setError(err as Error);

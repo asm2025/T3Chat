@@ -92,8 +92,27 @@ pub struct NewMessage {
 #[derive(Debug, Clone, AsChangeset)]
 #[diesel(table_name = messages)]
 pub struct UpdateMessage {
+    pub content: Option<String>,
+    pub metadata: Option<Option<serde_json::Value>>,
     pub tokens_used: Option<i32>,
     pub model_used: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateMessageDto {
+    pub content: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+impl From<UpdateMessageDto> for UpdateMessage {
+    fn from(dto: UpdateMessageDto) -> Self {
+        Self {
+            content: dto.content,
+            metadata: dto.metadata.map(Some),
+            tokens_used: None,
+            model_used: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

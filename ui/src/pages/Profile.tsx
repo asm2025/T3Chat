@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth-context";
-import { api } from "@/lib/serverComm";
+import { t3ChatClient } from "@/lib/t3-chat-client";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Edit2, X } from "lucide-react";
 import { MasterLayout } from "@/components/MasterLayout";
+import { toast } from "@/lib/toast";
 
 interface UserProfile {
     id: string;
@@ -24,8 +25,6 @@ export function Profile() {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
     const [displayName, setDisplayName] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [originalDisplayName, setOriginalDisplayName] = useState("");
@@ -35,13 +34,15 @@ export function Profile() {
             if (user) {
                 try {
                     setLoading(true);
-                    setError("");
-                    const data = await api.getCurrentUser();
+                    const data = await t3ChatClient.getCurrentUser();
                     setUserProfile(data);
                     setDisplayName(data.display_name || "");
                     setOriginalDisplayName(data.display_name || "");
                 } catch (error) {
-                    setError("Failed to fetch user profile");
+                    const errorMessage = error instanceof Error ? error.message : "Failed to fetch user profile";
+                    toast.error("Failed to fetch user profile", {
+                        description: errorMessage,
+                    });
                     console.error("Server error:", error);
                 } finally {
                     setLoading(false);
@@ -56,16 +57,12 @@ export function Profile() {
             setOriginalDisplayName(userProfile.display_name || "");
             setDisplayName(userProfile.display_name || "");
             setIsEditing(true);
-            setError("");
-            setSuccess("");
         }
     };
 
     const handleCancel = () => {
         setDisplayName(originalDisplayName);
         setIsEditing(false);
-        setError("");
-        setSuccess("");
     };
 
     const handleSave = async () => {
@@ -73,12 +70,10 @@ export function Profile() {
 
         try {
             setSaving(true);
-            setError("");
-            setSuccess("");
-            await api.updateUser({ display_name: displayName || null });
+            await t3ChatClient.updateUser({ display_name: displayName || null });
 
             // Refresh the profile
-            const updatedData = await api.getCurrentUser();
+            const updatedData = await t3ChatClient.getCurrentUser();
             setUserProfile(updatedData);
             setOriginalDisplayName(updatedData.display_name || "");
 
@@ -86,12 +81,12 @@ export function Profile() {
             forceRefresh();
 
             setIsEditing(false);
-            setSuccess("Profile updated successfully");
-            // Clear success message after 3 seconds
-            setTimeout(() => setSuccess(""), 3010);
+            toast.success("Profile updated successfully");
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Failed to update profile";
-            setError(errorMessage);
+            toast.error("Failed to update profile", {
+                description: errorMessage,
+            });
         } finally {
             setSaving(false);
         }
@@ -151,13 +146,14 @@ export function Profile() {
         );
     }
 
-    if (error && !userProfile) {
+    // Error is now handled via toast, but we still show a fallback UI if profile failed to load
+    if (!loading && !userProfile) {
         return (
             <MasterLayout contentClassName="px-0">
                 <div className="container mx-auto px-6 max-w-2xl">
                     <Card>
                         <CardContent className="pt-6">
-                            <p className="text-destructive">{error}</p>
+                            <p className="text-muted-foreground">Unable to load profile. Please try again.</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -204,8 +200,6 @@ export function Profile() {
                         <CardContent className="space-y-6">
                             {!isEditing ? (
                                 <>
-                                    {success && <p className="text-sm text-foreground">{success}</p>}
-                                    {error && <p className="text-sm text-destructive">{error}</p>}
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="displayName">Display Name</Label>
@@ -247,9 +241,6 @@ export function Profile() {
                                             <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your display name" />
                                         </div>
                                     </div>
-
-                                    {error && <p className="text-sm text-destructive">{error}</p>}
-                                    {success && <p className="text-sm text-foreground">{success}</p>}
 
                                     <div className="border-t pt-4 space-y-2">
                                         <div className="flex justify-between items-center py-2">

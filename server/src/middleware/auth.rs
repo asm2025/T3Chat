@@ -1,9 +1,9 @@
-use crate::{db::prelude::*, db::repositories::IUserRepository, env::get_firebase_project_id};
+use crate::{db::prelude::*, db::repositories::TUserRepository, env::get_firebase_project_id};
 use async_trait::async_trait;
 use axum::{
     body::Body,
     extract::{FromRequestParts, State},
-    http::{Request, StatusCode, request::Parts},
+    http::{Method, Request, StatusCode, request::Parts},
     middleware::Next,
     response::Response,
 };
@@ -63,6 +63,11 @@ pub async fn auth_middleware(
     mut request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Skip authentication for OPTIONS requests (CORS preflight)
+    if request.method() == Method::OPTIONS {
+        return Ok(next.run(request).await);
+    }
+
     // Extract token from Authorization header
     let auth_header = request
         .headers()

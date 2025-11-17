@@ -4,7 +4,7 @@ use crate::{
     AppState,
     db::dto::Pagination,
     db::prelude::*,
-    db::repositories::{IChatRepository, IMessageRepository},
+    db::repositories::TChatRepository,
     middleware::auth::AuthenticatedUser,
 };
 use axum::{
@@ -139,7 +139,7 @@ pub async fn list_chats(
 
     let result = state
         .chat_repository
-        .list_by_user(&user.0.id, pagination)
+        .list(&user.0.id, pagination)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -216,14 +216,14 @@ pub async fn get_chat(
 ) -> Result<Json<ChatWithMessagesResponse>, StatusCode> {
     let chat = state
         .chat_repository
-        .get_by_id(id, &user.0.id)
+        .get(id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
     let messages = state
-        .message_repository
-        .list_by_chat(id, &user.0.id)
+        .chat_repository
+        .list_messages(id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

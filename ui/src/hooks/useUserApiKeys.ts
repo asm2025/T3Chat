@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
+import { t3ChatClient } from '@/lib/t3-chat-client';
 import type { UserApiKey, CreateUserApiKeyRequest } from '@/types/api';
 
 export function useUserApiKeys() {
@@ -10,7 +10,7 @@ export function useUserApiKeys() {
   const loadKeys = async () => {
     try {
       setLoading(true);
-      const data = await api.listUserApiKeys();
+      const data = await t3ChatClient.listUserApiKeys();
       setKeys(data);
     } catch (err) {
       setError(err as Error);
@@ -24,13 +24,13 @@ export function useUserApiKeys() {
   }, []);
 
   const createKey = async (data: CreateUserApiKeyRequest) => {
-    const newKey = await api.createUserApiKey(data);
+    const newKey = await t3ChatClient.createUserApiKey(data);
     setKeys([...keys, newKey]);
     return newKey;
   };
 
   const deleteKey = async (id: string) => {
-    await api.deleteUserApiKey(id);
+    await t3ChatClient.deleteUserApiKey(id);
     setKeys(keys.filter(k => k.id !== id));
   };
 

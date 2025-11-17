@@ -1,4 +1,7 @@
-use crate::{AppState, db::prelude::*, db::repositories::IAiModelRepository};
+use crate::{
+    AppState, db::prelude::*, db::repositories::TAiModelRepository,
+    middleware::auth::AuthenticatedUser,
+};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -86,7 +89,7 @@ pub async fn list_all_models(
 ) -> Result<Json<Vec<ModelResponse>>, StatusCode> {
     let models = state
         .ai_model_repository
-        .list_all()
+        .list()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -113,10 +116,111 @@ pub async fn get_model(
 ) -> Result<Json<ModelResponse>, StatusCode> {
     let model = state
         .ai_model_repository
-        .get_by_id(id)
+        .get(id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(ModelResponse::from(model)))
+}
+
+/// List models enabled for the authenticated user
+#[utoipa::path(
+    get,
+    path = "/api/v1/models/my",
+    tag = "Models",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "List of user's enabled models", body = [ModelResponse]),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn list_my_models(
+    user: AuthenticatedUser,
+    state: State<AppState>,
+) -> Result<Json<Vec<ModelResponse>>, StatusCode> {
+    let models = state
+        .ai_model_repository
+        .list_for_user(&user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(models.into_iter().map(ModelResponse::from).collect()))
+}
+
+/// Enable a model for the authenticated user
+#[utoipa::path(
+    post,
+    path = "/api/v1/models/{id}/enable",
+    tag = "Models",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Model identifier")
+    ),
+    responses(
+        (status = 204, description = "Model enabled"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Model not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn enable_model(
+    user: AuthenticatedUser,
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    // Verify model exists
+    let _model = state
+        .ai_model_repository
+        .get(id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    state
+        .ai_model_repository
+        .enable_for_user(&user.0.id, id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Disable a model for the authenticated user
+#[utoipa::path(
+    post,
+    path = "/api/v1/models/{id}/disable",
+    tag = "Models",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = Uuid, Path, description = "Model identifier")
+    ),
+    responses(
+        (status = 204, description = "Model disabled"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Model not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+pub async fn disable_model(
+    user: AuthenticatedUser,
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    // Verify model exists
+    let _model = state
+        .ai_model_repository
+        .get(id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    state
+        .ai_model_repository
+        .disable_for_user(&user.0.id, id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

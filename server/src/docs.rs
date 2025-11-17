@@ -28,6 +28,9 @@ impl Modify for BearerAuthAddon {
         crate::api::v1::models::list_models,
         crate::api::v1::models::list_all_models,
         crate::api::v1::models::get_model,
+        crate::api::v1::models::list_my_models,
+        crate::api::v1::models::enable_model,
+        crate::api::v1::models::disable_model,
         crate::api::v1::chats::list_chats,
         crate::api::v1::chats::create_chat,
         crate::api::v1::chats::get_chat,
@@ -35,13 +38,18 @@ impl Modify for BearerAuthAddon {
         crate::api::v1::chats::delete_chat,
         crate::api::v1::chats::messages::get_messages,
         crate::api::v1::chats::messages::create_message,
+        crate::api::v1::chats::messages::update_message,
+        crate::api::v1::chats::messages::delete_message,
+        crate::api::v1::chats::messages::clear_messages,
         crate::api::v1::chat::chat,
         crate::api::v1::chat::stream_chat,
         crate::api::v1::user::profile,
         crate::api::v1::user::update_profile,
         crate::api::v1::user_api_keys::list_keys,
         crate::api::v1::user_api_keys::create_key,
-        crate::api::v1::user_api_keys::delete_key
+        crate::api::v1::user_api_keys::delete_key,
+        crate::api::v1::features::list_features,
+        crate::api::v1::features::update_feature
     ),
     components(
         schemas(
@@ -55,11 +63,15 @@ impl Modify for BearerAuthAddon {
             crate::api::v1::chats::CreateChatRequest,
             crate::api::v1::chats::UpdateChatRequest,
             crate::api::v1::chats::messages::CreateMessageRequest,
+            crate::api::v1::chats::messages::UpdateMessageRequest,
             crate::api::v1::chat::ChatRequest,
             crate::api::v1::chat::ChatCompletionResponse,
             crate::api::v1::user::UpdateUserRequest,
             crate::api::v1::user_api_keys::UserApiKeyResponse,
-            crate::api::v1::user_api_keys::CreateUserApiKeyRequest
+            crate::api::v1::user_api_keys::CreateUserApiKeyRequest,
+            crate::api::v1::features::UserFeatureResponse,
+            crate::api::v1::features::UserFeaturesResponse,
+            crate::api::v1::features::UpdateFeatureRequest
         )
     ),
     tags(
@@ -69,7 +81,8 @@ impl Modify for BearerAuthAddon {
         (name = "Messages", description = "Chat message management"),
         (name = "Chat", description = "Chat completion endpoints"),
         (name = "User", description = "Authenticated user profile"),
-        (name = "User API Keys", description = "API key management")
+        (name = "User API Keys", description = "API key management"),
+        (name = "Features", description = "User feature preferences")
     ),
     modifiers(&BearerAuthAddon)
 )]

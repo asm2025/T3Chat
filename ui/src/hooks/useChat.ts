@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import * as api from '@/lib/serverComm';
+import { t3ChatClient } from '@/lib/t3-chat-client';
+import { toast } from '@/lib/toast';
 import type { ChatWithMessages } from '@/types/chat';
 
 export function useChat(chatId: string | null) {
@@ -17,10 +18,15 @@ export function useChat(chatId: string | null) {
     const loadChat = async () => {
       try {
         setLoading(true);
-        const data = await api.getChat(chatId);
+        setError(null);
+        const data = await t3ChatClient.getChat(chatId);
         setChat(data);
       } catch (err) {
-        setError(err as Error);
+        const error = err as Error;
+        setError(error);
+        toast.error("Failed to load chat", {
+          description: error.message,
+        });
       } finally {
         setLoading(false);
       }

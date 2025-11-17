@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, User, History, Brain, Key, Paperclip, Settings, LogOut, PanelLeft } from "lucide-react";
 import { useState } from "react";
 import { Sidebar as ShadcnSidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarInput, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { useChat } from "@/stores/appStore";
 
 interface AppSidebarProps {
     onSignInClick?: () => void;
@@ -22,6 +23,7 @@ export function Sidebar({ onSignInClick, variant = "sidebar", collapsible = "off
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState("");
     const { open, toggleSidebar, isMobile } = useSidebar();
+    const { clearChat } = useChat();
 
     const handleLogout = () => {
         logout();
@@ -38,7 +40,8 @@ export function Sidebar({ onSignInClick, variant = "sidebar", collapsible = "off
         .slice(0, 2);
 
     const handleNewChat = () => {
-        navigate("/chat");
+        clearChat();
+        navigate("/");
     };
 
     const menuItems = [

@@ -1,13 +1,17 @@
 use anyhow::Result;
 use axum::{
     Router,
-    http::{HeaderValue, Method, header},
-    routing::{delete, get, post},
+    http::HeaderValue,
+    routing::{delete, get, post, put},
 };
 use emix::env::{get_env, get_port_or};
 use std::{net::SocketAddr, sync::Arc};
 use tokio::task::spawn_blocking;
-use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
+use tower_http::{
+    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
+    services::ServeDir,
+    trace::TraceLayer,
+};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
     EnvFilter, filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt,
@@ -30,7 +34,7 @@ pub struct AppState {
     pub ai_model_repository: Arc<db::repositories::AiModelRepository>,
     pub user_api_key_repository: Arc<db::repositories::UserApiKeyRepository>,
     pub chat_repository: Arc<db::repositories::ChatRepository>,
-    pub message_repository: Arc<db::repositories::MessageRepository>,
+    pub user_feature_repository: Arc<db::repositories::UserFeatureRepository>,
 }
 
 #[tokio::main]
@@ -73,7 +77,8 @@ async fn run() -> Result<()> {
     let user_api_key_repository =
         Arc::new(db::repositories::UserApiKeyRepository::new(pool.clone()));
     let chat_repository = Arc::new(db::repositories::ChatRepository::new(pool.clone()));
-    let message_repository = Arc::new(db::repositories::MessageRepository::new(pool.clone()));
+    let user_feature_repository =
+        Arc::new(db::repositories::UserFeatureRepository::new(pool.clone()));
 
     let state = AppState {
         db: pool,
@@ -81,13 +86,13 @@ async fn run() -> Result<()> {
         ai_model_repository,
         user_api_key_repository,
         chat_repository,
-        message_repository,
+        user_feature_repository,
     };
     tracing::info!("Database configured successfully.");
 
     // Build the application
     tracing::info!("Configuring application");
-    let app = setup_router(state);
+    let app = setup_router(state)?;
     tracing::info!("Application configured successfully.");
 
     tracing::info!("Starting server");
@@ -195,32 +200,74 @@ fn setup_tracing(name: &str) -> Result<()> {
     Ok(())
 }
 
-fn setup_router(state: AppState) -> Router {
+fn setup_router(state: AppState) -> Result<Router> {
     tracing::info!("Configuring router");
 
-    let curdir = std::env::current_dir().unwrap();
+    let curdir = std::env::current_dir()
+        .map_err(|e| anyhow::anyhow!("Failed to get current directory: {}", e))?;
     let static_path = curdir.join("wwwroot");
-    let origins = std::env::var("CORS_ORIGINS")
-        .unwrap_or_else(|_| "http://localhost".to_string())
+
+    let cors_origins_str = std::env::var("CORS_ORIGINS")
+        .map_err(|e| anyhow::anyhow!("Failed to get CORS_ORIGINS: {}", e))?;
+
+    let origins: Vec<HeaderValue> = cors_origins_str
         .split(',')
-        .map(|s| s.trim().parse::<HeaderValue>().unwrap())
-        .collect::<Vec<_>>();
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            s.parse::<HeaderValue>()
+                .map_err(|e| anyhow::anyhow!("Invalid CORS origin '{}': {}", s, e))
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    if origins.is_empty() {
+        return Err(anyhow::anyhow!(
+            "No valid CORS origins found in CORS_ORIGINS"
+        ));
+    }
+
+    tracing::info!(
+        "Allowed CORS origins: {:?}",
+        origins
+            .iter()
+            .map(|v| v.to_str().unwrap_or("<invalid>"))
+            .collect::<Vec<_>>()
+    );
+
+    // Clone origins for the closure
+    let allowed_origins = origins.clone();
     let cors = CorsLayer::new()
-        .allow_origin(origins)
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::DELETE,
-            Method::OPTIONS,
-            Method::PATCH,
-        ])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT])
+        .allow_origin(AllowOrigin::predicate(
+            move |origin: &HeaderValue, _request: &_| allowed_origins.contains(origin),
+        ))
+        .allow_methods(AllowMethods::list([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PUT,
+            axum::http::Method::DELETE,
+            axum::http::Method::PATCH,
+            axum::http::Method::HEAD,
+            axum::http::Method::TRACE,
+            axum::http::Method::CONNECT,
+            axum::http::Method::OPTIONS,
+        ]))
+        .allow_headers(AllowHeaders::list([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::ACCEPT,
+        ]))
         .allow_credentials(true);
     let models_routes = Router::new()
         .route("/", get(api::v1::models::list_models))
         .route("/all", get(api::v1::models::list_all_models))
-        .route("/{id}", get(api::v1::models::get_model));
+        .route("/{id}", get(api::v1::models::get_model))
+        .route("/my", get(api::v1::models::list_my_models))
+        .route("/{id}/enable", post(api::v1::models::enable_model))
+        .route("/{id}/disable", post(api::v1::models::disable_model))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::auth_middleware,
+        ));
 
     let chats_routes = Router::new()
         .route(
@@ -236,7 +283,13 @@ fn setup_router(state: AppState) -> Router {
         .route(
             "/{id}/messages",
             get(api::v1::chats::messages::get_messages)
-                .post(api::v1::chats::messages::create_message),
+                .post(api::v1::chats::messages::create_message)
+                .delete(api::v1::chats::messages::clear_messages),
+        )
+        .route(
+            "/{chat_id}/messages/{id}",
+            put(api::v1::chats::messages::update_message)
+                .delete(api::v1::chats::messages::delete_message),
         )
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -262,6 +315,14 @@ fn setup_router(state: AppState) -> Router {
             middleware::auth::auth_middleware,
         ));
 
+    let features_routes = Router::new()
+        .route("/", get(api::v1::features::list_features))
+        .route("/{feature}", put(api::v1::features::update_feature))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::auth_middleware,
+        ));
+
     let authenticated_routes = Router::new()
         .route(
             "/me",
@@ -278,6 +339,7 @@ fn setup_router(state: AppState) -> Router {
         .nest("/api/v1/chats", chats_routes)
         .nest("/api/v1/chat", chat_routes)
         .nest("/api/v1/user-api-keys", user_api_keys_routes)
+        .nest("/api/v1/features", features_routes)
         .nest("/api/v1", authenticated_routes)
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
         .layer(
@@ -293,9 +355,9 @@ fn setup_router(state: AppState) -> Router {
         .with_state(state);
 
     if env::is_swagger_enabled() {
-        router.merge(swagger_docs_router())
+        Ok(router.merge(swagger_docs_router()))
     } else {
-        router
+        Ok(router)
     }
 }
 

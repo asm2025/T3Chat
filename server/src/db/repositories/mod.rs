@@ -6,5 +6,5 @@ mod user_api_key_repository;
 pub use user_api_key_repository::*;
 mod chat_repository;
 pub use chat_repository::*;
-mod message_repository;
-pub use message_repository::*;
+mod user_feature_repository;
+pub use user_feature_repository::*;

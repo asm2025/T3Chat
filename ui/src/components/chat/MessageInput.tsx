@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUp, Paperclip, Search, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
+import { ArrowUp, Paperclip, Search, ChevronDown, ChevronLeft, ChevronUp, Globe } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import type { AIModel } from "@/types/model";
-import { fetchJson } from "@/lib/fetch-interceptor";
-
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "";
+import { t3ChatClient } from "@/lib/t3-chat-client";
+import { useAppStore } from "@/stores/appStore";
 
 interface MessageInputProps {
     onSend: (content: string) => void;
@@ -19,14 +19,41 @@ interface MessageInputProps {
     onWebSearchToggle?: (enabled: boolean) => void;
 }
 
-export function MessageInput({ onSend, disabled, models = [], selectedModel, onModelChange, webSearchEnabled = false, onWebSearchToggle }: MessageInputProps) {
+export interface MessageInputRef {
+    setContent: (content: string) => void;
+    clearContent: () => void;
+}
+
+export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(({ onSend, disabled, models = [], selectedModel, onModelChange, webSearchEnabled, onWebSearchToggle }, ref) => {
     const [content, setContent] = useState("");
     const [fetchedModels, setFetchedModels] = useState<AIModel[] | null>(null); // active
     const [fetchedAllModels, setFetchedAllModels] = useState<AIModel[] | null>(null); // all
     const [showAllModels, setShowAllModels] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [loadingModels, setLoadingModels] = useState(false);
-    const [allModelsError, setAllModelsError] = useState<string | null>(null);
+
+    // Features store
+    const { isFeatureEnabled, updateFeature, fetchFeatures } = useAppStore();
+    const webSearchEnabledFromStore = isFeatureEnabled("web_search");
+    // Use prop as fallback during initial load
+    const isWebSearchEnabled = webSearchEnabledFromStore ?? webSearchEnabled ?? false;
+
+    // Expose methods via ref
+    useImperativeHandle(ref, () => ({
+        setContent: (newContent: string) => {
+            setContent(newContent);
+        },
+        clearContent: () => {
+            setContent("");
+        },
+    }));
+
+    // Fetch features on mount
+    useEffect(() => {
+        fetchFeatures().catch((err) => {
+            console.error("Failed to fetch features:", err);
+        });
+    }, [fetchFeatures]);
 
     // Fetch active models from server if no models provided via props
     useEffect(() => {
@@ -36,7 +63,8 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
         }
         let isMounted = true;
         setLoadingModels(true);
-        fetchJson<AIModel[]>(`${API_BASE_URL}/api/v1/models`)
+        t3ChatClient
+            .listModels()
             .then((data) => {
                 if (isMounted) setFetchedModels(data);
             })
@@ -58,16 +86,19 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
         if (fetchedAllModels !== null) return;
         let isMounted = true;
         setLoadingModels(true);
-        setAllModelsError(null);
-        fetchJson<AIModel[]>(`${API_BASE_URL}/api/v1/models/all`)
+        t3ChatClient
+            .listAllModels()
             .then((data) => {
                 if (isMounted) setFetchedAllModels(data);
             })
             .catch((err) => {
                 if (!isMounted) return;
+                const errorMessage = err instanceof Error ? err.message : "Failed to load all models";
+                toast.error("Failed to load models", {
+                    description: errorMessage,
+                });
                 console.error("Failed to load all models", err);
                 setFetchedAllModels([]);
-                setAllModelsError(err instanceof Error ? err.message : "Failed to load all models");
             })
             .finally(() => {
                 if (isMounted) setLoadingModels(false);
@@ -224,8 +255,7 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
                                         {/* Model list(s) */}
                                         <div className="max-h-[360px] overflow-y-auto px-1.5 scroll-shadow" data-shadow="true">
                                             {loadingModels && <div className="p-3 text-sm text-muted-foreground">Loading models…</div>}
-                                            {!loadingModels && allModelsError && showAllModels && <div className="p-3 text-sm text-red-500">Failed to load all models: {allModelsError}</div>}
-                                            {!loadingModels && listToRender.length === 0 && !allModelsError && (
+                                            {!loadingModels && listToRender.length === 0 && (
                                                 <div className="p-3 text-sm text-muted-foreground">{!showAllModels && enabledModels.length === 0 && searchQuery.trim().length === 0 ? "No models activated." : "No models found."}</div>
                                             )}
 
@@ -303,16 +333,29 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        onClick={() => onWebSearchToggle(!webSearchEnabled)}
+                                        onClick={async () => {
+                                            const newEnabled = !isWebSearchEnabled;
+                                            try {
+                                                await updateFeature("web_search", newEnabled);
+                                                onWebSearchToggle?.(newEnabled);
+                                            } catch (err) {
+                                                const errorMessage = err instanceof Error ? err.message : "Failed to update web search";
+                                                toast.error("Failed to update web search", {
+                                                    description: errorMessage,
+                                                });
+                                                console.error("Failed to update web search:", err);
+                                            }
+                                        }}
                                         className={cn(
                                             "text-xs h-8 gap-2 rounded-full border border-solid px-2 sm:px-2.5",
                                             "border-secondary-foreground/10 text-muted-foreground py-1.5",
                                             "hover:bg-muted/40 hover:text-foreground",
                                             "disabled:hover:text-foreground/50 disabled:hover:bg-transparent",
                                             "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden",
+                                            isWebSearchEnabled && "bg-accent/30 text-foreground",
                                         )}
-                                        aria-label={webSearchEnabled ? "Web search enabled" : "Web search disabled"}>
-                                        <Search className="h-4 w-4" />
+                                        aria-label={isWebSearchEnabled ? "Web search enabled" : "Web search disabled"}>
+                                        <Globe className={cn("h-4 w-4", !isWebSearchEnabled && "opacity-50")} />
                                         <span className="hidden md:block">Search</span>
                                     </Button>
                                 </div>
@@ -342,4 +385,6 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
             </form>
         </div>
     );
-}
+});
+
+MessageInput.displayName = "MessageInput";

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { User } from 'firebase/auth'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { auth } from './firebase'
-import { getCurrentUser } from './serverComm'
+import { t3ChatClient } from './t3-chat-client'
 
 // Constants
 const LOGOUT_RESET_DELAY_MS = 1000;
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserProfile = useCallback(async () => {
     try {
       setProfileLoading(true)
-      const response = await getCurrentUser()
+      const response = await t3ChatClient.getCurrentUser()
       setUserProfile(response)
     } catch (error) {
       // Only log profile fetch errors if they're not authentication errors

@@ -6,12 +6,14 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
+import { useChat } from "@/stores/appStore";
 
 export function FloatingToolbar() {
     const { open, toggleSidebar, isMobile } = useSidebar();
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const navigate = useNavigate();
+    const { clearChat } = useChat();
 
     // Only show when sidebar is collapsed (and not on mobile where it's always offcanvas)
     if (open || isMobile) {
@@ -19,7 +21,8 @@ export function FloatingToolbar() {
     }
 
     const handleNewChat = () => {
-        navigate("/chat");
+        clearChat();
+        navigate("/");
     };
 
     return (

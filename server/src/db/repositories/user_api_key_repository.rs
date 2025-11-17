@@ -11,8 +11,8 @@ use crate::db::models::{
 use crate::db::{DbPool, schema::user_api_keys};
 
 #[async_trait]
-pub trait IUserApiKeyRepository: Send + Sync {
-    async fn list_by_user(&self, user_id: &str) -> Result<Vec<UserApiKeyModel>>;
+pub trait TUserApiKeyRepository: Send + Sync {
+    async fn list(&self, user_id: &str) -> Result<Vec<UserApiKeyModel>>;
     async fn get_default_for_provider(
         &self,
         user_id: &str,
@@ -35,8 +35,8 @@ impl UserApiKeyRepository {
 }
 
 #[async_trait]
-impl IUserApiKeyRepository for UserApiKeyRepository {
-    async fn list_by_user(&self, user_id: &str) -> Result<Vec<UserApiKeyModel>> {
+impl TUserApiKeyRepository for UserApiKeyRepository {
+    async fn list(&self, user_id: &str) -> Result<Vec<UserApiKeyModel>> {
         let mut conn = self
             .pool
             .get()

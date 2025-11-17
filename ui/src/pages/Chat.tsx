@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { useChat } from "@/hooks/useChat";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { MessageList } from "@/components/chat/MessageList";
-import { MessageInput } from "@/components/chat/MessageInput";
+import { MessageInput, type MessageInputRef } from "@/components/chat/MessageInput";
 import { ChatPlaceholder } from "@/components/chat/ChatPlaceholder";
 import { MasterLayout } from "@/components/MasterLayout";
 import { useModels } from "@/hooks/useModels";
-import * as api from "@/lib/serverComm";
-import type { AIModel } from "@/types/model";
+import { t3ChatClient } from "@/lib/t3-chat-client";
+import { toast } from "@/lib/toast";
+import { useChat as useChatStore, useAppStore } from "@/stores/appStore";
 import type { Message } from "@/types/chat";
 
 export function Chat() {
@@ -18,19 +19,48 @@ export function Chat() {
     const { models } = useModels();
     const { user, userProfile } = useAuth();
     const navigate = useNavigate();
-    const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [webSearchEnabled, setWebSearchEnabled] = useState(false);
     const { sendMessage, streaming } = useStreamingChat();
+    const messageInputRef = useRef<MessageInputRef>(null);
+    
+    // Zustand store
+    const {
+        messages,
+        selectedModel,
+        webSearchEnabled,
+        setCurrentChat,
+        setSelectedModel,
+        setWebSearchEnabled,
+        addMessage,
+        updateMessage,
+        setMessages,
+        clearChat,
+    } = useChatStore();
 
-    // Update messages when chat loads
+    // Reset chat when navigating to root (new chat)
+    useEffect(() => {
+        if (!chatId) {
+            clearChat();
+        }
+    }, [chatId, clearChat]);
+
+    // Update store when chat loads from API
     useEffect(() => {
         if (chat) {
-            setMessages(chat.messages || []);
-        } else {
-            setMessages([]);
+            setCurrentChat(chat);
+        } else if (chatId === null || chatId === undefined) {
+            // Clear chat if we're on root and no chat is loaded
+            setCurrentChat(null);
         }
-    }, [chat]);
+    }, [chat, chatId, setCurrentChat]);
+
+    // Show toast when error occurs
+    useEffect(() => {
+        if (error && chatId) {
+            toast.error("Failed to load chat", {
+                description: error.message,
+            });
+        }
+    }, [error, chatId]);
 
     // Set selected model based on chat or default
     useEffect(() => {
@@ -50,7 +80,7 @@ export function Chat() {
         if (!selectedModel) {
             setSelectedModel(models[0]);
         }
-    }, [chat, models, selectedModel]);
+    }, [chat, models, selectedModel, setSelectedModel]);
 
     const handleSendMessage = async (content: string) => {
         let currentChatId = chatId;
@@ -58,13 +88,17 @@ export function Chat() {
         // If no chat exists, create one
         if (!currentChatId && selectedModel) {
             try {
-                const newChat = await api.createChat({
+                const newChat = await t3ChatClient.createChat({
                     model_provider: selectedModel.provider,
                     model_id: selectedModel.model_id,
                 });
                 currentChatId = newChat.id;
                 navigate(`/${newChat.id}`);
             } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : "Failed to create chat";
+                toast.error("Failed to create chat", {
+                    description: errorMessage,
+                });
                 console.error("Failed to create chat:", err);
                 return;
             }
@@ -82,10 +116,10 @@ export function Chat() {
                 sequence_number: messages.length,
                 created_at: new Date().toISOString(),
             };
-            setMessages((prev) => [...prev, userMessage]);
+            addMessage(userMessage);
 
             // Create user message on server
-            await api.createMessage(currentChatId, { content, role: "user" });
+            await t3ChatClient.createMessage(currentChatId, { content, role: "user" });
 
             // Create assistant message placeholder
             const assistantMessageId = `temp-assistant-${Date.now()}`;
@@ -98,7 +132,7 @@ export function Chat() {
                 sequence_number: messages.length + 1,
                 created_at: new Date().toISOString(),
             };
-            setMessages((prev) => [...prev, assistantMessage]);
+            addMessage(assistantMessage);
 
             // Stream assistant response
             await sendMessage(
@@ -112,29 +146,40 @@ export function Chat() {
                 (chunk) => {
                     assistantContent += chunk;
                     // Update assistant message in real-time
-                    setMessages((prev) => prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg)));
+                    updateMessage(assistantMessageId, { content: assistantContent });
                 },
                 async () => {
                     try {
                         // Reload chat to get proper IDs (assistant message is already saved by the server)
                         if (currentChatId) {
-                            const updatedChat = await api.getChat(currentChatId);
+                            const updatedChat = await t3ChatClient.getChat(currentChatId);
                             setMessages(updatedChat.messages);
                         }
                     } catch (err) {
+                        const errorMessage = err instanceof Error ? err.message : "Failed to reload chat";
+                        toast.error("Failed to reload chat", {
+                            description: errorMessage,
+                        });
                         console.error("Failed to reload chat:", err);
                     }
                 },
             );
         } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to send message";
+            toast.error("Failed to send message", {
+                description: errorMessage,
+            });
             console.error("Failed to send message:", err);
             // Remove optimistic messages on error
-            setMessages((prev) => prev.filter((msg) => !msg.id.startsWith("temp-")));
+            const currentMessages = useAppStore.getState().messages;
+            setMessages(currentMessages.filter((msg) => !msg.id.startsWith("temp-")));
         }
     };
 
     const handlePromptClick = (prompt: string) => {
-        handleSendMessage(prompt);
+        // Clear the textarea and set the prompt text
+        messageInputRef.current?.clearContent();
+        messageInputRef.current?.setContent(prompt);
     };
 
     const displayName = userProfile?.display_name || user?.displayName || user?.email?.split("@")[0];
@@ -150,18 +195,19 @@ export function Chat() {
         );
     }
 
+    // Error is now handled via toast, but we still show a fallback UI
     if (error && chatId) {
         return (
             <MasterLayout>
                 <div className="flex items-center justify-center h-full">
-                    <div className="text-destructive">Error: {error.message}</div>
+                    <div className="text-muted-foreground">Unable to load chat. Please try again.</div>
                 </div>
             </MasterLayout>
         );
     }
 
     return (
-        <MasterLayout footer={<MessageInput onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />}>
+        <MasterLayout footer={<MessageInput ref={messageInputRef} onSend={handleSendMessage} disabled={streaming} models={models} selectedModel={selectedModel} onModelChange={setSelectedModel} webSearchEnabled={webSearchEnabled} onWebSearchToggle={setWebSearchEnabled} />}>
             <div className="mx-auto w-full max-w-4xl">{hasMessages ? <MessageList messages={messages} /> : <ChatPlaceholder userName={displayName} onPromptClick={handlePromptClick} />}</div>
         </MasterLayout>
     );

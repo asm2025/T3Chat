@@ -8,7 +8,8 @@ import { ModelSelector } from '@/components/model/ModelSelector';
 import { useModels } from '@/hooks/useModels';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import * as api from '@/lib/serverComm';
+import { t3ChatClient } from '@/lib/t3-chat-client';
+import { toast } from '@/lib/toast';
 import type { AIModel } from '@/types/model';
 import type { Message } from '@/types/chat';
 
@@ -21,12 +22,20 @@ export function ChatView({ chatId }: { chatId: string | null }) {
   const { sendMessage, streaming } = useStreamingChat();
 
   const handleNewChat = async () => {
-    // Create new chat with default model
-    const newChat = await api.createChat({
-      model_provider: 'openai',
-      model_id: 'gpt-3.5-turbo',
-    });
-    navigate(`/${newChat.id}`);
+    try {
+      // Create new chat with default model
+      const newChat = await t3ChatClient.createChat({
+        model_provider: 'openai',
+        model_id: 'gpt-3.5-turbo',
+      });
+      navigate(`/${newChat.id}`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create new chat";
+      toast.error("Failed to create new chat", {
+        description: errorMessage,
+      });
+      console.error("Failed to create new chat:", err);
+    }
   };
 
   // Update messages when chat loads
@@ -58,6 +67,15 @@ export function ChatView({ chatId }: { chatId: string | null }) {
     }
   }, [chat, models, selectedModel]);
 
+  // Show toast when error occurs
+  useEffect(() => {
+    if (error && chatId) {
+      toast.error("Failed to load chat", {
+        description: error.message,
+      });
+    }
+  }, [error, chatId]);
+
   const handleSendMessage = async (content: string) => {
     if (!chatId || !selectedModel) return;
 
@@ -74,7 +92,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
       setMessages(prev => [...prev, userMessage]);
 
       // Create user message on server
-      await api.createMessage(chatId, { content, role: 'user' });
+      await t3ChatClient.createMessage(chatId, { content, role: 'user' });
 
       // Create assistant message placeholder
       const assistantMessageId = `temp-assistant-${Date.now()}`;
@@ -110,21 +128,29 @@ export function ChatView({ chatId }: { chatId: string | null }) {
         async () => {
           try {
             // Save complete message to server
-            await api.createMessage(chatId, {
+            await t3ChatClient.createMessage(chatId, {
               content: assistantContent,
               role: 'assistant',
             });
             // Reload chat to get proper IDs
             if (chatId) {
-              const updatedChat = await api.getChat(chatId);
+              const updatedChat = await t3ChatClient.getChat(chatId);
               setMessages(updatedChat.messages);
             }
           } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Failed to save assistant message";
+            toast.error("Failed to save message", {
+              description: errorMessage,
+            });
             console.error('Failed to save assistant message:', err);
           }
         }
       );
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to send message";
+      toast.error("Failed to send message", {
+        description: errorMessage,
+      });
       console.error('Failed to send message:', err);
       // Remove optimistic messages on error
       setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
@@ -173,10 +199,11 @@ export function ChatView({ chatId }: { chatId: string | null }) {
     );
   }
 
+  // Error is now handled via toast, but we still show a fallback UI
   if (error && chatId) {
     return renderShell(
-      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-destructive">
-        Error: {error.message}
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
+        Unable to load chat. Please try again.
       </div>
     );
   }

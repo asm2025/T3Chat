@@ -12,6 +12,7 @@ import { Sidebar } from "@/components/sidebar";
 import { MobileWarningBanner } from "@/components/mobile-warning-banner";
 import { FloatingToolbar } from "@/components/floating-toolbar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Toaster } from "@/components/ui/sonner";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "t3chat-sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 20; // 20% of viewport width
@@ -251,6 +252,7 @@ function App() {
                 <Router>
                     <AppContent />
                 </Router>
+                <Toaster />
             </ThemeProvider>
         </AuthProvider>
     );
