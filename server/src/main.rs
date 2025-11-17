@@ -247,8 +247,6 @@ fn setup_router(state: AppState) -> Result<Router> {
             axum::http::Method::DELETE,
             axum::http::Method::PATCH,
             axum::http::Method::HEAD,
-            axum::http::Method::TRACE,
-            axum::http::Method::CONNECT,
             axum::http::Method::OPTIONS,
         ]))
         .allow_headers(AllowHeaders::list([
