@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { t3ChatClient } from '@/lib/t3-chat-client';
 import { toast } from '@/lib/toast';
+import { getErrorMessage } from '@/lib/utils';
 import type { ChatRequest } from '@/types/api';
 
 export function useStreamingChat() {
@@ -22,10 +23,10 @@ export function useStreamingChat() {
 
       onComplete();
     } catch (err) {
-      const error = err as Error;
+      const error = err instanceof Error ? err : new Error(getErrorMessage(err));
       setError(error);
       toast.error("Failed to send message", {
-        description: error.message,
+        description: getErrorMessage(err),
       });
     } finally {
       setStreaming(false);

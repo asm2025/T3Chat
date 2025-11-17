@@ -1,4 +1,4 @@
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/stores/appStore";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Edit2, X } from "lucide-react";
 import { MasterLayout } from "@/components/MasterLayout";
 import { toast } from "@/lib/toast";
+import { getErrorMessage } from "@/lib/utils";
 
 interface UserProfile {
     id: string;
@@ -39,7 +40,7 @@ export function Profile() {
                     setDisplayName(data.display_name || "");
                     setOriginalDisplayName(data.display_name || "");
                 } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : "Failed to fetch user profile";
+                    const errorMessage = getErrorMessage(error);
                     toast.error("Failed to fetch user profile", {
                         description: errorMessage,
                     });
@@ -83,7 +84,7 @@ export function Profile() {
             setIsEditing(false);
             toast.success("Profile updated successfully");
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Failed to update profile";
+            const errorMessage = getErrorMessage(error);
             toast.error("Failed to update profile", {
                 description: errorMessage,
             });

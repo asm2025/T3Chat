@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/stores/appStore";
+import { useAuthInit } from "@/hooks/useAuthInit";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LoginForm } from "@/components/login-form";
 import { Settings } from "@/pages/Settings";
@@ -20,6 +21,8 @@ const MIN_SIDEBAR_WIDTH = 5; // 5% of viewport width
 const MAX_SIDEBAR_WIDTH = 95; // 95% of viewport width
 
 function AppContent() {
+    // Initialize Firebase auth listener
+    useAuthInit();
     const { user, loading, profileLoading } = useAuth();
     const [showLoginForAnonymous, setShowLoginForAnonymous] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -96,7 +99,7 @@ function AppContent() {
     }
 
     // Determine if login form should be shown
-    const allowAnonymous = import.meta.env.VITE_ALLOW_ANONYMOUS_USERS !== "false";
+    const allowAnonymous = import.meta.env.VITE_ALLOW_ANONYMOUS_USERS === "true";
 
     let shouldShowLogin: boolean;
 
@@ -247,14 +250,12 @@ function AppContent() {
 
 function App() {
     return (
-        <AuthProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="t3chat-theme">
-                <Router>
-                    <AppContent />
-                </Router>
-                <Toaster />
-            </ThemeProvider>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="t3chat-theme">
+            <Router>
+                <AppContent />
+            </Router>
+            <Toaster />
+        </ThemeProvider>
     );
 }
 

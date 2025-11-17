@@ -1,47 +1,25 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import type { User } from 'firebase/auth'
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
-import { auth } from './firebase'
-import { t3ChatClient } from './t3-chat-client'
+import { useEffect } from 'react';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useAppStore } from '@/stores/appStore';
 
-// Constants
 const LOGOUT_RESET_DELAY_MS = 1000;
 
-// User profile from our backend
-interface UserProfile {
-  id: string
-  email: string | null
-  display_name: string | null
-  image_url: string | null
-  created_at: string
-  updated_at: string
-}
-
-type AuthContextType = {
-  user: User | null
-  userProfile: UserProfile | null
-  loading: boolean
-  profileLoading: boolean
-  logout: () => void
-  forceRefresh: () => void
-}
-
-const AuthContext = createContext<AuthContextType>({ 
-  user: null, 
-  userProfile: null,
-  loading: true,
-  profileLoading: true,
-  logout: () => {},
-  forceRefresh: () => {}
-})
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [profileLoading, setProfileLoading] = useState(true)
-  const [isLoggedOut, setIsLoggedOut] = useState(false)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+/**
+ * Hook to initialize Firebase auth and sync with Zustand store
+ * This replaces the AuthProvider component logic
+ */
+export function useAuthInit() {
+  const {
+    setUser,
+    setUserProfile,
+    setLoading,
+    setProfileLoading,
+    setIsLoggedOut,
+    fetchUserProfile,
+    isLoggedOut,
+    refreshTrigger,
+  } = useAppStore();
 
   useEffect(() => {
     // Create a flag to track if this effect is still active
@@ -57,14 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!isActive) {
             return;
           }
-          
-          setUser(user)
-          setLoading(false)
-          
+
+          setUser(user);
+          setLoading(false);
+
           if (!user) {
             // Check if anonymous users are allowed (defaults to true if not set)
-            const allowAnonymous = import.meta.env.VITE_ALLOW_ANONYMOUS_USERS !== 'false';
-            
+            const allowAnonymous = import.meta.env.VITE_ALLOW_ANONYMOUS_USERS === 'true';
+
             // Create anonymous user if allowed (and not explicitly logged out)
             if (!isLoggedOut && allowAnonymous) {
               try {
@@ -82,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUserProfile(null);
                 setProfileLoading(false);
               }
-              
+
               // If logout occurred, reset state after delay
               if (isLoggedOut) {
                 setTimeout(() => {
@@ -97,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (isActive) {
               setIsLoggedOut(false);
             }
-            
+
             // Fetch user profile for authenticated users (non-anonymous with email)
             if (!user.isAnonymous && user.email && !isLoggedOut && isActive) {
               fetchUserProfile();
@@ -110,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Store unsubscribe function for cleanup
         return unsubscribe;
-
       } catch (error) {
         console.error('Auth initialization error:', error);
         if (isActive) {
@@ -134,45 +111,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         unsubscribe();
       }
     };
-  }, [isLoggedOut, refreshTrigger])
-
-  const logout = () => {
-    setIsLoggedOut(true);
-  }
-
-  const forceRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
-  }
-
-  const fetchUserProfile = useCallback(async () => {
-    try {
-      setProfileLoading(true)
-      const response = await t3ChatClient.getCurrentUser()
-      setUserProfile(response)
-    } catch (error) {
-      // Only log profile fetch errors if they're not authentication errors
-      // (which can happen during logout when old listeners are still active)
-      if (error instanceof Error && !error.message.includes('Authentication required')) {
-        console.error('Failed to fetch user profile:', error)
-      }
-      setUserProfile(null)
-    } finally {
-      setProfileLoading(false)
-    }
-  }, [])  // Empty dependencies since it only uses setState functions
-
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      userProfile,
-      loading, 
-      profileLoading,
-      logout,
-      forceRefresh
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  }, [isLoggedOut, refreshTrigger, setUser, setUserProfile, setLoading, setProfileLoading, setIsLoggedOut, fetchUserProfile]);
 }
 
-export const useAuth = () => useContext(AuthContext) 

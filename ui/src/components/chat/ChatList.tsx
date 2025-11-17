@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useChats } from '@/hooks/useChats';
+import { useMemo, useState, useEffect } from 'react';
+import { useChats } from '@/stores/appStore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,15 @@ import { Plus, Search } from 'lucide-react';
 import { t3ChatClient } from '@/lib/t3-chat-client';
 
 export function ChatList() {
-  const { chats, loading, refresh } = useChats();
+  const { chats, loading, fetchChats } = useChats();
   const navigate = useNavigate();
   const { chatId } = useParams<{ chatId?: string }>();
   const [query, setQuery] = useState('');
+
+  // Fetch chats on mount
+  useEffect(() => {
+    fetchChats();
+  }, [fetchChats]);
 
   const filteredChats = useMemo(() => {
     if (!query.trim()) {
@@ -27,7 +32,7 @@ export function ChatList() {
         model_provider: 'openai',
         model_id: 'gpt-3.5-turbo',
       });
-      await refresh();
+      await fetchChats();
       navigate(`/${newChat.id}`);
     } catch (error) {
       console.error('Failed to create chat', error);

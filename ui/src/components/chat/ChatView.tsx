@@ -1,25 +1,53 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useChat } from '@/hooks/useChat';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ModelSelector } from '@/components/model/ModelSelector';
-import { useModels } from '@/hooks/useModels';
+import { useModels, useChat } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { t3ChatClient } from '@/lib/t3-chat-client';
 import { toast } from '@/lib/toast';
+import { getErrorMessage } from '@/lib/utils';
 import type { AIModel } from '@/types/model';
 import type { Message } from '@/types/chat';
 
 export function ChatView({ chatId }: { chatId: string | null }) {
-  const { chat, loading, error } = useChat(chatId);
-  const { models } = useModels();
+  const { models, fetchModels } = useModels();
+  const {
+    currentChat,
+    messages,
+    selectedModel,
+    loading,
+    error,
+    setCurrentChatId,
+    setSelectedModel,
+    addMessage,
+    updateMessage,
+    removeMessage,
+    fetchChat,
+    clearChat,
+  } = useChat();
   const navigate = useNavigate();
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const { sendMessage, streaming } = useStreamingChat();
+
+  // Fetch models on mount
+  useEffect(() => {
+    if (models.length === 0) {
+      fetchModels();
+    }
+  }, [models.length, fetchModels]);
+
+  // Fetch chat when chatId changes
+  useEffect(() => {
+    if (chatId) {
+      setCurrentChatId(chatId);
+      fetchChat(chatId);
+    } else {
+      clearChat();
+    }
+  }, [chatId, fetchChat, setCurrentChatId, clearChat]);
 
   const handleNewChat = async () => {
     try {
@@ -30,7 +58,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
       });
       navigate(`/${newChat.id}`);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create new chat";
+      const errorMessage = getErrorMessage(err);
       toast.error("Failed to create new chat", {
         description: errorMessage,
       });
@@ -38,22 +66,16 @@ export function ChatView({ chatId }: { chatId: string | null }) {
     }
   };
 
-  // Update messages when chat loads
-  useEffect(() => {
-    if (chat) {
-      setMessages(chat.messages || []);
-    }
-  }, [chat]);
-
+  // Update messages when chat loads (messages are already synced by setCurrentChat in store)
   // Set selected model based on chat or default
   useEffect(() => {
     if (models.length === 0) {
       return;
     }
 
-    if (chat) {
+    if (currentChat) {
       const match = models.find(
-        (m) => m.provider === chat.model_provider && m.model_id === chat.model_id
+        (m) => m.provider === currentChat.model_provider && m.model_id === currentChat.model_id
       );
       const nextModel = match ?? models[0];
       if (!selectedModel || selectedModel.id !== nextModel.id) {
@@ -65,7 +87,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
     if (!selectedModel) {
       setSelectedModel(models[0]);
     }
-  }, [chat, models, selectedModel]);
+  }, [currentChat, models, selectedModel, setSelectedModel]);
 
   // Show toast when error occurs
   useEffect(() => {
@@ -89,7 +111,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
         sequence_number: messages.length,
         created_at: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, userMessage]);
+      addMessage(userMessage);
 
       // Create user message on server
       await t3ChatClient.createMessage(chatId, { content, role: 'user' });
@@ -105,7 +127,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
         sequence_number: messages.length + 1,
         created_at: new Date().toISOString(),
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      addMessage(assistantMessage);
 
       // Stream assistant response
       await sendMessage(
@@ -119,11 +141,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
         (chunk) => {
           assistantContent += chunk;
           // Update assistant message in real-time
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessageId 
-              ? { ...msg, content: assistantContent }
-              : msg
-          ));
+          updateMessage(assistantMessageId, { content: assistantContent });
         },
         async () => {
           try {
@@ -134,11 +152,10 @@ export function ChatView({ chatId }: { chatId: string | null }) {
             });
             // Reload chat to get proper IDs
             if (chatId) {
-              const updatedChat = await t3ChatClient.getChat(chatId);
-              setMessages(updatedChat.messages);
+              await fetchChat(chatId);
             }
           } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to save assistant message";
+            const errorMessage = getErrorMessage(err);
             toast.error("Failed to save message", {
               description: errorMessage,
             });
@@ -147,13 +164,17 @@ export function ChatView({ chatId }: { chatId: string | null }) {
         }
       );
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to send message";
+      const errorMessage = getErrorMessage(err);
       toast.error("Failed to send message", {
         description: errorMessage,
       });
       console.error('Failed to send message:', err);
       // Remove optimistic messages on error
-      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
+      messages.forEach(msg => {
+        if (msg.id.startsWith('temp-')) {
+          removeMessage(msg.id);
+        }
+      });
     }
   };
 
@@ -208,7 +229,7 @@ export function ChatView({ chatId }: { chatId: string | null }) {
     );
   }
 
-  if (!chat && chatId) {
+  if (!currentChat && chatId) {
     return renderShell(
       <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
         Chat not found

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUp, Paperclip, Search, ChevronDown, ChevronLeft, ChevronUp, Globe } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import type { AIModel } from "@/types/model";
 import { t3ChatClient } from "@/lib/t3-chat-client";
@@ -93,7 +93,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(({ on
             })
             .catch((err) => {
                 if (!isMounted) return;
-                const errorMessage = err instanceof Error ? err.message : "Failed to load all models";
+                const errorMessage = getErrorMessage(err);
                 toast.error("Failed to load models", {
                     description: errorMessage,
                 });
@@ -339,7 +339,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(({ on
                                                 await updateFeature("web_search", newEnabled);
                                                 onWebSearchToggle?.(newEnabled);
                                             } catch (err) {
-                                                const errorMessage = err instanceof Error ? err.message : "Failed to update web search";
+                                                const errorMessage = getErrorMessage(err);
                                                 toast.error("Failed to update web search", {
                                                     description: errorMessage,
                                                 });

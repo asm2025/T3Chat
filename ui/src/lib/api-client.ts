@@ -84,7 +84,8 @@ export class ApiClient {
             });
         } catch (error) {
             // Network error (server unresponsive, CORS, etc.)
-            const apiError = new Error("The server is unresponsive") as ApiClientError;
+            const errorMessage = error instanceof Error ? error.message : typeof error === "string" ? error : "Network error occurred";
+            const apiError = new Error(errorMessage) as ApiClientError;
             apiError.name = "ApiClientError";
             apiError.status = 500;
             apiError.isNetworkError = true;
@@ -101,7 +102,8 @@ export class ApiClient {
                     responseBody = await response.json();
                 } catch (parseError) {
                     // If JSON parsing fails, throw error
-                    const apiError = new Error("Failed to parse JSON response") as ApiClientError;
+                    const errorMessage = parseError instanceof Error ? parseError.message : typeof parseError === "string" ? parseError : "Failed to parse JSON response";
+                    const apiError = new Error(errorMessage) as ApiClientError;
                     apiError.name = "ApiClientError";
                     apiError.status = response.status;
                     throw apiError;
@@ -243,4 +245,3 @@ export class ApiClient {
 
 // Export a singleton instance
 export const api = new ApiClient();
-

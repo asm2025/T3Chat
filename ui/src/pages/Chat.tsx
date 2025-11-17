@@ -1,22 +1,20 @@
 import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "@/lib/auth-context";
-import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/stores/appStore";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { MessageList } from "@/components/chat/MessageList";
 import { MessageInput, type MessageInputRef } from "@/components/chat/MessageInput";
 import { ChatPlaceholder } from "@/components/chat/ChatPlaceholder";
 import { MasterLayout } from "@/components/MasterLayout";
-import { useModels } from "@/hooks/useModels";
+import { useModels, useChat as useChatStore, useAppStore } from "@/stores/appStore";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
-import { useChat as useChatStore, useAppStore } from "@/stores/appStore";
+import { getErrorMessage } from "@/lib/utils";
 import type { Message } from "@/types/chat";
 
 export function Chat() {
     const { chatId } = useParams<{ chatId?: string }>();
-    const { chat, loading, error } = useChat(chatId || null);
-    const { models } = useModels();
+    const { models, fetchModels } = useModels();
     const { user, userProfile } = useAuth();
     const navigate = useNavigate();
     const { sendMessage, streaming } = useStreamingChat();
@@ -24,9 +22,13 @@ export function Chat() {
     
     // Zustand store
     const {
+        currentChat,
         messages,
         selectedModel,
         webSearchEnabled,
+        loading,
+        error,
+        setCurrentChatId,
         setCurrentChat,
         setSelectedModel,
         setWebSearchEnabled,
@@ -34,24 +36,25 @@ export function Chat() {
         updateMessage,
         setMessages,
         clearChat,
+        fetchChat,
     } = useChatStore();
 
-    // Reset chat when navigating to root (new chat)
+    // Fetch models on mount
     useEffect(() => {
-        if (!chatId) {
+        if (models.length === 0) {
+            fetchModels();
+        }
+    }, [models.length, fetchModels]);
+
+    // Fetch chat when chatId changes
+    useEffect(() => {
+        if (chatId) {
+            setCurrentChatId(chatId);
+            fetchChat(chatId);
+        } else {
             clearChat();
         }
-    }, [chatId, clearChat]);
-
-    // Update store when chat loads from API
-    useEffect(() => {
-        if (chat) {
-            setCurrentChat(chat);
-        } else if (chatId === null || chatId === undefined) {
-            // Clear chat if we're on root and no chat is loaded
-            setCurrentChat(null);
-        }
-    }, [chat, chatId, setCurrentChat]);
+    }, [chatId, fetchChat, setCurrentChatId, clearChat]);
 
     // Show toast when error occurs
     useEffect(() => {
@@ -68,8 +71,8 @@ export function Chat() {
             return;
         }
 
-        if (chat) {
-            const match = models.find((m) => m.provider === chat.model_provider && m.model_id === chat.model_id);
+        if (currentChat) {
+            const match = models.find((m) => m.provider === currentChat.model_provider && m.model_id === currentChat.model_id);
             const nextModel = match ?? models[0];
             if (!selectedModel || selectedModel.id !== nextModel.id) {
                 setSelectedModel(nextModel);
@@ -80,7 +83,7 @@ export function Chat() {
         if (!selectedModel) {
             setSelectedModel(models[0]);
         }
-    }, [chat, models, selectedModel, setSelectedModel]);
+    }, [currentChat, models, selectedModel, setSelectedModel]);
 
     const handleSendMessage = async (content: string) => {
         let currentChatId = chatId;
@@ -95,7 +98,7 @@ export function Chat() {
                 currentChatId = newChat.id;
                 navigate(`/${newChat.id}`);
             } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : "Failed to create chat";
+                const errorMessage = getErrorMessage(err);
                 toast.error("Failed to create chat", {
                     description: errorMessage,
                 });
@@ -156,7 +159,7 @@ export function Chat() {
                             setMessages(updatedChat.messages);
                         }
                     } catch (err) {
-                        const errorMessage = err instanceof Error ? err.message : "Failed to reload chat";
+                        const errorMessage = getErrorMessage(err);
                         toast.error("Failed to reload chat", {
                             description: errorMessage,
                         });
@@ -165,7 +168,7 @@ export function Chat() {
                 },
             );
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Failed to send message";
+            const errorMessage = getErrorMessage(err);
             toast.error("Failed to send message", {
                 description: errorMessage,
             });

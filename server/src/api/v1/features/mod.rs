@@ -45,10 +45,9 @@ pub struct UpdateFeatureRequest {
 )]
 pub async fn list_features(
     user: AuthenticatedUser,
-    state: State<AppState>,
+    State(app_state): State<AppState>,
 ) -> Result<Json<UserFeaturesResponse>, StatusCode> {
-    let features = state
-        .0
+    let features = app_state
         .user_feature_repository
         .list(&user.0.id)
         .await
@@ -97,7 +96,7 @@ pub async fn list_features(
 )]
 pub async fn update_feature(
     user: AuthenticatedUser,
-    state: State<AppState>,
+    State(app_state): State<AppState>,
     Path(feature_str): Path<String>,
     Json(payload): Json<UpdateFeatureRequest>,
 ) -> Result<Json<UserFeatureResponse>, StatusCode> {
@@ -112,8 +111,7 @@ pub async fn update_feature(
         enabled: payload.enabled,
     };
 
-    let updated_feature = state
-        .0
+    let updated_feature = app_state
         .user_feature_repository
         .upsert(create_dto)
         .await

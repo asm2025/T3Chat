@@ -19,6 +19,24 @@ use diesel_async::{
 
 pub type DbPool = Pool<AsyncPgConnection>;
 
+/// Sanitizes a database URL by removing username and password for safe logging
+fn sanitize_db_url(db_url: &str) -> String {
+    match url::Url::parse(db_url) {
+        Ok(mut url) => {
+            // Remove username and password from the URL
+            if url.has_authority() {
+                url.set_username("").ok();
+                url.set_password(None).ok();
+            }
+            url.to_string()
+        }
+        Err(_) => {
+            // If parsing fails, return a masked version
+            "***".to_string()
+        }
+    }
+}
+
 /// Ensures the database exists, creating it if necessary
 async fn ensure_database_exists(db_url: &str) -> Result<()> {
     // Parse the database URL to extract database name and base URL
@@ -103,7 +121,7 @@ pub async fn connect(db_url: &str, auto_migrate: bool) -> Result<DbPool> {
         .context("Failed to get a connection from pool")?;
     drop(conn);
 
-    tracing::info!("Connected to database at {}", db_url);
+    tracing::info!("Connected to database at {}", sanitize_db_url(db_url));
 
     if auto_migrate {
         tracing::info!("Running migrations...");

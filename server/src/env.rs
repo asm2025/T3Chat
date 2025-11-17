@@ -71,6 +71,12 @@ pub fn is_swagger_enabled() -> bool {
     matches!(app_env().as_str(), "development" | "staging")
 }
 
+pub fn is_debug_routes_enabled() -> bool {
+    get_env("DEBUG_ROUTES")
+        .map(|s| s.to_lowercase() == "true")
+        .unwrap_or(false)
+}
+
 pub fn ensure_env_loaded() {
     LazyLock::force(&ENV_FILES_LOADED);
 }

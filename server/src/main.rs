@@ -321,7 +321,7 @@ fn setup_router(state: AppState) -> Result<Router> {
             middleware::auth::auth_middleware,
         ));
 
-    let authenticated_routes = Router::new()
+    let user_routes = Router::new()
         .route(
             "/me",
             get(api::v1::user::profile).put(api::v1::user::update_profile),
@@ -331,14 +331,16 @@ fn setup_router(state: AppState) -> Result<Router> {
             middleware::auth::auth_middleware,
         ));
 
-    let router = Router::new()
+    let api_router = Router::new()
         .route("/health", get(api::v1::health::health_check))
         .nest("/api/v1/models", models_routes)
         .nest("/api/v1/chats", chats_routes)
         .nest("/api/v1/chat", chat_routes)
         .nest("/api/v1/user-api-keys", user_api_keys_routes)
         .nest("/api/v1/features", features_routes)
-        .nest("/api/v1", authenticated_routes)
+        .nest("/api/v1", user_routes);
+
+    let mut router = api_router
         .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
@@ -352,7 +354,14 @@ fn setup_router(state: AppState) -> Result<Router> {
         .layer(cors)
         .with_state(state);
 
+    // Add debug middleware if enabled
+    if env::is_debug_routes_enabled() {
+        tracing::warn!("🔍 Route debugging enabled");
+        router = router.layer(axum::middleware::from_fn(debug_route_middleware));
+    }
+
     if env::is_swagger_enabled() {
+        tracing::info!("📚 Swagger UI enabled at /swagger-ui");
         Ok(router.merge(swagger_docs_router()))
     } else {
         Ok(router)
@@ -361,9 +370,47 @@ fn setup_router(state: AppState) -> Result<Router> {
 
 fn swagger_docs_router() -> Router {
     let open_api = docs::ApiDoc::openapi();
-    let swagger: Router =
-        Into::<Router>::into(utoipa_swagger_ui::SwaggerUi::new("/").url("/openapi.json", open_api));
+    let swagger: Router = Into::<Router>::into(
+        utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/openapi.json", open_api),
+    );
     swagger
+}
+
+async fn debug_route_middleware(
+    request: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let method = request.method().clone();
+    let uri = request.uri().clone();
+    let path = uri.path();
+    let has_auth = request.headers().get("authorization").is_some();
+
+    tracing::info!(
+        "🔍 {} {} | Auth: {}",
+        method,
+        path,
+        if has_auth { "✓" } else { "✗" }
+    );
+
+    let response = next.run(request).await;
+    let status = response.status();
+
+    if !status.is_success() {
+        tracing::warn!(
+            "🔍 {} {} → {} {}",
+            method,
+            path,
+            status.as_u16(),
+            status.canonical_reason().unwrap_or("")
+        );
+        if let Some(allow) = response.headers().get("allow") {
+            tracing::warn!("🔍   Allowed methods: {:?}", allow);
+        }
+    } else {
+        tracing::info!("🔍 {} {} → {}", method, path, status.as_u16());
+    }
+
+    response
 }
 
 async fn confirm_shutdown(prompt: &str) -> bool {

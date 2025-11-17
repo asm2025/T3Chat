@@ -13,8 +13,9 @@ import {
   EmailAuthProvider,
   GoogleAuthProvider
 } from "firebase/auth"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/stores/appStore"
 import { toast } from "@/lib/toast"
+import { getErrorMessage } from "@/lib/utils"
 import { Loader2, UserPlus, LogIn } from "lucide-react"
 
 const GoogleIcon = () => (
@@ -39,15 +40,6 @@ const isFirebaseError = (error: unknown): error is FirebaseError => {
   return typeof candidate.code === "string"
 }
 
-const getErrorMessage = (error: unknown) => {
-  if (error instanceof Error) {
-    return error.message
-  }
-  if (typeof error === "string") {
-    return error
-  }
-  return "An unexpected error occurred."
-}
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -136,7 +128,7 @@ export function LoginForm() {
             return;
           } else {
             // Other linking errors
-            const errorMessage = linkError instanceof Error ? linkError.message : "Failed to link Google account";
+            const errorMessage = getErrorMessage(linkError);
             toast.error("Failed to link Google account", {
               description: errorMessage,
             });
@@ -149,7 +141,7 @@ export function LoginForm() {
         await signInWithPopup(auth, googleProvider);
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to sign in with Google";
+      const errorMessage = getErrorMessage(err);
       toast.error("Failed to sign in with Google", {
         description: errorMessage,
       });
@@ -166,7 +158,7 @@ export function LoginForm() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to sign in with Google";
+      const errorMessage = getErrorMessage(err);
       toast.error("Failed to sign in with Google", {
         description: errorMessage,
       });
