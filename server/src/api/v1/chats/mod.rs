@@ -4,7 +4,7 @@ use crate::{
     AppState,
     db::dto::Pagination,
     db::prelude::*,
-    db::repositories::TChatRepository,
+    db::repositories::chat_repository::TChatRepository,
     middleware::auth::AuthenticatedUser,
 };
 use axum::{
@@ -33,13 +33,7 @@ impl From<ChatModel> for ChatResponse {
             id: chat.id,
             user_id: chat.user_id,
             title: chat.title,
-            model_provider: match chat.model_provider {
-                AiProvider::OpenAI => "openai".to_string(),
-                AiProvider::Anthropic => "anthropic".to_string(),
-                AiProvider::Google => "google".to_string(),
-                AiProvider::DeepSeek => "deepseek".to_string(),
-                AiProvider::Ollama => "ollama".to_string(),
-            },
+            model_provider: chat.model_provider.as_str().to_string(),
             model_id: chat.model_id,
             created_at: chat.created_at.to_rfc3339(),
             updated_at: chat.updated_at.to_rfc3339(),
@@ -61,23 +55,20 @@ pub struct MessageResponse {
     pub model_used: Option<String>,
 }
 
-impl From<MessageModel> for MessageResponse {
-    fn from(message: MessageModel) -> Self {
+// Convert from the conversation::Message model (MessageModel is an alias to Message)
+impl From<Message> for MessageResponse {
+    fn from(message: Message) -> Self {
         Self {
             id: message.id,
-            chat_id: message.chat_id,
-            role: match message.role {
-                MessageRole::User => "user".to_string(),
-                MessageRole::Assistant => "assistant".to_string(),
-                MessageRole::System => "system".to_string(),
-            },
-            content: message.content,
-            metadata: message.metadata,
+            chat_id: message.conversation_id, // Note: conversation_id maps to chat_id for API compatibility
+            role: message.role,
+            content: message.text.unwrap_or_default(),
+            metadata: message.content, // content field stores metadata JSON
             parent_message_id: message.parent_message_id,
-            sequence_number: message.sequence_number,
+            sequence_number: 0, // Not stored in new model, would need to be calculated
             created_at: message.created_at.to_rfc3339(),
-            tokens_used: message.tokens_used,
-            model_used: message.model_used,
+            tokens_used: message.token_count,
+            model_used: message.model,
         }
     }
 }

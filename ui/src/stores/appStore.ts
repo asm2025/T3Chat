@@ -6,6 +6,17 @@ import { t3ChatClient } from "@/lib/t3-chat-client";
 import type { Message, Chat, ChatWithMessages } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
+import { librechatClient } from "@/lib/librechat-client";
+import type {
+    Conversation,
+    ConversationWithTags,
+    Preset,
+    Agent,
+    AgentWithDetails,
+    Tag,
+    Tool,
+    EndpointOption,
+} from "@/types/librechat";
 
 // ============================================================================
 // Types
@@ -431,10 +442,427 @@ const createUserApiKeysSlice = (set: any, get: any): UserApiKeysSlice => ({
 });
 
 // ============================================================================
+// LibreChat Conversations Slice
+// ============================================================================
+
+interface LibreChatConversationsSlice {
+    // State
+    conversations: ConversationWithTags[];
+    conversationsLoading: boolean;
+    conversationsError: Error | null;
+
+    // Actions
+    setConversations: (conversations: ConversationWithTags[]) => void;
+    setConversationsLoading: (loading: boolean) => void;
+    setConversationsError: (error: Error | null) => void;
+    fetchConversations: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => Promise<void>;
+    createConversation: (data: Partial<Conversation>) => Promise<ConversationWithTags | null>;
+    addConversation: (conversation: ConversationWithTags) => void;
+    updateConversation: (id: string, updates: Partial<Conversation>) => void;
+    removeConversation: (id: string) => void;
+}
+
+const createLibreChatConversationsSlice = (set: any, get: any): LibreChatConversationsSlice => ({
+    // Initial state
+    conversations: [],
+    conversationsLoading: false,
+    conversationsError: null,
+
+    // Actions
+    setConversations: (conversations) => set({ conversations }),
+    setConversationsLoading: (conversationsLoading) => set({ conversationsLoading }),
+    setConversationsError: (conversationsError) => set({ conversationsError }),
+
+    fetchConversations: async (params) => {
+        const state = get();
+        try {
+            state.setConversationsLoading(true);
+            state.setConversationsError(null);
+            const result = await librechatClient.conversations.list(params);
+            state.setConversations(result.data);
+        } catch (error) {
+            state.setConversationsError(error as Error);
+        } finally {
+            state.setConversationsLoading(false);
+        }
+    },
+
+    createConversation: async (data: Partial<Conversation>) => {
+        const state = get();
+        try {
+            const conversation = await librechatClient.conversations.create(data);
+            state.addConversation(conversation);
+            return conversation;
+        } catch (error) {
+            console.error('Failed to create conversation:', error);
+            return null;
+        }
+    },
+
+    addConversation: (conversation: ConversationWithTags) => {
+        const state = get();
+        state.setConversations([conversation, ...state.conversations]);
+    },
+
+    updateConversation: (id, updates) => {
+        const state = get();
+        state.setConversations(
+            state.conversations.map((conv: ConversationWithTags) => (conv.id === id ? { ...conv, ...updates } : conv)),
+        );
+    },
+
+    removeConversation: (id) => {
+        const state = get();
+        state.setConversations(state.conversations.filter((conv: ConversationWithTags) => conv.id !== id));
+    },
+});
+
+// ============================================================================
+// LibreChat Current Conversation Slice
+// ============================================================================
+
+interface LibreChatCurrentConversationSlice {
+    // State
+    currentConversation: ConversationWithTags | null;
+    currentMessages: Message[];
+    endpointOptions: EndpointOption | null;
+    currentConversationLoading: boolean;
+    currentConversationError: Error | null;
+
+    // Actions
+    setCurrentConversation: (conversation: ConversationWithTags | null) => void;
+    setCurrentMessages: (messages: Message[]) => void;
+    addCurrentMessage: (message: Message) => void;
+    updateCurrentMessage: (messageId: string, updates: Partial<Message>) => void;
+    removeCurrentMessage: (messageId: string) => void;
+    setEndpointOptions: (options: EndpointOption | null) => void;
+    clearCurrentConversation: () => void;
+    loadConversation: (conversationId: string) => Promise<void>;
+    setCurrentConversationLoading: (loading: boolean) => void;
+    setCurrentConversationError: (error: Error | null) => void;
+}
+
+const createLibreChatCurrentConversationSlice = (set: any, get: any): LibreChatCurrentConversationSlice => ({
+    // Initial state
+    currentConversation: null,
+    currentMessages: [],
+    endpointOptions: null,
+    currentConversationLoading: false,
+    currentConversationError: null,
+
+    // Actions
+    setCurrentConversation: (currentConversation) =>
+        set({
+            currentConversation,
+            currentMessages: [],
+        }),
+
+    setCurrentMessages: (currentMessages) => set({ currentMessages }),
+
+    addCurrentMessage: (message) =>
+        set((state: LibreChatCurrentConversationSlice) => ({
+            currentMessages: [...state.currentMessages, message],
+        })),
+
+    updateCurrentMessage: (messageId, updates) =>
+        set((state: LibreChatCurrentConversationSlice) => ({
+            currentMessages: state.currentMessages.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg)),
+        })),
+
+    removeCurrentMessage: (messageId) =>
+        set((state: LibreChatCurrentConversationSlice) => ({
+            currentMessages: state.currentMessages.filter((msg) => msg.id !== messageId),
+        })),
+
+    setEndpointOptions: (endpointOptions) => set({ endpointOptions }),
+
+    clearCurrentConversation: () =>
+        set({
+            currentConversation: null,
+            currentMessages: [],
+        }),
+
+    loadConversation: async (conversationId: string) => {
+        const state = get();
+        try {
+            state.setCurrentConversationLoading(true);
+            state.setCurrentConversationError(null);
+            const conversation = await librechatClient.conversations.get(conversationId);
+            const messages = await librechatClient.messages.list(conversationId);
+            state.setCurrentConversation(conversation);
+            state.setCurrentMessages(messages);
+        } catch (error) {
+            state.setCurrentConversationError(error as Error);
+        } finally {
+            state.setCurrentConversationLoading(false);
+        }
+    },
+
+    setCurrentConversationLoading: (currentConversationLoading) => set({ currentConversationLoading }),
+    setCurrentConversationError: (currentConversationError) => set({ currentConversationError }),
+});
+
+// ============================================================================
+// Presets Slice
+// ============================================================================
+
+interface PresetsSlice {
+    // State
+    presets: Preset[];
+    presetsLoading: boolean;
+    presetsError: Error | null;
+
+    // Actions
+    setPresets: (presets: Preset[]) => void;
+    setPresetsLoading: (loading: boolean) => void;
+    setPresetsError: (error: Error | null) => void;
+    fetchPresets: () => Promise<void>;
+    addPreset: (preset: Preset) => void;
+    updatePreset: (id: string, updates: Partial<Preset>) => void;
+    removePreset: (id: string) => void;
+}
+
+const createPresetsSlice = (set: any, get: any): PresetsSlice => ({
+    // Initial state
+    presets: [],
+    presetsLoading: false,
+    presetsError: null,
+
+    // Actions
+    setPresets: (presets) => set({ presets }),
+    setPresetsLoading: (presetsLoading) => set({ presetsLoading }),
+    setPresetsError: (presetsError) => set({ presetsError }),
+
+    fetchPresets: async () => {
+        const state = get();
+        try {
+            state.setPresetsLoading(true);
+            state.setPresetsError(null);
+            const presets = await librechatClient.presets.list();
+            state.setPresets(presets);
+        } catch (error) {
+            state.setPresetsError(error as Error);
+        } finally {
+            state.setPresetsLoading(false);
+        }
+    },
+
+    addPreset: (preset: Preset) => {
+        const state = get();
+        state.setPresets([...state.presets, preset]);
+    },
+
+    updatePreset: (id, updates) => {
+        const state = get();
+        state.setPresets(state.presets.map((preset: Preset) => (preset.id === id ? { ...preset, ...updates } : preset)));
+    },
+
+    removePreset: (id) => {
+        const state = get();
+        state.setPresets(state.presets.filter((preset: Preset) => preset.id !== id));
+    },
+});
+
+// ============================================================================
+// Agents Slice
+// ============================================================================
+
+interface AgentsSlice {
+    // State
+    agents: Agent[];
+    agentsLoading: boolean;
+    agentsError: Error | null;
+    currentAgent: AgentWithDetails | null;
+
+    // Actions
+    setAgents: (agents: Agent[]) => void;
+    setAgentsLoading: (loading: boolean) => void;
+    setAgentsError: (error: Error | null) => void;
+    setCurrentAgent: (agent: AgentWithDetails | null) => void;
+    fetchAgents: (params?: { accessLevel?: number }) => Promise<void>;
+    fetchAgent: (id: string) => Promise<void>;
+    addAgent: (agent: Agent) => void;
+    updateAgent: (id: string, updates: Partial<Agent>) => void;
+    removeAgent: (id: string) => void;
+}
+
+const createAgentsSlice = (set: any, get: any): AgentsSlice => ({
+    // Initial state
+    agents: [],
+    agentsLoading: false,
+    agentsError: null,
+    currentAgent: null,
+
+    // Actions
+    setAgents: (agents) => set({ agents }),
+    setAgentsLoading: (agentsLoading) => set({ agentsLoading }),
+    setAgentsError: (agentsError) => set({ agentsError }),
+    setCurrentAgent: (currentAgent) => set({ currentAgent }),
+
+    fetchAgents: async (params) => {
+        const state = get();
+        try {
+            state.setAgentsLoading(true);
+            state.setAgentsError(null);
+            const agents = await librechatClient.agents.list(params);
+            state.setAgents(agents);
+        } catch (error) {
+            state.setAgentsError(error as Error);
+        } finally {
+            state.setAgentsLoading(false);
+        }
+    },
+
+    fetchAgent: async (id) => {
+        const state = get();
+        try {
+            state.setAgentsLoading(true);
+            state.setAgentsError(null);
+            const agent = await librechatClient.agents.get(id);
+            state.setCurrentAgent(agent);
+        } catch (error) {
+            state.setAgentsError(error as Error);
+        } finally {
+            state.setAgentsLoading(false);
+        }
+    },
+
+    addAgent: (agent: Agent) => {
+        const state = get();
+        state.setAgents([...state.agents, agent]);
+    },
+
+    updateAgent: (id, updates) => {
+        const state = get();
+        state.setAgents(state.agents.map((agent: Agent) => (agent.id === id ? { ...agent, ...updates } : agent)));
+    },
+
+    removeAgent: (id) => {
+        const state = get();
+        state.setAgents(state.agents.filter((agent: Agent) => agent.id !== id));
+    },
+});
+
+// ============================================================================
+// Tags Slice
+// ============================================================================
+
+interface TagsSlice {
+    // State
+    tags: Tag[];
+    tagsLoading: boolean;
+    tagsError: Error | null;
+
+    // Actions
+    setTags: (tags: Tag[]) => void;
+    setTagsLoading: (loading: boolean) => void;
+    setTagsError: (error: Error | null) => void;
+    fetchTags: () => Promise<void>;
+    addTag: (tag: Tag) => void;
+    updateTag: (id: string, updates: Partial<Tag>) => void;
+    removeTag: (id: string) => void;
+}
+
+const createTagsSlice = (set: any, get: any): TagsSlice => ({
+    // Initial state
+    tags: [],
+    tagsLoading: false,
+    tagsError: null,
+
+    // Actions
+    setTags: (tags) => set({ tags }),
+    setTagsLoading: (tagsLoading) => set({ tagsLoading }),
+    setTagsError: (tagsError) => set({ tagsError }),
+
+    fetchTags: async () => {
+        const state = get();
+        try {
+            state.setTagsLoading(true);
+            state.setTagsError(null);
+            const tags = await librechatClient.tags.list();
+            state.setTags(tags);
+        } catch (error) {
+            state.setTagsError(error as Error);
+        } finally {
+            state.setTagsLoading(false);
+        }
+    },
+
+    addTag: (tag: Tag) => {
+        const state = get();
+        state.setTags([...state.tags, tag]);
+    },
+
+    updateTag: (id, updates) => {
+        const state = get();
+        state.setTags(state.tags.map((tag: Tag) => (tag.id === id ? { ...tag, ...updates } : tag)));
+    },
+
+    removeTag: (id) => {
+        const state = get();
+        state.setTags(state.tags.filter((tag: Tag) => tag.id !== id));
+    },
+});
+
+// ============================================================================
+// Tools Slice
+// ============================================================================
+
+interface ToolsSlice {
+    // State
+    tools: Tool[];
+    toolsLoading: boolean;
+    toolsError: Error | null;
+
+    // Actions
+    setTools: (tools: Tool[]) => void;
+    setToolsLoading: (loading: boolean) => void;
+    setToolsError: (error: Error | null) => void;
+    fetchTools: (params?: { isActive?: boolean; toolType?: string }) => Promise<void>;
+}
+
+const createToolsSlice = (set: any, get: any): ToolsSlice => ({
+    // Initial state
+    tools: [],
+    toolsLoading: false,
+    toolsError: null,
+
+    // Actions
+    setTools: (tools) => set({ tools }),
+    setToolsLoading: (toolsLoading) => set({ toolsLoading }),
+    setToolsError: (toolsError) => set({ toolsError }),
+
+    fetchTools: async (params) => {
+        const state = get();
+        try {
+            state.setToolsLoading(true);
+            state.setToolsError(null);
+            const tools = await librechatClient.tools.list(params);
+            state.setTools(tools);
+        } catch (error) {
+            state.setToolsError(error as Error);
+        } finally {
+            state.setToolsLoading(false);
+        }
+    },
+});
+
+// ============================================================================
 // Combined Store
 // ============================================================================
 
-type AppStore = AuthSlice & ModelsSlice & ChatsSlice & ChatSlice & UserApiKeysSlice & FeaturesSlice;
+type AppStore = AuthSlice &
+    ModelsSlice &
+    ChatsSlice &
+    ChatSlice &
+    UserApiKeysSlice &
+    FeaturesSlice &
+    LibreChatConversationsSlice &
+    LibreChatCurrentConversationSlice &
+    PresetsSlice &
+    AgentsSlice &
+    TagsSlice &
+    ToolsSlice;
 
 export const useAppStore = create<AppStore>()(
     devtools(
@@ -446,6 +874,12 @@ export const useAppStore = create<AppStore>()(
                 ...createChatSlice(set, get),
                 ...createUserApiKeysSlice(set, get),
                 ...createFeaturesSlice(set, get),
+                ...createLibreChatConversationsSlice(set, get),
+                ...createLibreChatCurrentConversationSlice(set, get),
+                ...createPresetsSlice(set, get),
+                ...createAgentsSlice(set, get),
+                ...createTagsSlice(set, get),
+                ...createToolsSlice(set, get),
             }),
             {
                 name: "t3chat-store",
@@ -453,6 +887,7 @@ export const useAppStore = create<AppStore>()(
                     // Only persist non-sensitive data
                     selectedModel: state.selectedModel,
                     webSearchEnabled: state.webSearchEnabled,
+                    endpointOptions: state.endpointOptions,
                 }),
             },
         ),
@@ -534,5 +969,97 @@ export const useUserApiKeys = () =>
             fetchApiKeys: state.fetchApiKeys,
             createApiKey: state.createApiKey,
             deleteApiKey: state.deleteApiKey,
+        })),
+    );
+
+// ============================================================================
+// LibreChat Selectors
+// ============================================================================
+
+export const useLibreChatConversations = () =>
+    useAppStore(
+        useShallow((state) => ({
+            conversations: state.conversations,
+            loading: state.conversationsLoading,
+            error: state.conversationsError,
+            fetchConversations: state.fetchConversations,
+            createConversation: state.createConversation,
+            addConversation: state.addConversation,
+            updateConversation: state.updateConversation,
+            removeConversation: state.removeConversation,
+        })),
+    );
+
+export const useLibreChatCurrentConversation = () =>
+    useAppStore(
+        useShallow((state) => ({
+            currentConversation: state.currentConversation,
+            currentMessages: state.currentMessages,
+            messages: state.currentMessages,
+            endpointOptions: state.endpointOptions,
+            loading: state.currentConversationLoading,
+            error: state.currentConversationError,
+            setCurrentConversation: state.setCurrentConversation,
+            setCurrentMessages: state.setCurrentMessages,
+            addCurrentMessage: state.addCurrentMessage,
+            addMessage: state.addCurrentMessage,
+            updateCurrentMessage: state.updateCurrentMessage,
+            updateMessage: state.updateCurrentMessage,
+            removeCurrentMessage: state.removeCurrentMessage,
+            removeMessage: state.removeCurrentMessage,
+            setEndpointOptions: state.setEndpointOptions,
+            clearCurrentConversation: state.clearCurrentConversation,
+            loadConversation: state.loadConversation,
+        })),
+    );
+
+export const usePresets = () =>
+    useAppStore(
+        useShallow((state) => ({
+            presets: state.presets,
+            loading: state.presetsLoading,
+            error: state.presetsError,
+            fetchPresets: state.fetchPresets,
+            addPreset: state.addPreset,
+            updatePreset: state.updatePreset,
+            removePreset: state.removePreset,
+        })),
+    );
+
+export const useAgents = () =>
+    useAppStore(
+        useShallow((state) => ({
+            agents: state.agents,
+            loading: state.agentsLoading,
+            error: state.agentsError,
+            currentAgent: state.currentAgent,
+            fetchAgents: state.fetchAgents,
+            fetchAgent: state.fetchAgent,
+            addAgent: state.addAgent,
+            updateAgent: state.updateAgent,
+            removeAgent: state.removeAgent,
+        })),
+    );
+
+export const useTags = () =>
+    useAppStore(
+        useShallow((state) => ({
+            tags: state.tags,
+            loading: state.tagsLoading,
+            error: state.tagsError,
+            fetchTags: state.fetchTags,
+            addTag: state.addTag,
+            updateTag: state.updateTag,
+            removeTag: state.removeTag,
+        })),
+    );
+
+export const useTools = () =>
+    useAppStore(
+        useShallow((state) => ({
+            tools: state.tools,
+            loading: state.toolsLoading,
+            error: state.toolsError,
+            fetchTools: state.fetchTools,
         })),
     );

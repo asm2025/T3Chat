@@ -103,9 +103,12 @@ pub async fn auth_middleware(
             // User doesn't exist, create new user
             let create_user_dto = CreateUserDto {
                 id: firebase_user.id,
-                email: firebase_user.email,
-                display_name: None,
-                image_url: None,
+                email: firebase_user.email.unwrap_or_default(),
+                email_verified: Some(false),
+                name: None,
+                username: None,
+                avatar_url: None,
+                provider: None,
             };
             state
                 .user_repository

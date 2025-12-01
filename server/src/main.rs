@@ -24,6 +24,7 @@ mod db;
 mod docs;
 mod env;
 pub mod middleware;
+mod utils;
 
 /// ONLY use concrete types in app state because of the heap allocation requirements of trait objects.
 /// NEVER derive Debug or Display for AppState.
@@ -62,11 +63,13 @@ async fn main() -> Result<()> {
 async fn run() -> Result<()> {
     // Connect to database
     tracing::info!("Configuring database");
-
-    let database_url = get_env("DATABASE_URL").ok_or_else(|| {
-        tracing::error!("DATABASE_URL is not set.");
-        std::process::exit(1);
-    })?;
+    
+    let database_url = get_env("DATABASE_URL")
+        .ok_or_else(|| anyhow::anyhow!("DATABASE_URL is not set"))?;
+    if database_url.is_empty() {
+        tracing::error!("DATABASE_URL is empty");
+        return Err(anyhow::anyhow!("DATABASE_URL is empty"));
+    }
     let pool = db::connect(&database_url, true).await?;
 
     // Initialize repositories

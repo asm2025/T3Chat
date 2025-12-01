@@ -32,22 +32,16 @@ impl From<AiModelModel> for ModelResponse {
     fn from(model: AiModelModel) -> Self {
         Self {
             id: model.id,
-            provider: match model.provider {
-                AiProvider::OpenAI => "openai".to_string(),
-                AiProvider::Anthropic => "anthropic".to_string(),
-                AiProvider::Google => "google".to_string(),
-                AiProvider::DeepSeek => "deepseek".to_string(),
-                AiProvider::Ollama => "ollama".to_string(),
-            },
+            provider: model.provider,
             model_id: model.model_id,
             display_name: model.display_name,
             description: model.description,
             context_window: model.context_window,
-            supports_streaming: model.supports_streaming,
-            supports_images: model.supports_images,
-            supports_functions: model.supports_functions,
-            cost_per_token: model.cost_per_token,
-            is_active: model.is_active,
+            supports_streaming: model.supports_streaming.unwrap_or(false),
+            supports_images: model.supports_images.unwrap_or(false),
+            supports_functions: model.supports_functions.unwrap_or(false),
+            cost_per_token: None,  // TODO: Calculate from input/output token costs
+            is_active: model.is_active.unwrap_or(true),
             created_at: model.created_at.to_rfc3339(),
             updated_at: model.updated_at.to_rfc3339(),
         }

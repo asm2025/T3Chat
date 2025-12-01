@@ -1,218 +1,331 @@
-import { useEffect, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useLibreChatStreaming } from '@/hooks/useLibreChatStreaming';
 import { MessageList } from './MessageList';
-import { MessageInput } from './MessageInput';
-import { ModelSelector } from '@/components/model/ModelSelector';
-import { useModels, useChat } from '@/stores/appStore';
+import { LibreChatMessageInput } from './LibreChatMessageInput';
+import { EndpointSelector } from '@/components/Endpoints/EndpointSelector';
+import { EndpointSettings } from '@/components/Endpoints/EndpointSettings';
+import { FileUpload } from '@/components/Files/FileUpload';
+import { 
+  useLibreChatCurrentConversation,
+  useLibreChatConversations 
+} from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { t3ChatClient } from '@/lib/t3-chat-client';
+import { Settings2, Plus, Paperclip, X } from 'lucide-react';
+import { librechatClient } from '@/lib/librechat-client';
 import { toast } from '@/lib/toast';
 import { getErrorMessage } from '@/lib/utils';
-import type { AIModel } from '@/types/model';
-import type { Message } from '@/types/chat';
+import type { Endpoint, EndpointOption, Message } from '@/types/librechat';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
-export function ChatView({ chatId }: { chatId: string | null }) {
-  const { models, fetchModels } = useModels();
+export function ChatView({ conversationId }: { conversationId: string | null }) {
   const {
-    currentChat,
+    currentConversation,
     messages,
-    selectedModel,
     loading,
     error,
-    setCurrentChatId,
-    setSelectedModel,
+    loadConversation,
     addMessage,
     updateMessage,
     removeMessage,
-    fetchChat,
-    clearChat,
-  } = useChat();
-  const navigate = useNavigate();
-  const { sendMessage, streaming } = useStreamingChat();
+    clearCurrentConversation,
+  } = useLibreChatCurrentConversation();
 
-  // Fetch models on mount
-  useEffect(() => {
-    if (models.length === 0) {
-      fetchModels();
-    }
-  }, [models.length, fetchModels]);
+  const { createConversation } = useLibreChatConversations();
 
-  // Fetch chat when chatId changes
+  const { sendMessage, streaming, cancelStreaming } = useLibreChatStreaming();
+
+  // Endpoint configuration state
+  const [endpointOptions, setEndpointOptions] = useState<EndpointOption>({
+    endpoint: 'openai',
+    model: 'gpt-4-turbo',
+    temperature: 0.7,
+    maxTokens: 2048,
+  });
+
+  // File upload state
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Load conversation when conversationId changes
   useEffect(() => {
-    if (chatId) {
-      setCurrentChatId(chatId);
-      fetchChat(chatId);
+    if (conversationId) {
+      loadConversation(conversationId);
     } else {
-      clearChat();
+      clearCurrentConversation();
     }
-  }, [chatId, fetchChat, setCurrentChatId, clearChat]);
+  }, [conversationId, loadConversation, clearCurrentConversation]);
 
-  const handleNewChat = async () => {
-    try {
-      // Create new chat with default model
-      const newChat = await t3ChatClient.createChat({
-        model_provider: 'openai',
-        model_id: 'gpt-3.5-turbo',
+  // Sync endpoint options from current conversation
+  useEffect(() => {
+    if (currentConversation) {
+      setEndpointOptions({
+        endpoint: currentConversation.endpoint,
+        model: currentConversation.model || 'gpt-4-turbo',
+        temperature: currentConversation.modelParameters?.temperature,
+        maxTokens: currentConversation.modelParameters?.maxTokens,
+        topP: currentConversation.modelParameters?.topP,
+        topK: currentConversation.modelParameters?.topK,
+        presencePenalty: currentConversation.modelParameters?.presencePenalty,
+        frequencyPenalty: currentConversation.modelParameters?.frequencyPenalty,
+        stopSequences: currentConversation.modelParameters?.stopSequences,
+        systemMessage: currentConversation.systemMessage,
       });
-      navigate(`/${newChat.id}`);
+    }
+  }, [currentConversation]);
+
+  const handleNewConversation = async () => {
+    try {
+      const newConvo = await createConversation({
+        title: 'New Chat',
+        endpoint: endpointOptions.endpoint,
+        model: endpointOptions.model,
+        modelParameters: {
+          temperature: endpointOptions.temperature,
+          maxTokens: endpointOptions.maxTokens,
+          topP: endpointOptions.topP,
+          topK: endpointOptions.topK,
+          presencePenalty: endpointOptions.presencePenalty,
+          frequencyPenalty: endpointOptions.frequencyPenalty,
+          stopSequences: endpointOptions.stopSequences,
+        },
+        systemMessage: endpointOptions.systemMessage,
+      });
+      
+      if (newConvo) {
+        // Navigate to new conversation (you'll need to add navigation logic)
+        window.location.href = `/chat/${newConvo.id}`;
+      }
     } catch (err) {
       const errorMessage = getErrorMessage(err);
-      toast.error("Failed to create new chat", {
+      toast.error('Failed to create conversation', {
         description: errorMessage,
       });
-      console.error("Failed to create new chat:", err);
+      console.error('Failed to create conversation:', err);
     }
   };
 
-  // Update messages when chat loads (messages are already synced by setCurrentChat in store)
-  // Set selected model based on chat or default
-  useEffect(() => {
-    if (models.length === 0) {
-      return;
-    }
-
-    if (currentChat) {
-      const match = models.find(
-        (m) => m.provider === currentChat.model_provider && m.model_id === currentChat.model_id
-      );
-      const nextModel = match ?? models[0];
-      if (!selectedModel || selectedModel.id !== nextModel.id) {
-        setSelectedModel(nextModel);
-      }
-      return;
-    }
-
-    if (!selectedModel) {
-      setSelectedModel(models[0]);
-    }
-  }, [currentChat, models, selectedModel, setSelectedModel]);
-
   // Show toast when error occurs
   useEffect(() => {
-    if (error && chatId) {
-      toast.error("Failed to load chat", {
+    if (error && conversationId) {
+      toast.error('Failed to load conversation', {
         description: error.message,
       });
     }
-  }, [error, chatId]);
+  }, [error, conversationId]);
 
   const handleSendMessage = async (content: string) => {
-    if (!chatId || !selectedModel) return;
+    if (!conversationId) return;
 
     try {
       // Add user message optimistically
       const userMessage: Message = {
-        id: `temp-${Date.now()}`,
-        chat_id: chatId,
+        id: `temp-user-${Date.now()}`,
+        messageId: `temp-user-${Date.now()}`,
+        conversationId,
         role: 'user',
-        content,
-        sequence_number: messages.length,
-        created_at: new Date().toISOString(),
+        text: content,
+        isCreatedByUser: true,
+        createdAt: new Date().toISOString(),
       };
       addMessage(userMessage);
 
-      // Create user message on server
-      await t3ChatClient.createMessage(chatId, { content, role: 'user' });
+      // Upload files if any
+      let fileIds: string[] = [];
+      if (uploadedFiles.length > 0) {
+        try {
+          const uploadPromises = uploadedFiles.map(file =>
+            librechatClient.files.upload(conversationId, file)
+          );
+          const uploadedFileObjs = await Promise.all(uploadPromises);
+          fileIds = uploadedFileObjs.map(f => f.id);
+        } catch (err) {
+          console.error('Failed to upload files:', err);
+          toast.error('Failed to upload files', {
+            description: getErrorMessage(err),
+          });
+        }
+      }
 
       // Create assistant message placeholder
       const assistantMessageId = `temp-assistant-${Date.now()}`;
-      let assistantContent = '';
+      let assistantText = '';
       const assistantMessage: Message = {
         id: assistantMessageId,
-        chat_id: chatId,
+        messageId: assistantMessageId,
+        conversationId,
         role: 'assistant',
-        content: '',
-        sequence_number: messages.length + 1,
-        created_at: new Date().toISOString(),
+        text: '',
+        isCreatedByUser: false,
+        createdAt: new Date().toISOString(),
       };
       addMessage(assistantMessage);
 
+      // Prepare chat request
+      const chatRequest = {
+        conversationId,
+        message: content,
+        fileIds,
+        endpointOptions: {
+          endpoint: endpointOptions.endpoint,
+          model: endpointOptions.model,
+          temperature: endpointOptions.temperature,
+          maxTokens: endpointOptions.maxTokens,
+          topP: endpointOptions.topP,
+          topK: endpointOptions.topK,
+          presencePenalty: endpointOptions.presencePenalty,
+          frequencyPenalty: endpointOptions.frequencyPenalty,
+          stopSequences: endpointOptions.stopSequences,
+          systemMessage: endpointOptions.systemMessage,
+        },
+      };
+
       // Stream assistant response
       await sendMessage(
-        {
-          chat_id: chatId,
-          message: content,
-          model_provider: selectedModel.provider,
-          model_id: selectedModel.model_id,
-          stream: true,
-        },
+        chatRequest,
         (chunk) => {
-          assistantContent += chunk;
-          // Update assistant message in real-time
-          updateMessage(assistantMessageId, { content: assistantContent });
+          assistantText += chunk.delta;
+          updateMessage(assistantMessageId, { text: assistantText });
         },
         async () => {
-          try {
-            // Save complete message to server
-            await t3ChatClient.createMessage(chatId, {
-              content: assistantContent,
-              role: 'assistant',
-            });
-            // Reload chat to get proper IDs
-            if (chatId) {
-              await fetchChat(chatId);
-            }
-          } catch (err) {
-            const errorMessage = getErrorMessage(err);
-            toast.error("Failed to save message", {
-              description: errorMessage,
-            });
-            console.error('Failed to save assistant message:', err);
+          // Reload conversation to get server-side IDs
+          if (conversationId) {
+            await loadConversation(conversationId);
           }
+          // Clear uploaded files
+          setUploadedFiles([]);
+          setShowFileUpload(false);
+        },
+        (err) => {
+          console.error('Streaming error:', err);
+          // Remove optimistic messages on error
+          removeMessage(userMessage.id);
+          removeMessage(assistantMessageId);
         }
       );
     } catch (err) {
       const errorMessage = getErrorMessage(err);
-      toast.error("Failed to send message", {
+      toast.error('Failed to send message', {
         description: errorMessage,
       });
       console.error('Failed to send message:', err);
-      // Remove optimistic messages on error
-      messages.forEach(msg => {
-        if (msg.id.startsWith('temp-')) {
-          removeMessage(msg.id);
-        }
-      });
     }
   };
 
   const renderShell = (content: ReactNode) => (
     <div className="flex h-full flex-col bg-background px-4 py-6 sm:px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5">
+        {/* Header with endpoint/model selector and settings */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="flex-1 space-y-2">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Model</p>
-              <div className="min-w-[220px] max-w-xs">
-                {models.length > 0 && selectedModel ? (
-                  <ModelSelector
-                    models={models}
-                    selectedModel={selectedModel}
-                    onSelect={setSelectedModel}
-                  />
-                ) : (
-                  <div className="h-10 rounded-lg border border-dashed border-border bg-background" />
-                )}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Provider</p>
+                <EndpointSelector
+                  value={endpointOptions.endpoint}
+                  onChange={(endpoint) => setEndpointOptions({ ...endpointOptions, endpoint })}
+                />
+              </div>
+              
+              <div className="space-y-2 flex-1 min-w-[180px]">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Model</p>
+                <input
+                  type="text"
+                  value={endpointOptions.model || ''}
+                  onChange={(e) => setEndpointOptions({ ...endpointOptions, model: e.target.value })}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  placeholder="Enter model name"
+                />
               </div>
             </div>
-            <Button
-              onClick={handleNewChat}
-              variant="outline"
-              className="w-full rounded-full border-border bg-background text-sm font-medium shadow-sm md:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New chat
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <Sheet open={showSettings} onOpenChange={setShowSettings}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full border-border bg-background text-sm font-medium shadow-sm"
+                  >
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    Settings
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Model Settings</SheetTitle>
+                  </SheetHeader>
+                  <EndpointSettings
+                    options={endpointOptions}
+                    onChange={setEndpointOptions}
+                  />
+                </SheetContent>
+              </Sheet>
+
+              <Button
+                onClick={handleNewConversation}
+                variant="outline"
+                size="sm"
+                className="rounded-full border-border bg-background text-sm font-medium shadow-sm"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New chat
+              </Button>
+            </div>
           </div>
+
+          {/* File upload area */}
+          {showFileUpload && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">Attach Files</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowFileUpload(false);
+                    setUploadedFiles([]);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <FileUpload
+                onFilesSelected={setUploadedFiles}
+                maxFiles={5}
+                maxSizeMB={10}
+              />
+              {uploadedFiles.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                    >
+                      <span className="truncate max-w-[200px]">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0"
+                        onClick={() => {
+                          setUploadedFiles(files => files.filter((_, i) => i !== index));
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {content}
       </div>
     </div>
   );
 
-  if (loading && chatId) {
+  if (loading && conversationId) {
     return renderShell(
       <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
         Loading conversation…
@@ -221,23 +334,23 @@ export function ChatView({ chatId }: { chatId: string | null }) {
   }
 
   // Error is now handled via toast, but we still show a fallback UI
-  if (error && chatId) {
+  if (error && conversationId) {
     return renderShell(
       <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
-        Unable to load chat. Please try again.
+        Unable to load conversation. Please try again.
       </div>
     );
   }
 
-  if (!currentChat && chatId) {
+  if (!currentConversation && conversationId) {
     return renderShell(
       <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">
-        Chat not found
+        Conversation not found
       </div>
     );
   }
 
-  if (!chatId) {
+  if (!conversationId) {
     return renderShell(
       <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-center text-sm text-muted-foreground">
         Select a conversation or start a new one to begin.
@@ -248,9 +361,26 @@ export function ChatView({ chatId }: { chatId: string | null }) {
   return renderShell(
     <div className="flex flex-1 flex-col gap-5">
       <div className="relative flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <MessageList messages={messages} />
+        <MessageList messages={messages} streaming={streaming} />
       </div>
-      <MessageInput onSend={handleSendMessage} disabled={streaming} />
+      <div className="space-y-2">
+        {!showFileUpload && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFileUpload(true)}
+            className="w-full sm:w-auto"
+          >
+            <Paperclip className="mr-2 h-4 w-4" />
+            Attach Files
+          </Button>
+        )}
+        <LibreChatMessageInput
+          onSend={handleSendMessage}
+          disabled={streaming}
+          onCancel={streaming ? cancelStreaming : undefined}
+        />
+      </div>
     </div>
   );
 }

@@ -1,16 +1,13 @@
 use chrono::{DateTime, Utc};
-use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::models::AiProvider;
-use crate::db::schema::chats;
+use crate::db::models::{AiProvider, Conversation};
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, Queryable, Selectable, Identifiable, Serialize, Deserialize,
-)]
-#[diesel(table_name = chats)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
+// Legacy ChatModel - plain struct for API compatibility
+// Note: No longer directly queryable from database (chats table doesn't exist)
+// Use Conversation model for database operations and convert to ChatModel for API responses
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatModel {
     pub id: Uuid,
     pub user_id: String,
@@ -22,8 +19,28 @@ pub struct ChatModel {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Insertable)]
-#[diesel(table_name = chats)]
+// Convert from Conversation to ChatModel for API compatibility
+impl From<Conversation> for ChatModel {
+    fn from(conv: Conversation) -> Self {
+        // Parse provider from endpoint string
+        let model_provider = AiProvider::from_str(&conv.endpoint)
+            .unwrap_or(AiProvider::OpenAI);
+        
+        Self {
+            id: conv.id,
+            user_id: conv.user_id,
+            title: conv.title.unwrap_or_else(|| "New Chat".to_string()),
+            model_provider,
+            model_id: conv.model,
+            created_at: conv.created_at,
+            updated_at: conv.updated_at,
+            deleted_at: None,  // Conversations use is_archived instead
+        }
+    }
+}
+
+// Legacy NewChat - not used for database inserts
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewChat {
     pub id: Uuid,
     pub user_id: String,
@@ -35,8 +52,8 @@ pub struct NewChat {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, AsChangeset)]
-#[diesel(table_name = chats)]
+// Legacy UpdateChat - not used for database updates
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateChat {
     pub title: Option<String>,
     pub model_provider: Option<AiProvider>,

@@ -3,104 +3,66 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::models::AiProvider;
 use crate::db::schema::user_api_keys;
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, Queryable, Selectable, Identifiable, Serialize, Deserialize,
-)]
+/// User API key model (encrypted storage)
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = user_api_keys)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct UserApiKeyModel {
+pub struct UserApiKey {
     pub id: Uuid,
     pub user_id: String,
-    pub provider: AiProvider,
-    pub encrypted_key: String,
-    pub is_default: bool,
+    pub provider: String,  // openai, anthropic, google, custom
+    pub encrypted_key: String,  // AES-256-GCM encrypted
+    pub key_name: Option<String>,  // user-friendly name
+    pub is_default: Option<bool>,
+    
+    // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Insertable)]
+/// New user API key creation
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = user_api_keys)]
 pub struct NewUserApiKey {
-    pub id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
     pub user_id: String,
-    pub provider: AiProvider,
+    pub provider: String,
     pub encrypted_key: String,
-    pub is_default: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_default: Option<bool>,
 }
 
-#[derive(Debug, Clone, AsChangeset)]
+/// User API key update
+#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
 #[diesel(table_name = user_api_keys)]
 pub struct UpdateUserApiKey {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub encrypted_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_name: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_default: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_used_at: Option<DateTime<Utc>>,
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CreateUserApiKeyDto {
-    pub user_id: String,
-    pub provider: AiProvider,
-    pub encrypted_key: String,
-    pub is_default: bool,
-}
+impl UserApiKey {
+    /// Check if this is the default key for the provider
+    pub fn is_default(&self) -> bool {
+        self.is_default.unwrap_or(false)
+    }
 
-impl From<CreateUserApiKeyDto> for NewUserApiKey {
-    fn from(dto: CreateUserApiKeyDto) -> Self {
-        let now = Utc::now();
-        Self {
-            id: Uuid::new_v4(),
-            user_id: dto.user_id,
-            provider: dto.provider,
-            encrypted_key: dto.encrypted_key,
-            is_default: dto.is_default,
-            created_at: now,
-            updated_at: now,
-        }
+    /// Get display name (key_name or provider)
+    pub fn display_name(&self) -> String {
+        self.key_name
+            .clone()
+            .unwrap_or_else(|| format!("{} Key", self.provider))
     }
 }
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateUserApiKeyDto {
-    pub encrypted_key: Option<String>,
-    pub is_default: Option<bool>,
-}
-
-impl From<UpdateUserApiKeyDto> for UpdateUserApiKey {
-    fn from(dto: UpdateUserApiKeyDto) -> Self {
-        Self {
-            encrypted_key: dto.encrypted_key,
-            is_default: dto.is_default,
-            updated_at: Utc::now(),
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

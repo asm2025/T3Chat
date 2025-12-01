@@ -1,5 +1,6 @@
 // API module - all API handlers organized by version and hierarchy
 pub mod common;
+pub mod errors;
 pub mod v1;
 
 // Re-export commonly used types

@@ -2,7 +2,7 @@ use super::MessageResponse;
 use crate::{
     AppState,
     db::prelude::*,
-    db::repositories::TChatRepository,
+    db::repositories::chat_repository::TChatRepository,
     middleware::auth::AuthenticatedUser,
 };
 use axum::{

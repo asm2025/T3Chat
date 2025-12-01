@@ -17,9 +17,9 @@ impl From<UserModel> for UserResponse {
     fn from(user: UserModel) -> Self {
         Self {
             id: user.id,
-            email: user.email,
-            display_name: user.display_name,
-            image_url: user.image_url,
+            email: Some(user.email),
+            display_name: user.name,
+            image_url: user.avatar_url,
             created_at: user.created_at.to_rfc3339(),
             updated_at: user.updated_at.to_rfc3339(),
         }

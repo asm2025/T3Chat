@@ -1,86 +1,115 @@
+use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use diesel::sql_types::Text;
-use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::db::schema::ai_models;
 
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, AsExpression, FromSqlRow,
-)]
-#[diesel(sql_type = Text)]
-pub enum AiProvider {
-    OpenAI,
-    Anthropic,
-    Google,
-    DeepSeek,
-    Ollama,
-}
-
-impl AiProvider {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AiProvider::OpenAI => "openai",
-            AiProvider::Anthropic => "anthropic",
-            AiProvider::Google => "google",
-            AiProvider::DeepSeek => "deepseek",
-            AiProvider::Ollama => "ollama",
-        }
-    }
-
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "openai" => Some(AiProvider::OpenAI),
-            "anthropic" => Some(AiProvider::Anthropic),
-            "google" => Some(AiProvider::Google),
-            "deepseek" => Some(AiProvider::DeepSeek),
-            "ollama" => Some(AiProvider::Ollama),
-            _ => None,
-        }
-    }
-}
-
-impl<DB> diesel::serialize::ToSql<Text, DB> for AiProvider
-where
-    DB: diesel::backend::Backend,
-    str: diesel::serialize::ToSql<Text, DB>,
-{
-    fn to_sql<'b>(
-        &'b self,
-        out: &mut diesel::serialize::Output<'b, '_, DB>,
-    ) -> diesel::serialize::Result {
-        self.as_str().to_sql(out)
-    }
-}
-
-impl<DB> diesel::deserialize::FromSql<Text, DB> for AiProvider
-where
-    DB: diesel::backend::Backend,
-    String: diesel::deserialize::FromSql<Text, DB>,
-{
-    fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let s = String::from_sql(bytes)?;
-        AiProvider::from_str(&s).ok_or_else(|| format!("Invalid AiProvider value: {}", s).into())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
+/// AI Model reference table (metadata/configuration)
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = ai_models)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AiModelModel {
+pub struct AiModel {
     pub id: Uuid,
-    pub provider: AiProvider,
-    pub model_id: String,
+    pub provider: String,  // openai, anthropic, google, custom
+    pub model_id: String,  // gpt-4-turbo, claude-3-opus, gemini-pro, etc.
     pub display_name: String,
     pub description: Option<String>,
+    
+    // Capabilities
     pub context_window: i32,
-    pub supports_streaming: bool,
-    pub supports_images: bool,
-    pub supports_functions: bool,
-    pub cost_per_token: Option<rust_decimal::Decimal>,
-    pub is_active: bool,
+    pub max_output_tokens: Option<i32>,
+    pub supports_streaming: Option<bool>,
+    pub supports_images: Option<bool>,
+    pub supports_functions: Option<bool>,
+    pub supports_vision: Option<bool>,
+    
+    // Pricing (per 1M tokens)
+    pub cost_per_input_token: Option<Decimal>,
+    pub cost_per_output_token: Option<Decimal>,
+    
+    // Status
+    pub is_active: Option<bool>,
+    pub deprecated_at: Option<DateTime<Utc>>,
+    
+    // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// New AI model creation
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = ai_models)]
+pub struct NewAiModel {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
+    pub provider: String,
+    pub model_id: String,
+    pub display_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub context_window: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_streaming: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_images: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_functions: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_vision: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cost_per_input_token: Option<Decimal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cost_per_output_token: Option<Decimal>,
+}
+
+/// AI model update
+#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = ai_models)]
+pub struct UpdateAiModel {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<Option<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_streaming: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_images: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_functions: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_vision: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cost_per_input_token: Option<Option<Decimal>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cost_per_output_token: Option<Option<Decimal>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deprecated_at: Option<Option<DateTime<Utc>>>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl AiModel {
+    /// Check if model is active
+    pub fn is_active(&self) -> bool {
+        self.is_active.unwrap_or(true) && self.deprecated_at.is_none()
+    }
+
+    /// Check if model supports streaming
+    pub fn supports_streaming(&self) -> bool {
+        self.supports_streaming.unwrap_or(true)
+    }
+
+    /// Get full model identifier
+    pub fn full_identifier(&self) -> String {
+        format!("{}:{}", self.provider, self.model_id)
+    }
 }

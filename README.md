@@ -1,6 +1,6 @@
-# Your Volo App
+# T3Chat - LibreChat-Inspired Multi-AI Platform
 
-Welcome to your new full-stack application! This project was created with `create-volo-app` and comes pre-configured with a modern tech stack and production-ready architecture.
+Welcome to T3Chat, a LibreChat-inspired multi-AI chat platform built with Rust and React! This project provides a production-ready foundation for building a chat application that supports multiple AI providers (OpenAI, Anthropic, Google, and more) with a modern, normalized PostgreSQL database schema.
 
 ## 🎯 **Philosophy**
 
@@ -16,23 +16,45 @@ Start with everything running locally on your machine, then progressively connec
 
 -   ⚛️ React + TypeScript + Vite
 
--   🎨 Tailwind CSS + ShadCN components
+-   🎨 Tailwind CSS v4 + ShadCN components
 
 -   🔐 Firebase Authentication (Google Sign-In)
+
+-   💬 Multi-provider chat interface (OpenAI, Anthropic, Google, custom)
 
 **Backend:**
 
 -   🦀 Rust API backend (Axum)
 
--   🗄️ PostgreSQL with Diesel
+-   🗄️ PostgreSQL with Diesel (fully normalized schema)
 
 -   🔑 Firebase Authentication (JWKS-based JWT verification)
+
+-   🤖 AI Provider abstraction system (trait-based, extensible)
+
+-   📊 Comprehensive database schema for conversations, messages, agents, presets, and more
 
 **Local Development (Default):**
 
 -   ⚡ Runs UI + Server + Auth emulator on your computer
 
 -   ✅ Zero sign-ins or accounts needed
+
+**Key Features:**
+
+-   🔄 Multi-AI provider support (switch between OpenAI, Anthropic, Google, etc.)
+
+-   💾 Normalized PostgreSQL schema with proper relationships
+
+-   🎯 Agent system with tools and conversation starters
+
+-   📝 Preset system for saved conversation configurations
+
+-   🏷️ Tag system for organizing conversations
+
+-   📁 File upload and management
+
+-   🔐 Encrypted API key storage per user/provider
 
 ## 🗂 Environment Configuration
 
@@ -400,32 +422,91 @@ pnpm connection:status
 
 -   You can always revert to local development by restoring the backup
 
+## 🤖 **AI Provider System**
+
+T3Chat uses a trait-based abstraction system for AI providers, similar to LibreChat's BaseClient pattern.
+
+### Supported Providers
+
+- **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
+- **Anthropic** - Claude models (Claude 3 Opus, Sonnet, Haiku)
+- **Google** - Gemini models
+- **Custom** - Support for OpenAI-compatible endpoints
+
+### Architecture
+
+**Backend (Rust):**
+- `AIProvider` trait defines the common interface
+- Each provider implements the trait with provider-specific logic
+- Factory pattern for creating provider instances
+- Streaming support via Server-Sent Events (SSE)
+
+**Frontend (React):**
+- Endpoint selector component for switching providers
+- Model selector that updates based on selected provider
+- Settings panel for provider-specific parameters (temperature, tokens, etc.)
+- Streaming message display
+
+### Adding a New Provider
+
+1. Create a new provider struct in `server/src/ai/providers/`
+2. Implement the `AIProvider` trait
+3. Add provider to the factory in `server/src/ai/factory.rs`
+4. Update frontend endpoint selector if needed
+
+📖 **For detailed implementation guide**, see [`plan.md`](plan.md) Phase 2A
+
 ## 📁 **Project Structure**
 
 ```
 ├── ui/    # React frontend
 │   ├── src/
-│   │   ├── components/    # UI components (ShadCN + custom)
-│   │   ├── lib/    # Utilities & Firebase config
-│   │   └── pages/    # Route-level components
+│   │   ├── components/
+│   │   │   ├── Chat/          # Chat UI components
+│   │   │   ├── Endpoints/     # Provider/model selectors
+│   │   │   ├── Presets/       # Preset management
+│   │   │   ├── Agents/        # Agent management
+│   │   │   ├── Files/         # File upload/management
+│   │   │   └── ui/            # ShadCN components
+│   │   ├── lib/               # Utilities & Firebase config
+│   │   ├── stores/            # State management (Zustand)
+│   │   ├── types/             # TypeScript type definitions
+│   │   └── pages/             # Route-level components
 │   └── package.json
 ├── server/    # Rust API backend (Axum + Diesel)
 │   ├── src/
-│   │   ├── main.rs    # Application entry point & router
-│   │   ├── api/    # Versioned HTTP handlers
-│   │   ├── ai/    # AI provider integrations
-│   │   ├── db/    # Diesel models, repositories, schema
-│   │   └── middleware/    # Auth and request middleware
-│   ├── migrations/    # Diesel SQL migrations (embedded)
-│   ├── wwwroot/    # Static files served by the backend
-│   ├── Cargo.toml    # Rust dependencies
-│   └── .env    # Backend environment variables (local only)
-├── data/    # Local development data
-│   └── firebase-emulator/    # Firebase emulator data (auto-backed up)
-└── scripts/    # Workspace automation
-    ├── run-dev.js    # Development server runner
-    ├── post-setup.js    # Setup automation
-    └── periodic-emulator-backup.js # Firebase data backup
+│   │   ├── main.rs            # Application entry point & router
+│   │   ├── api/               # Versioned HTTP handlers
+│   │   │   └── v1/
+│   │   │       ├── conversations.rs
+│   │   │       ├── messages.rs
+│   │   │       ├── chat.rs    # Chat completion endpoints
+│   │   │       ├── presets.rs
+│   │   │       └── agents.rs
+│   │   ├── ai/                # AI provider integrations
+│   │   │   ├── mod.rs         # AIProvider trait
+│   │   │   ├── factory.rs     # Provider factory
+│   │   │   └── providers/
+│   │   │       ├── openai.rs
+│   │   │       ├── anthropic.rs
+│   │   │       └── google.rs
+│   │   ├── db/                # Diesel models, repositories, schema
+│   │   │   ├── models/        # Domain models
+│   │   │   ├── repositories/  # Data access layer
+│   │   │   └── schema.rs      # Generated schema
+│   │   └── middleware/        # Auth and request middleware
+│   ├── migrations/            # Diesel SQL migrations (embedded)
+│   ├── wwwroot/               # Static files served by the backend
+│   ├── Cargo.toml             # Rust dependencies
+│   └── .env                   # Backend environment variables (local only)
+├── data/                      # Local development data
+│   └── firebase-emulator/     # Firebase emulator data (auto-backed up)
+├── scripts/                   # Workspace automation
+│   ├── run-dev.js             # Development server runner
+│   ├── post-setup.js          # Setup automation
+│   └── periodic-emulator-backup.js # Firebase data backup
+├── plan.md                    # Development plan and architecture
+└── SCHEMA_CHANGES_SUMMARY.md  # Database schema documentation
 ```
 
 ## 🔧 **Customization**
@@ -438,9 +519,28 @@ pnpm connection:status
 
 -   Wrap protected routes with `middleware::auth::auth_middleware` via `route_layer`.
 
+### Adding AI Providers
+
+To add a new AI provider:
+
+1. Create a new provider file in `server/src/ai/providers/` (e.g., `custom.rs`)
+
+2. Implement the `AIProvider` trait (see `server/src/ai/mod.rs` for the trait definition)
+
+3. Add provider to the factory in `server/src/ai/factory.rs`
+
+4. Update frontend endpoint selector in `ui/src/components/Endpoints/EndpointSelector.tsx`
+
+📖 **For detailed implementation guide**, see [`plan.md`](plan.md) Phase 2A
+
 ### Database Changes
 
 The backend uses Diesel with async connection pooling. Migrations are SQL files embedded from `server/migrations`.
+
+**Important**: Follow the normalization principles in `SCHEMA_CHANGES_SUMMARY.md`:
+- Use proper tables and foreign keys for lookup/reference data
+- Use JSONB only for truly dynamic/provider-specific fields
+- Use junction tables for many-to-many relationships
 
 1. Install Diesel CLI (PostgreSQL) if you haven't: `cargo install diesel_cli --no-default-features --features postgres`
 
@@ -448,7 +548,11 @@ The backend uses Diesel with async connection pooling. Migrations are SQL files 
 
 3. Edit the generated `up.sql` and `down.sql`
 
-4. Run `diesel migration run` (from `server/`) or rely on the server's startup auto-migrate (`AUTO_MIGRATE=true`)
+4. Add or update models in `server/src/db/models/`
+
+5. Extend repositories in `server/src/db/repositories/` as needed
+
+6. Run `diesel migration run` (from `server/`) or rely on the server's startup auto-migrate (`AUTO_MIGRATE=true`)
 
 See `[server/README.md](server/README.md)` for detailed guidance.
 
@@ -579,7 +683,62 @@ console.log(response.user);
 
 ## 🗄️ **Database**
 
-The backend uses Diesel with async pooling (`diesel_async`) and repository helpers. Migrations are plain SQL embedded from `server/migrations`.
+The backend uses Diesel with async pooling (`diesel_async`) and repository helpers. The database schema is **fully normalized for PostgreSQL** following relational database best practices.
+
+### Schema Overview
+
+The database includes comprehensive tables for a multi-AI chat platform:
+
+**Core Tables:**
+- `users` - User accounts with Firebase authentication
+- `conversations` - Chat conversations with multi-provider support
+- `messages` - Individual messages with model/endpoint tracking
+- `ai_models` - Reference table for AI model metadata
+- `user_api_keys` - Encrypted API key storage per user/provider
+
+**Organization & Configuration:**
+- `presets` - Saved conversation configurations
+- `agents` - AI agent definitions with tools and instructions
+- `assistants` - OpenAI Assistants API compatibility
+- `tags` - User-defined tags for conversation organization
+- `files` - File uploads and attachments
+
+**Relationships (Junction Tables):**
+- `conversation_tags_map` - Many-to-many: conversations ↔ tags
+- `agent_tools` - Many-to-many: agents ↔ tools with per-agent configuration
+- `assistant_tools` - Many-to-many: assistants ↔ tools
+- `agent_actions` - Many-to-many: agents ↔ custom actions
+- `project_agents` - Many-to-many: projects ↔ agents
+- `agent_hierarchy` - Many-to-many: parent agents ↔ sub-agents
+
+**Additional Tables:**
+- `tools` - System and user-defined tool catalog
+- `actions` - Custom tools/plugins (OpenAPI, functions, webhooks)
+- `tool_calls` - Function/tool execution logs
+- `transactions` - Token usage tracking for billing/analytics
+- `shared_links` - Conversation sharing functionality
+- `projects`, `prompt_groups`, `prompts` - Advanced organization features
+
+### Schema Design Principles
+
+✅ **Proper Normalization:**
+- All lookup/reference data uses proper tables and foreign keys
+- Junction tables for many-to-many relationships
+- No redundant fields (e.g., `user_id` removed from messages)
+
+✅ **JSONB for Dynamic Data:**
+- `model_parameters` - Provider-specific AI settings (varies by provider)
+- `feature_flags` - Optional boolean flags, provider-specific
+- `tool_resources` - Provider-specific tool configuration
+- `metadata` - Extension points for future features
+
+✅ **Performance Optimizations:**
+- Strategic composite indexes for common queries
+- Partial indexes for filtered queries
+- GIN indexes for arrays and full-text search
+- Denormalized `model`/`endpoint` in messages for historical accuracy
+
+📖 **For detailed schema documentation**, see [`SCHEMA_CHANGES_SUMMARY.md`](SCHEMA_CHANGES_SUMMARY.md)
 
 ### Schema & Models
 
@@ -595,7 +754,7 @@ The backend uses Diesel with async pooling (`diesel_async`) and repository helpe
 
 1. `cd server`
 
-2. `diesel migration generate add_users_table`
+2. `diesel migration generate add_feature_x`
 
 3. Edit the generated `up.sql` / `down.sql` in `server/migrations/<timestamp>_*`
 
@@ -604,6 +763,8 @@ The backend uses Diesel with async pooling (`diesel_async`) and repository helpe
 5. Extend repositories in `server/src/db/repositories/` as needed
 
 6. Run `diesel migration run` (or restart the server with auto-migrate enabled)
+
+**Note**: Follow the normalization principles outlined in `SCHEMA_CHANGES_SUMMARY.md` - use proper tables and foreign keys for lookup data, JSONB only for truly dynamic/provider-specific fields.
 
 For detailed instructions, see `[server/README.md](server/README.md)`.
 
@@ -694,15 +855,41 @@ pnpm install
 
 3. **Test backend endpoints** independently before connecting frontend
 
+## 📋 **Development Plan**
+
+T3Chat follows a phased development approach to transform into a full LibreChat-inspired platform:
+
+**Phase 1: Database Foundation & Core Backend Infrastructure**
+- ✅ Database schema design (fully normalized PostgreSQL)
+- ⏭️ Database migrations and Rust models
+- ⏭️ Frontend project structure and base components
+
+**Phase 2: AI Provider Abstraction & Chat Functionality**
+- ⏭️ AI Provider trait system (OpenAI, Anthropic, Google)
+- ⏭️ Multi-provider chat interface
+- ⏭️ Streaming message support
+
+**Future Phases:**
+- Agent system with tools
+- Preset management
+- File upload and multimodal support
+- Advanced features (search, branching, etc.)
+
+📖 **For the complete development plan**, see [`plan.md`](plan.md)
+
 ## 🎯 **Next Steps**
 
-1. **Explore the code**: Start with `ui/src/App.tsx` and `server/src/main.rs`
+1. **Review the architecture**: Read [`plan.md`](plan.md) and [`SCHEMA_CHANGES_SUMMARY.md`](SCHEMA_CHANGES_SUMMARY.md)
 
-2. **Customize the UI**: Modify components and styling
+2. **Set up the database**: Run migrations to create the normalized schema
 
-3. **Add features**: Build your app logic in both frontend and backend
+3. **Explore the code**: Start with `ui/src/App.tsx` and `server/src/main.rs`
 
-4. **Deploy**: Deploy frontend to Cloudflare Pages and backend to your preferred hosting platform
+4. **Implement AI providers**: Follow Phase 2A in the development plan
+
+5. **Build the chat interface**: Follow Phase 2B in the development plan
+
+6. **Deploy**: Deploy frontend to Cloudflare Pages and backend to your preferred hosting platform
 
 ---
 
@@ -714,13 +901,22 @@ For detailed information about the Rust backend, including:
 
 -   Authentication implementation
 
--   Database migrations
+-   Database migrations and normalized schema
+
+-   AI Provider abstraction system
 
 -   Deployment options
 
 -   Differences from the Node.js version
 
 See `[server/README.md](server/README.md)` for comprehensive documentation.
+
+**Key Backend Features:**
+- Trait-based AI provider system for extensibility
+- Fully normalized PostgreSQL schema with proper relationships
+- Repository pattern for data access
+- Encrypted API key storage (AES-256-GCM)
+- Streaming support via Server-Sent Events (SSE)
 
 ---
 

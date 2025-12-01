@@ -22,14 +22,8 @@ impl From<UserApiKeyModel> for UserApiKeyResponse {
         Self {
             id: key.id,
             user_id: key.user_id,
-            provider: match key.provider {
-                AiProvider::OpenAI => "openai".to_string(),
-                AiProvider::Anthropic => "anthropic".to_string(),
-                AiProvider::Google => "google".to_string(),
-                AiProvider::DeepSeek => "deepseek".to_string(),
-                AiProvider::Ollama => "ollama".to_string(),
-            },
-            is_default: key.is_default,
+            provider: key.provider,
+            is_default: key.is_default.unwrap_or(false),
             created_at: key.created_at.to_rfc3339(),
             updated_at: key.updated_at.to_rfc3339(),
         }
@@ -108,7 +102,8 @@ pub async fn create_key(
             user_id: user.0.id.clone(),
             provider,
             encrypted_key,
-            is_default: payload.is_default.unwrap_or(false),
+            key_name: None,
+            is_default: Some(payload.is_default.unwrap_or(false)),
         })
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

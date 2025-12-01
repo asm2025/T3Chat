@@ -1,11 +1,8 @@
 use chrono::{DateTime, Utc};
-use diesel::prelude::*;
 use diesel::sql_types::Text;
 use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::db::schema::messages;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, AsExpression, FromSqlRow)]
 #[diesel(sql_type = Text)]
@@ -13,6 +10,7 @@ pub enum MessageRole {
     User,
     Assistant,
     System,
+    Tool,
 }
 
 impl MessageRole {
@@ -21,6 +19,7 @@ impl MessageRole {
             MessageRole::User => "user",
             MessageRole::Assistant => "assistant",
             MessageRole::System => "system",
+            MessageRole::Tool => "tool",
         }
     }
 
@@ -29,6 +28,7 @@ impl MessageRole {
             "user" => Some(MessageRole::User),
             "assistant" => Some(MessageRole::Assistant),
             "system" => Some(MessageRole::System),
+            "tool" => Some(MessageRole::Tool),
             _ => None,
         }
     }
@@ -58,9 +58,10 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
-#[diesel(table_name = messages)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
+// Legacy message model - kept for API compatibility
+// Note: This doesn't directly map to the database anymore
+// Use conversation::Message instead for database operations
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MessageModel {
     pub id: Uuid,
     pub chat_id: Uuid,
@@ -74,8 +75,8 @@ pub struct MessageModel {
     pub model_used: Option<String>,
 }
 
-#[derive(Debug, Clone, Insertable)]
-#[diesel(table_name = messages)]
+// Legacy - not used for database inserts
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NewMessage {
     pub id: Uuid,
     pub chat_id: Uuid,
@@ -89,8 +90,8 @@ pub struct NewMessage {
     pub model_used: Option<String>,
 }
 
-#[derive(Debug, Clone, AsChangeset)]
-#[diesel(table_name = messages)]
+// Legacy - not used for database updates
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMessage {
     pub content: Option<String>,
     pub metadata: Option<Option<serde_json::Value>>,

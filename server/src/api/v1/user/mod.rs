@@ -58,20 +58,22 @@ pub async fn update_profile(
     );
 
     // Convert Option<String> to Option<Option<String>> for UpdateUserDto:
-    // Since frontend always sends display_name, if it's Some(value), wrap it
+    // Since frontend always sends name, if it's Some(value), wrap it
     // If it's None, it means null was sent, so we want Some(None)
     // But wait - if the field is missing, #[serde(default)] makes it None
     // So we need to distinguish: was it sent as null, or was it missing?
-    // Since frontend ALWAYS sends display_name, None here means null was sent
+    // Since frontend ALWAYS sends name, None here means null was sent
     let update_dto = UpdateUserDto {
-        display_name: Some(payload.display_name), // Always wrap since frontend always sends it
-        image_url: payload.image_url.map(|v| Some(v)), // Only wrap if provided
+        name: payload.display_name,
+        username: None,
+        avatar_url: payload.image_url,
+        preferences: None,
     };
 
     tracing::debug!(
-        "UpdateUserDto created: display_name={:?}, image_url={:?}",
-        update_dto.display_name,
-        update_dto.image_url
+        "UpdateUserDto created: name={:?}, avatar_url={:?}",
+        update_dto.name,
+        update_dto.avatar_url
     );
 
     let updated_user = state
@@ -84,8 +86,8 @@ pub async fn update_profile(
         })?;
 
     tracing::debug!(
-        "User updated successfully: display_name={:?}",
-        updated_user.display_name
+        "User updated successfully: name={:?}",
+        updated_user.name
     );
 
     Ok(Json(UserResponse::from(updated_user)))

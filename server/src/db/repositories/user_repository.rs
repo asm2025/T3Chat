@@ -122,10 +122,13 @@ impl TUserRepository for UserRepository {
         let new_user = NewUser {
             id: model.id,
             email: model.email,
-            display_name: model.display_name,
-            image_url: model.image_url,
-            created_at: model.created_at,
-            updated_at: model.updated_at,
+            email_verified: model.email_verified,
+            name: model.name,
+            username: model.username,
+            avatar_url: model.avatar_url,
+            provider: model.provider,
+            role: model.role,
+            preferences: model.preferences,
         };
 
         diesel::insert_into(users::table)
@@ -175,9 +178,11 @@ impl TUserRepository for UserRepository {
             .on_conflict(users::id)
             .do_update()
             .set((
-                users::display_name.eq(&new_user.display_name),
-                users::image_url.eq(&new_user.image_url),
-                users::updated_at.eq(&new_user.updated_at),
+                users::name.eq(&new_user.name),
+                users::username.eq(&new_user.username),
+                users::avatar_url.eq(&new_user.avatar_url),
+                users::email_verified.eq(&new_user.email_verified),
+                users::updated_at.eq(chrono::Utc::now()),
             ))
             .get_result(&mut conn)
             .await
