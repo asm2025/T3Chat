@@ -38,7 +38,7 @@ Start with everything running locally on your machine, then progressively connec
 
 -   ⚡ Runs UI + Server on your computer
 
--   🔐 Supports both OIDC authentication (Google OAuth, Auth0, Keycloak) and local username/password authentication
+-   🔐 Supports both OIDC authentication (Google OAuth, Firebase, Auth0, Keycloak) and local username/password authentication
 
 **Key Features:**
 
@@ -660,7 +660,7 @@ Your app includes a complete authentication system that supports both OIDC and l
 
 ### OIDC Authentication Flow
 
-1. **Login**: Users sign in via OIDC provider (Google, Auth0, Keycloak)
+1. **Login**: Users sign in via OIDC provider (Google, Firebase, Auth0, Keycloak)
 
 2. **Token**: Frontend receives OIDC ID token
 

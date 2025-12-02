@@ -193,7 +193,7 @@ T3Chat supports two authentication methods:
    - Best for development and testing
 
 2. **OIDC Authentication** (recommended for production):
-   - Supports Google OAuth, Auth0, Keycloak, and other OIDC providers
+   - Supports Google OAuth, Firebase, Auth0, Keycloak, and other OIDC providers
    - More secure for production environments
    - See configuration examples below
 
@@ -214,6 +214,45 @@ OIDC_ISSUER_URL=https://YOUR_DOMAIN.auth0.com
 OIDC_CLIENT_ID=your-auth0-client-id
 OIDC_CLIENT_SECRET=your-auth0-client-secret
 ```
+
+### Firebase (Google Cloud Identity Platform)
+
+Firebase Authentication can be used via Google Cloud Identity Platform, which supports OIDC:
+
+1. **Create a Firebase Project**:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Create a new project or select an existing one
+   - Note your project ID
+
+2. **Enable Google Cloud Identity Platform**:
+   - In Firebase Console, go to "Authentication" > "Providers"
+   - Enable "Google Cloud Identity Platform" (if not already enabled)
+   - This enables OIDC support for your Firebase project
+
+3. **Configure OAuth Consent Screen** (in Google Cloud Console):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Select your Firebase project
+   - Navigate to "APIs & Services" > "OAuth consent screen"
+   - Configure the consent screen (use "External" for testing)
+
+4. **Create OAuth 2.0 Client**:
+   - Navigate to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth 2.0 Client ID"
+   - Choose "Web application"
+   - Add authorized redirect URI: `http://localhost:3000/api/v1/auth/callback`
+   - Add authorized JavaScript origin: `http://localhost:3010`
+   - Copy the Client ID and Client Secret
+
+5. **Update `.env`**:
+
+```bash
+OIDC_ISSUER_URL=https://securetoken.google.com/YOUR_PROJECT_ID
+OIDC_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
+OIDC_CLIENT_SECRET=your-oauth-client-secret
+OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+```
+
+**Note**: Replace `YOUR_PROJECT_ID` with your Firebase project ID. The issuer URL format may vary depending on your Firebase configuration. You can verify the correct issuer URL by checking the `.well-known/openid-configuration` endpoint.
 
 ### Keycloak (Self-Hosted)
 

@@ -44,6 +44,7 @@ This document provides a comprehensive reference for all environment variables u
     -   Used for OIDC discovery and token verification
     -   Must support OpenID Connect Discovery (`.well-known/openid-configuration`)
     -   For Google: `https://accounts.google.com`
+    -   For Firebase (GCIP): `https://securetoken.google.com/YOUR_PROJECT_ID`
     -   For Auth0: `https://YOUR_DOMAIN.auth0.com`
     -   For Keycloak: `https://your-keycloak.com/realms/YOUR_REALM`
 
@@ -263,13 +264,19 @@ OIDC_CLIENT_ID=your-client-id.apps.googleusercontent.com
 OIDC_CLIENT_SECRET=your-client-secret
 OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 
-# Option 2: Auth0
+# Option 2: Firebase (Google Cloud Identity Platform)
+# OIDC_ISSUER_URL=https://securetoken.google.com/YOUR_PROJECT_ID
+# OIDC_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
+# OIDC_CLIENT_SECRET=your-oauth-client-secret
+# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+
+# Option 3: Auth0
 # OIDC_ISSUER_URL=https://YOUR_DOMAIN.auth0.com
 # OIDC_CLIENT_ID=your-auth0-client-id
 # OIDC_CLIENT_SECRET=your-auth0-client-secret
 # OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 
-# Option 3: Keycloak (for self-hosted)
+# Option 4: Keycloak (for self-hosted)
 # OIDC_ISSUER_URL=https://your-keycloak.com/realms/YOUR_REALM
 # OIDC_CLIENT_ID=your-keycloak-client-id
 # OIDC_CLIENT_SECRET=your-keycloak-client-secret
