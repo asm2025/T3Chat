@@ -391,6 +391,50 @@ CREATE TABLE assistants (
 CREATE INDEX idx_assistants_user_id ON assistants(user_id);
 CREATE INDEX idx_assistants_ai_model_id ON assistants(ai_model_id);
 
+-- Files table (independent entity) - MUST be created before assistant_files
+CREATE TABLE files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_id TEXT UNIQUE NOT NULL,  -- for API compatibility
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    
+    -- File info
+    filename TEXT NOT NULL,
+    filepath TEXT NOT NULL,  -- relative path in storage
+    mime_type TEXT NOT NULL,  -- image/png, application/pdf, etc.
+    size_bytes BIGINT NOT NULL,
+    
+    -- File type categorization
+    file_type TEXT NOT NULL CHECK (file_type IN ('image', 'document', 'audio', 'video', 'other')),
+    
+    -- Content (for text files / OCR)
+    text_content TEXT,
+    is_embedded BOOLEAN DEFAULT FALSE,  -- vector embeddings created
+    
+    -- Image-specific
+    width INTEGER,
+    height INTEGER,
+    
+    -- Metadata
+    source TEXT DEFAULT 'upload' CHECK (source IN ('upload', 'url', 'generated')),
+    
+    -- Usage tracking
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMPTZ,
+    
+    -- Temporary files (e.g., from file uploads pending message send)
+    is_temporary BOOLEAN DEFAULT FALSE,
+    expires_at TIMESTAMPTZ,
+    
+    -- Timestamps
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_files_user_id ON files(user_id);
+CREATE INDEX idx_files_file_type ON files(file_type);
+CREATE INDEX idx_files_temporary ON files(expires_at) WHERE is_temporary = true;
+CREATE INDEX idx_files_filename_fts ON files USING GIN(to_tsvector('english', filename));
+
 -- Assistant-Files junction table (Many-to-many: assistants ↔ files)
 CREATE TABLE assistant_files (
     assistant_id UUID NOT NULL REFERENCES assistants(id) ON DELETE CASCADE,
@@ -460,50 +504,6 @@ CREATE TABLE conversation_feature_flags (
 );
 
 CREATE INDEX idx_conversation_feature_flags_conversation_id ON conversation_feature_flags(conversation_id);
-
--- Files table (independent entity)
-CREATE TABLE files (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    file_id TEXT UNIQUE NOT NULL,  -- for API compatibility
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    -- File info
-    filename TEXT NOT NULL,
-    filepath TEXT NOT NULL,  -- relative path in storage
-    mime_type TEXT NOT NULL,  -- image/png, application/pdf, etc.
-    size_bytes BIGINT NOT NULL,
-    
-    -- File type categorization
-    file_type TEXT NOT NULL CHECK (file_type IN ('image', 'document', 'audio', 'video', 'other')),
-    
-    -- Content (for text files / OCR)
-    text_content TEXT,
-    is_embedded BOOLEAN DEFAULT FALSE,  -- vector embeddings created
-    
-    -- Image-specific
-    width INTEGER,
-    height INTEGER,
-    
-    -- Metadata
-    source TEXT DEFAULT 'upload' CHECK (source IN ('upload', 'url', 'generated')),
-    
-    -- Usage tracking
-    usage_count INTEGER DEFAULT 0,
-    last_used_at TIMESTAMPTZ,
-    
-    -- Temporary files (e.g., from file uploads pending message send)
-    is_temporary BOOLEAN DEFAULT FALSE,
-    expires_at TIMESTAMPTZ,
-    
-    -- Timestamps
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_files_user_id ON files(user_id);
-CREATE INDEX idx_files_file_type ON files(file_type);
-CREATE INDEX idx_files_temporary ON files(expires_at) WHERE is_temporary = true;
-CREATE INDEX idx_files_filename_fts ON files USING GIN(to_tsvector('english', filename));
 
 -- Conversation-Files junction table (Many-to-many: conversations ↔ files)
 CREATE TABLE conversation_files (
@@ -1099,11 +1099,11 @@ INSERT INTO ai_providers (
     'https://api.anthropic.com', 'https://anthropic.com', 'https://docs.anthropic.com',
     false, true, true, true, true, true, true),
 -- Google
-('a0000000-0000-0000-0000-000000000003'::UUID, 'google', 'Google AI', 'Google\'s AI platform with Gemini models',
+('a0000000-0000-0000-0000-000000000003'::UUID, 'google', 'Google AI', 'Google''s AI platform with Gemini models',
     'https://generativelanguage.googleapis.com/v1', 'https://ai.google.dev', 'https://ai.google.dev/docs',
     false, true, true, true, true, true, true),
 -- Meta
-('a0000000-0000-0000-0000-000000000004'::UUID, 'meta', 'Meta AI', 'Meta\'s open-source Llama models',
+('a0000000-0000-0000-0000-000000000004'::UUID, 'meta', 'Meta AI', 'Meta''s open-source Llama models',
     NULL, 'https://ai.meta.com', 'https://llama.meta.com/docs',
     false, true, false, true, false, true, false),
 -- DeepSeek
@@ -1123,7 +1123,7 @@ INSERT INTO ai_providers (
     'https://api.cohere.ai/v1', 'https://cohere.com', 'https://docs.cohere.com',
     false, true, true, true, false, true, false),
 -- Alibaba
-('a0000000-0000-0000-0000-000000000009'::UUID, 'alibaba', 'Alibaba Cloud', 'Alibaba\'s AI platform with Qwen models',
+('a0000000-0000-0000-0000-000000000009'::UUID, 'alibaba', 'Alibaba Cloud', 'Alibaba''s AI platform with Qwen models',
     'https://dashscope.aliyuncs.com/api/v1', 'https://www.alibabacloud.com', 'https://help.aliyun.com/zh/dashscope',
     false, true, true, true, false, true, false);
 
