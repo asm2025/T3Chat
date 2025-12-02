@@ -27,6 +27,43 @@ export async function initiateLogin(): Promise<void> {
 }
 
 /**
+ * Local login with username/email and password
+ */
+export async function localLogin(username: string, password: string): Promise<User> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/local/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.message || errorData.error || 'Login failed';
+    throw new Error(errorMessage);
+  }
+
+  const data = await response.json();
+  
+  // Store token in localStorage
+  localStorage.setItem(TOKEN_KEY, data.token);
+  
+  // Try to decode token to get expiration (if it's a JWT)
+  try {
+    const payload = JSON.parse(atob(data.token.split('.')[1]));
+    if (payload.exp) {
+      const expiresAt = payload.exp * 1000; // Convert to milliseconds
+      localStorage.setItem(EXPIRES_AT_KEY, expiresAt.toString());
+    }
+  } catch {
+    // Not a JWT or invalid format, set default expiration (1 hour)
+    const expiresAt = Date.now() + 3600 * 1000;
+    localStorage.setItem(EXPIRES_AT_KEY, expiresAt.toString());
+  }
+
+  return data.user;
+}
+
+/**
  * Handle OIDC callback by storing token from URL parameter
  */
 export async function handleCallback(token: string): Promise<void> {

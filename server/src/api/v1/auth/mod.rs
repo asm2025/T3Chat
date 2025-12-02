@@ -12,6 +12,7 @@ use crate::auth::SessionManager;
 use crate::db::models::CreateUserDto;
 use crate::db::repositories::{UserRepository, TUserRepository};
 use crate::middleware::auth::AuthenticatedUser;
+use crate::utils::password::verify_password;
 
 // GET /api/v1/auth/login
 pub async fn login(
@@ -122,6 +123,94 @@ pub async fn callback(
     Ok(Redirect::to(&format!("{}/auth/callback?token={}", frontend_url, session_token)))
 }
 
+// POST /api/v1/auth/local/login
+#[derive(Deserialize)]
+pub struct LocalLoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+pub struct LocalLoginResponse {
+    token: String,
+    user: UserResponse,
+}
+
+pub async fn local_login(
+    State(state): State<AppState>,
+    Json(req): Json<LocalLoginRequest>,
+) -> Result<Json<LocalLoginResponse>, StatusCode> {
+    let user_repo = UserRepository::new(state.db.clone());
+    
+    // Find user by username or email
+    let user = user_repo.get_by_username_or_email(&req.username).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+    
+    // Check if account is disabled
+    if user.disabled {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    
+    // Check if account is locked
+    if user.locked_out {
+        if let Some(lockout_end) = user.lockout_end {
+            if lockout_end > chrono::Utc::now() {
+                return Err(StatusCode::FORBIDDEN);
+            } else {
+                // Lockout expired, unlock account
+                let _ = user_repo.unlock_user(&user.id).await;
+            }
+        } else {
+            return Err(StatusCode::FORBIDDEN);
+        }
+    }
+    
+    // Check if user has a password hash (local auth enabled)
+    let password_hash = user.password_hash.as_ref()
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+    
+    // Verify password
+    let password_valid = verify_password(&req.password, password_hash)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    if !password_valid {
+        // Increment failed login count
+        let _ = user_repo.increment_failed_login(&user.id).await;
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    
+    // Password is correct - reset failed login count and update last login
+    let _ = user_repo.reset_failed_login(&user.id).await;
+    let _ = user_repo.update_last_login(&user.id).await;
+    
+    // Generate session token (JWT)
+    let session_manager = SessionManager::new(
+        crate::env::get_jwt_secret().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        crate::env::get_jwt_expiry_seconds(),
+    );
+    
+    let session_token = session_manager.generate_token(&user)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    // Get user roles
+    let roles = user_repo.get_user_roles(&user.id).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    Ok(Json(LocalLoginResponse {
+        token: session_token,
+        user: UserResponse {
+            id: user.id,
+            email: user.email,
+            email_verified: user.email_verified,
+            name: user.name,
+            username: user.username,
+            avatar_url: user.avatar_url,
+            roles,
+        },
+    }))
+}
+
 // POST /api/v1/auth/logout
 #[derive(Serialize)]
 pub struct LogoutResponse {
@@ -195,6 +284,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/login", get(login))
         .route("/callback", get(callback))
+        .route("/local/login", post(local_login))
         .route("/logout", post(logout))
         .route("/refresh", post(refresh))
 }

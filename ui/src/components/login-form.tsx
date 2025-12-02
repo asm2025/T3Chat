@@ -2,13 +2,19 @@ import { useState, useEffect } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
+import { Separator } from "./ui/separator"
 import { useAuth } from "@/lib/auth-context"
-import { handleCallback } from "@/lib/auth"
+import { handleCallback, localLogin } from "@/lib/auth"
 import { toast } from "@/lib/toast"
 import { Loader2 } from "lucide-react"
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
+  const [isLocalLogin, setIsLocalLogin] = useState(false)
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { login } = useAuth()
@@ -36,40 +42,142 @@ export function LoginForm() {
     }
   }, [searchParams, navigate])
 
-  const handleLogin = () => {
+  const handleOidcLogin = () => {
     setIsLoading(true)
     login()
+  }
+
+  const handleLocalLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    
+    try {
+      await localLogin(username, password)
+      toast.success("Successfully logged in")
+      navigate('/', { replace: true })
+      // Reload page to refresh auth state
+      window.location.reload()
+    } catch (error) {
+      toast.error("Login failed", {
+        description: error instanceof Error ? error.message : "Invalid username or password",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <Card className="w-full max-w-md rounded-2xl border border-border bg-card shadow-lg">
       <CardHeader>
         <CardTitle>Authentication</CardTitle>
-        <CardDescription>Sign in with your OIDC provider to continue.</CardDescription>
+        <CardDescription>
+          {isLocalLogin 
+            ? "Sign in with your username and password" 
+            : "Sign in with your OIDC provider or use local authentication"
+          }
+        </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Click the button below to sign in with your organization's identity provider.
-          </p>
-        </div>
-        
-        <Button
-          type="button"
-          className="w-full"
-          onClick={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Redirecting...
-            </>
-          ) : (
-            "Login with OIDC"
-          )}
-        </Button>
+        {!isLocalLogin ? (
+          <>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Click the button below to sign in with your organization's identity provider.
+              </p>
+            </div>
+            
+            <Button
+              type="button"
+              className="w-full"
+              onClick={handleOidcLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecting...
+                </>
+              ) : (
+                "Login with OIDC"
+              )}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => setIsLocalLogin(true)}
+              disabled={isLoading}
+            >
+              Login with Username & Password
+            </Button>
+          </>
+        ) : (
+          <form onSubmit={handleLocalLoginSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username or Email</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="admin"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={isLoading}
+                autoComplete="username"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setIsLocalLogin(false)}
+              disabled={isLoading}
+            >
+              Back to OIDC Login
+            </Button>
+          </form>
+        )}
       </CardContent>
     </Card>
   )

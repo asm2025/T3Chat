@@ -237,6 +237,50 @@ impl UserRepository {
         Ok(result)
     }
 
+    pub async fn get_by_username(&self, username: &str) -> Result<Option<UserModel>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Case-insensitive lookup using normalized_username
+        let normalized_username = username.to_lowercase();
+
+        // Try to find by username (case-insensitive)
+        let result = users::table
+            .filter(users::username.ilike(&normalized_username))
+            .first::<UserModel>(&mut conn)
+            .await
+            .optional()
+            .map_err(Error::from_std_error)?;
+
+        Ok(result)
+    }
+
+    pub async fn get_by_username_or_email(&self, username_or_email: &str) -> Result<Option<UserModel>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let normalized = username_or_email.to_lowercase();
+
+        // Try to find by username or email (case-insensitive)
+        let result = users::table
+            .filter(
+                users::username.ilike(&normalized)
+                    .or(users::email.ilike(&normalized))
+            )
+            .first::<UserModel>(&mut conn)
+            .await
+            .optional()
+            .map_err(Error::from_std_error)?;
+
+        Ok(result)
+    }
+
     pub async fn enable_user(&self, user_id: &str) -> Result<()> {
         let mut conn = self
             .pool

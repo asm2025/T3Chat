@@ -18,7 +18,7 @@ Start with everything running locally on your machine, then progressively connec
 
 -   🎨 Tailwind CSS v4 + ShadCN components
 
--   🔐 OIDC Authentication
+-   🔐 OIDC Authentication & Local Authentication
 
 -   💬 Multi-provider chat interface (OpenAI, Anthropic, Google, custom)
 
@@ -36,9 +36,9 @@ Start with everything running locally on your machine, then progressively connec
 
 **Local Development (Default):**
 
--   ⚡ Runs UI + Server + Auth emulator on your computer
+-   ⚡ Runs UI + Server on your computer
 
--   ✅ Zero sign-ins or accounts needed
+-   🔐 Supports both OIDC authentication (Google OAuth, Auth0, Keycloak) and local username/password authentication
 
 **Key Features:**
 
@@ -70,10 +70,12 @@ Environment variables are configured per environment for both backend and fronte
 -   Vite automatically loads `ui/.env.<mode>`; the dev script forwards the selected environment via `--mode` so the frontend and backend stay aligned
 
 **Required Variables:**
--   Backend: `DATABASE_URL`, `CORS_ORIGINS`
+-   Backend: `DATABASE_URL`, `CORS_ORIGINS`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `JWT_SECRET`
 -   Frontend: `VITE_API_URL` (optional, defaults to `http://localhost:3000`)
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
+
+🚀 **New to T3Chat?** Start with the [`QUICKSTART.md`](QUICKSTART.md) guide for step-by-step setup instructions!
 
 **Production (when connected):**
 
@@ -654,11 +656,11 @@ curl https://api.yourdomain.com/api/v1/hello
 
 ## 🔐 **Authentication Flow**
 
-Your app includes a complete authentication system that works in both local and production modes:
+Your app includes a complete authentication system that supports both OIDC and local authentication:
 
-### Authentication Flow
+### OIDC Authentication Flow
 
-1. **Login**: Users sign in via OIDC provider
+1. **Login**: Users sign in via OIDC provider (Google, Auth0, Keycloak)
 
 2. **Token**: Frontend receives OIDC ID token
 
@@ -667,6 +669,29 @@ Your app includes a complete authentication system that works in both local and 
 4. **Verification**: Backend verifies token via JWKS and creates/finds user in database
 
 5. **Protection**: Protected routes automatically have user context
+
+### Local Authentication Flow
+
+1. **Login**: Users sign in with username/email and password
+
+2. **Verification**: Backend verifies credentials against bcrypt password hash
+
+3. **Token**: Backend generates JWT session token
+
+4. **API calls**: Token sent in `Authorization: Bearer <token>` header
+
+5. **Protection**: Same middleware handles both OIDC and local auth tokens
+
+### Default Admin User
+
+The database includes a seeded admin user for local authentication:
+
+- **Username**: `admin`
+- **Password**: `P@$$w0rd`
+- **Email**: `admin@localhost`
+- **Role**: Administrator
+
+**⚠️ Security Note**: Change the default admin password immediately after first login!
 
 ### Example API Call
 
