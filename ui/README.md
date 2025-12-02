@@ -2,33 +2,9 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Firebase Authentication Setup
+## Authentication
 
-This app uses Firebase for authentication. To set up Firebase:
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project or select an existing one
-3. Add a web app to your project by clicking the web icon (</>)
-4. Register your app and copy the provided configuration
-5. Paste the configuration into `src/lib/firebase-config.json`:
-
-```json
-{
-  "apiKey": "your-api-key",
-  "authDomain": "your-project.firebaseapp.com",
-  "projectId": "your-project-id",
-  "storageBucket": "your-project.appspot.com",
-  "messagingSenderId": "your-messaging-sender-id",
-  "appId": "your-app-id"
-}
-```
-
-6. Enable Google authentication in Firebase Console:
-   - Go to Authentication > Sign-in method
-   - Enable Google as a sign-in provider
-   - Configure the OAuth consent screen if prompted
-
-Note: Make sure to add `firebase-config.json` to your `.gitignore` if you're using version control.
+This app uses OIDC (OpenID Connect) for authentication. Authentication is handled by the backend server, which verifies OIDC tokens via JWKS.
 
 ## Environment Variables
 

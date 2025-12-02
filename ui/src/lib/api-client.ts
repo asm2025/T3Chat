@@ -1,5 +1,4 @@
-import { getAuth } from "firebase/auth";
-import { app } from "./firebase";
+import { getToken, refreshToken, isTokenExpired } from "./auth";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -35,10 +34,15 @@ export class ApiClient {
     }
 
     private async getAuthToken(): Promise<string | null> {
-        const auth = getAuth(app);
-        const user = auth.currentUser;
-        if (!user) return null;
-        return user.getIdToken();
+        let token = getToken();
+        if (!token) return null;
+        
+        // Check if token is expired and try to refresh
+        if (isTokenExpired()) {
+            token = await refreshToken();
+        }
+        
+        return token;
     }
 
     private async request<T>(options: RequestOptions & { url: string }): Promise<ApiResponse<T>> {

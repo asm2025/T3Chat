@@ -18,7 +18,7 @@ Start with everything running locally on your machine, then progressively connec
 
 -   🎨 Tailwind CSS v4 + ShadCN components
 
--   🔐 Firebase Authentication (Google Sign-In)
+-   🔐 OIDC Authentication
 
 -   💬 Multi-provider chat interface (OpenAI, Anthropic, Google, custom)
 
@@ -28,7 +28,7 @@ Start with everything running locally on your machine, then progressively connec
 
 -   🗄️ PostgreSQL with Diesel (fully normalized schema)
 
--   🔑 Firebase Authentication (JWKS-based JWT verification)
+-   🔑 OIDC Authentication (JWKS-based JWT verification)
 
 -   🤖 AI Provider abstraction system (trait-based, extensible)
 
@@ -70,7 +70,7 @@ Environment variables are configured per environment for both backend and fronte
 -   Vite automatically loads `ui/.env.<mode>`; the dev script forwards the selected environment via `--mode` so the frontend and backend stay aligned
 
 **Required Variables:**
--   Backend: `DATABASE_URL`, `FIREBASE_PROJECT_ID`, `CORS_ORIGINS`
+-   Backend: `DATABASE_URL`, `CORS_ORIGINS`
 -   Frontend: `VITE_API_URL` (optional, defaults to `http://localhost:3000`)
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
@@ -83,7 +83,7 @@ Environment variables are configured per environment for both backend and fronte
 
 -   🗄️ Supabase or custom PostgreSQL
 
--   🔐 Production Firebase Auth
+-   🔐 Production OIDC Authentication
 
 ## 🧰 **Local Prerequisites**
 
@@ -348,7 +348,7 @@ pg_config --version
 
 ## 🛠️ **Development**
 
-Start both frontend and backend (with Firebase emulator):
+Start both frontend and backend:
 
 ```bash
 pnpm run dev
@@ -403,7 +403,7 @@ pnpm connect:database:custom    # Custom PostgreSQL
 ### Connect Production Authentication
 
 ```bash
-# Set up production Firebase Auth
+# Set up production OIDC Authentication
 pnpm connect:auth
 ```
 
@@ -477,7 +477,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 │   │   │   ├── Agents/        # Agent management
 │   │   │   ├── Files/         # File upload/management
 │   │   │   └── ui/            # ShadCN components
-│   │   ├── lib/               # Utilities & Firebase config
+│   │   ├── lib/               # Utilities & authentication
 │   │   ├── stores/            # State management (Zustand)
 │   │   ├── types/             # TypeScript type definitions
 │   │   └── pages/             # Route-level components
@@ -509,11 +509,9 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 │   ├── Cargo.toml             # Rust dependencies
 │   └── .env                   # Backend environment variables (local only)
 ├── data/                      # Local development data
-│   └── firebase-emulator/     # Firebase emulator data (auto-backed up)
 ├── scripts/                   # Workspace automation
 │   ├── run-dev.js             # Development server runner
-│   ├── post-setup.js          # Setup automation
-│   └── periodic-emulator-backup.js # Firebase data backup
+│   └── post-setup.js          # Setup automation
 ├── plan.md                    # Development plan and architecture
 └── SCHEMA_CHANGES_SUMMARY.md  # Database schema documentation
 ```
@@ -607,7 +605,6 @@ cargo build --release
 **Environment variables required:**
 
 -   `DATABASE_URL` - PostgreSQL connection string (required)
--   `FIREBASE_PROJECT_ID` - Firebase project ID (required)
 -   `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (required)
 -   `PORT` - Server port (optional, defaults to 3000)
 
@@ -632,7 +629,6 @@ cargo build --release
 **Backend Server Environment Variables:**
 
 -   `DATABASE_URL` - Your database connection string (required)
--   `FIREBASE_PROJECT_ID` - Firebase project ID (required)
 -   `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (required)
 -   `PORT` - Server port (optional, defaults to 3000)
 -   `APP_ENV` - Application environment: `development`, `staging`, or `release` (optional, defaults to `development`)
@@ -645,11 +641,10 @@ cargo build --release
 
 ### Post-Deployment Setup
 
-1. **Update Firebase authorized domains**:
+1. **Configure OIDC provider**:
 
--   Go to [Firebase Console](https://console.firebase.google.com) > Authentication > Settings
-
--   Add your Pages domain (e.g., `your-app.pages.dev`)
+-   Ensure your OIDC provider is configured with the correct redirect URIs
+-   Add your Pages domain to allowed origins (e.g., `your-app.pages.dev`)
 
 1. **Test your deployment**:
 
@@ -661,25 +656,15 @@ curl https://api.yourdomain.com/api/v1/hello
 
 Your app includes a complete authentication system that works in both local and production modes:
 
-### Local Mode (Default)
+### Authentication Flow
 
-1. **Sign in**: Use any email/password combination in the UI
+1. **Login**: Users sign in via OIDC provider
 
-2. **Storage**: User data stored in local Firebase emulator
-
-3. **API calls**: Authenticated requests work normally
-
-4. **Development**: No external accounts needed
-
-### Production Mode (After `pnpm connect:auth`)
-
-1. **Login**: Users sign in with Google (or other configured providers)
-
-2. **Token**: Frontend gets Firebase ID token
+2. **Token**: Frontend receives OIDC ID token
 
 3. **API calls**: Token sent in `Authorization: Bearer <token>` header
 
-4. **Verification**: Backend verifies token and creates/finds user in database
+4. **Verification**: Backend verifies token via JWKS and creates/finds user in database
 
 5. **Protection**: Protected routes automatically have user context
 
@@ -700,7 +685,7 @@ The backend uses Diesel with async pooling (`diesel_async`) and repository helpe
 The database includes comprehensive tables for a multi-AI chat platform:
 
 **Core Tables:**
-- `users` - User accounts with Firebase authentication
+- `users` - User accounts with OIDC authentication
 - `conversations` - Chat conversations with multi-provider support
 - `messages` - Individual messages with model/endpoint tracking
 - `ai_models` - Reference table for AI model metadata
@@ -794,7 +779,7 @@ For detailed instructions, see `[server/README.md](server/README.md)`.
 
 -   **Cloudflare Pages**: [developers.cloudflare.com/pages](https://developers.cloudflare.com/pages)
 
--   **Firebase Auth**: [firebase.google.com/docs/auth](https://firebase.google.com/docs/auth)
+-   **OIDC**: [openid.net/specs/openid-connect-core-1_0.html](https://openid.net/specs/openid-connect-core-1_0.html)
 
 ## 🆘 **Troubleshooting**
 
@@ -835,21 +820,17 @@ pnpm install
 
 **Local Development:**
 
--   Firebase emulator should start automatically with `pnpm dev`
-
--   Try signing in with any email/password combination
-
--   Check `data/firebase-emulator/` for persisted data
-
--   **Data Protection**: Emulator data is automatically backed up every 60 seconds and on clean shutdown to prevent data loss during crashes
+-   Ensure OIDC provider is configured correctly
+-   Check OIDC environment variables in `server/.env`
+-   Verify redirect URIs match your OIDC provider configuration
 
 **Production Mode:**
 
-1. **Check Firebase config**: `ui/src/lib/firebase-config.json`
+1. **Verify OIDC environment variables**: `server/.env` (OIDC_ISSUER_URL, OIDC_CLIENT_ID, etc.)
 
-2. **Verify environment variables**: `server/.env`
+2. **Check OIDC provider configuration**: Ensure redirect URIs match your application URLs
 
-3. **Check authorized domains** in Firebase Console
+3. **Verify JWT_SECRET**: Ensure a secure JWT secret is set for session tokens
 
 ### Deployment Issues
 

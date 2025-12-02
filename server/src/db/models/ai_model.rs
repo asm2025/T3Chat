@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::db::schema::ai_models;
 
 /// AI Model reference table (metadata/configuration)
+/// IMPORTANT: Field order MUST match the schema.rs ai_models table definition
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = ai_models)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -33,9 +34,16 @@ pub struct AiModel {
     pub is_active: Option<bool>,
     pub deprecated_at: Option<DateTime<Utc>>,
     
-    // Timestamps
+    // Timestamps (must come before provider_id, disabled, is_paid to match schema order)
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    
+    // Provider relation
+    pub provider_id: Option<Uuid>,
+    
+    // Admin fields
+    pub disabled: bool,
+    pub is_paid: bool,
 }
 
 /// New AI model creation
@@ -64,6 +72,16 @@ pub struct NewAiModel {
     pub cost_per_input_token: Option<Decimal>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cost_per_output_token: Option<Decimal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<Uuid>,
+    #[serde(default)]
+    pub disabled: bool,
+    #[serde(default = "default_true")]
+    pub is_paid: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// AI model update
@@ -94,6 +112,12 @@ pub struct UpdateAiModel {
     pub is_active: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deprecated_at: Option<Option<DateTime<Utc>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<Option<Uuid>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_paid: Option<bool>,
     pub updated_at: DateTime<Utc>,
 }
 

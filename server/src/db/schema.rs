@@ -101,6 +101,31 @@ diesel::table! {
         deprecated_at -> Nullable<Timestamptz>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        provider_id -> Nullable<Uuid>,
+        disabled -> Bool,
+        is_paid -> Bool,
+    }
+}
+
+diesel::table! {
+    ai_providers (id) {
+        id -> Uuid,
+        provider_id -> Text,
+        display_name -> Text,
+        description -> Nullable<Text>,
+        base_url -> Nullable<Text>,
+        website_url -> Nullable<Text>,
+        documentation_url -> Nullable<Text>,
+        disabled -> Bool,
+        is_active -> Bool,
+        requires_api_key -> Bool,
+        supports_streaming -> Bool,
+        supports_images -> Bool,
+        supports_functions -> Bool,
+        supports_vision -> Bool,
+        metadata -> Nullable<Jsonb>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -307,6 +332,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    roles (name) {
+        name -> Text,
+        display_name -> Text,
+        description -> Nullable<Text>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     shared_links (id) {
         id -> Uuid,
         share_id -> Text,
@@ -418,6 +452,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    user_roles (user_id, role_name) {
+        user_id -> Text,
+        role_name -> Text,
+        assigned_at -> Timestamptz,
+        assigned_by -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Text,
         email -> Text,
@@ -435,6 +478,15 @@ diesel::table! {
         terms_accepted_at -> Nullable<Timestamptz>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        normalized_email -> Text,
+        normalized_username -> Nullable<Text>,
+        disabled -> Bool,
+        locked_out -> Bool,
+        lockout_end -> Nullable<Timestamptz>,
+        access_failed_count -> Int4,
+        password_changed_at -> Nullable<Timestamptz>,
+        last_login_at -> Nullable<Timestamptz>,
+        login_count -> Int4,
     }
 }
 
@@ -445,6 +497,7 @@ diesel::joinable!(agent_conversation_starters -> agents (agent_id));
 diesel::joinable!(agent_tools -> agents (agent_id));
 diesel::joinable!(agent_tools -> tools (tool_id));
 diesel::joinable!(agents -> users (author_id));
+diesel::joinable!(ai_models -> ai_providers (provider_id));
 diesel::joinable!(assistant_conversation_starters -> assistants (assistant_id));
 diesel::joinable!(assistant_tools -> assistants (assistant_id));
 diesel::joinable!(assistant_tools -> tools (tool_id));
@@ -475,6 +528,7 @@ diesel::joinable!(transactions -> messages (message_id));
 diesel::joinable!(transactions -> users (user_id));
 diesel::joinable!(user_api_keys -> users (user_id));
 diesel::joinable!(user_features -> users (user_id));
+diesel::joinable!(user_roles -> roles (role_name));
 
 diesel::allow_tables_to_appear_in_same_query!(
     actions,
@@ -484,6 +538,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     agent_tools,
     agents,
     ai_models,
+    ai_providers,
     assistant_conversation_starters,
     assistant_tools,
     assistants,
@@ -497,6 +552,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     projects,
     prompt_groups,
     prompts,
+    roles,
     shared_links,
     tags,
     tool_calls,
@@ -504,5 +560,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     transactions,
     user_api_keys,
     user_features,
+    user_roles,
     users,
 );

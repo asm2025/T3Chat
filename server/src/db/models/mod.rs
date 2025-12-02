@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 
 // Core models
 pub mod user;
+pub mod role;
+pub mod user_role;
 pub mod ai_model;
+pub mod ai_provider;
 pub mod user_api_key;
 
 // Conversation & messaging
@@ -134,13 +137,19 @@ impl From<CreateUserDto> for NewUser {
     fn from(dto: CreateUserDto) -> Self {
         Self {
             id: dto.id,
-            email: dto.email,
+            email: dto.email.clone(),
+            normalized_email: dto.email.to_lowercase(),
             email_verified: dto.email_verified,
             name: dto.name,
-            username: dto.username,
+            username: dto.username.clone(),
+            normalized_username: dto.username.as_ref().map(|u| u.to_lowercase()),
             avatar_url: dto.avatar_url,
-            provider: dto.provider.unwrap_or_else(|| "firebase".to_string()),
+            provider: dto.provider.unwrap_or_else(|| "oidc".to_string()),
             role: None,
+            disabled: false,
+            locked_out: false,
+            access_failed_count: 0,
+            login_count: 0,
             preferences: None,
         }
     }

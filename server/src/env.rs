@@ -45,12 +45,30 @@ pub fn is_local_embedded_postgres() -> bool {
     }
 }
 
-pub fn get_firebase_project_id() -> Result<String> {
-    get_required_env("FIREBASE_PROJECT_ID").map_err(|e| e.into())
+pub fn get_oidc_issuer_url() -> Result<String> {
+    get_required_env("OIDC_ISSUER_URL").map_err(|e| e.into())
 }
 
-pub fn get_firebase_auth_emulator_host() -> Option<String> {
-    get_env("FIREBASE_AUTH_EMULATOR_HOST")
+pub fn get_oidc_client_id() -> Result<String> {
+    get_required_env("OIDC_CLIENT_ID").map_err(|e| e.into())
+}
+
+pub fn get_oidc_client_secret() -> Result<String> {
+    get_required_env("OIDC_CLIENT_SECRET").map_err(|e| e.into())
+}
+
+pub fn get_oidc_redirect_uri() -> Result<String> {
+    get_required_env("OIDC_REDIRECT_URI").map_err(|e| e.into())
+}
+
+pub fn get_jwt_secret() -> Result<String> {
+    get_required_env("JWT_SECRET").map_err(|e| e.into())
+}
+
+pub fn get_jwt_expiry_seconds() -> u64 {
+    get_env("JWT_EXPIRY_SECONDS")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(3600)
 }
 
 pub fn app_env() -> String {

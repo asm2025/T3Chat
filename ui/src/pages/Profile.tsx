@@ -1,5 +1,6 @@
-import { useAuth } from "@/stores/appStore";
-import { t3ChatClient } from "@/lib/t3-chat-client";
+import { useAuth } from "@/lib/auth-context";
+import { getCurrentUser } from "@/lib/auth";
+import { api } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -14,15 +15,15 @@ import { getErrorMessage } from "@/lib/utils";
 
 interface UserProfile {
     id: string;
-    email: string | null;
-    display_name: string | null;
-    image_url: string | null;
+    email: string;
+    name?: string;
+    avatar_url?: string;
     created_at: string;
     updated_at: string;
 }
 
 export function Profile() {
-    const { user, forceRefresh } = useAuth();
+    const { user } = useAuth();
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -32,31 +33,40 @@ export function Profile() {
 
     useEffect(() => {
         async function fetchUserInfo() {
-            if (user) {
-                try {
-                    setLoading(true);
-                    const data = await t3ChatClient.getCurrentUser();
-                    setUserProfile(data);
-                    setDisplayName(data.display_name || "");
-                    setOriginalDisplayName(data.display_name || "");
-                } catch (error) {
-                    const errorMessage = getErrorMessage(error);
-                    toast.error("Failed to fetch user profile", {
-                        description: errorMessage,
+            try {
+                setLoading(true);
+                const data = await getCurrentUser();
+                if (data) {
+                    setUserProfile({
+                        id: data.id,
+                        email: data.email,
+                        name: data.name || undefined,
+                        avatar_url: data.avatar_url,
+                        created_at: new Date().toISOString(), // API should return this
+                        updated_at: new Date().toISOString(), // API should return this
                     });
-                    console.error("Server error:", error);
-                } finally {
-                    setLoading(false);
+                    setDisplayName(data.name || "");
+                    setOriginalDisplayName(data.name || "");
                 }
+            } catch (error) {
+                const errorMessage = getErrorMessage(error);
+                toast.error("Failed to fetch user profile", {
+                    description: errorMessage,
+                });
+                console.error("Server error:", error);
+            } finally {
+                setLoading(false);
             }
         }
-        fetchUserInfo();
+        if (user) {
+            fetchUserInfo();
+        }
     }, [user]);
 
     const handleEdit = () => {
         if (userProfile) {
-            setOriginalDisplayName(userProfile.display_name || "");
-            setDisplayName(userProfile.display_name || "");
+            setOriginalDisplayName(userProfile.name || "");
+            setDisplayName(userProfile.name || "");
             setIsEditing(true);
         }
     };
@@ -71,15 +81,22 @@ export function Profile() {
 
         try {
             setSaving(true);
-            await t3ChatClient.updateUser({ display_name: displayName || null });
+            // Update user profile via API - use /v1/me endpoint
+            await api.update('/v1/me', { display_name: displayName || null });
 
             // Refresh the profile
-            const updatedData = await t3ChatClient.getCurrentUser();
-            setUserProfile(updatedData);
-            setOriginalDisplayName(updatedData.display_name || "");
-
-            // Refresh the user data in the navbar
-            forceRefresh();
+            const updatedData = await getCurrentUser();
+            if (updatedData) {
+                setUserProfile({
+                    id: updatedData.id,
+                    email: updatedData.email,
+                    name: updatedData.name || undefined,
+                    avatar_url: updatedData.avatar_url,
+                    created_at: userProfile.created_at,
+                    updated_at: new Date().toISOString(),
+                });
+                setOriginalDisplayName(updatedData.name || "");
+            }
 
             setIsEditing(false);
             toast.success("Profile updated successfully");
@@ -189,11 +206,11 @@ export function Profile() {
                         <CardHeader>
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-20 w-20">
-                                    {userProfile.image_url && <AvatarImage src={userProfile.image_url} alt={userProfile.display_name || "User"} />}
-                                    <AvatarFallback className="text-2xl">{getInitials(userProfile.display_name, userProfile.email)}</AvatarFallback>
+                                    {userProfile.avatar_url && <AvatarImage src={userProfile.avatar_url} alt={userProfile.name || "User"} />}
+                                    <AvatarFallback className="text-2xl">{getInitials(userProfile.name, userProfile.email)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <CardTitle className="text-2xl">{userProfile.display_name || "User"}</CardTitle>
+                                    <CardTitle className="text-2xl">{userProfile.name || "User"}</CardTitle>
                                     <CardDescription className="text-base">{userProfile.email || "No email address"}</CardDescription>
                                 </div>
                             </div>
@@ -204,7 +221,7 @@ export function Profile() {
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="displayName">Display Name</Label>
-                                            <div className="text-sm py-2 px-3 rounded-md border bg-muted/50">{userProfile.display_name || "Not set"}</div>
+                                            <div className="text-sm py-2 px-3 rounded-md border bg-muted/50">{userProfile.name || "Not set"}</div>
                                         </div>
                                     </div>
 

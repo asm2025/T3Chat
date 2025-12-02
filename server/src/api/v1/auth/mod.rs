@@ -1,0 +1,202 @@
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::{Redirect, Json},
+    routing::{get, post},
+    Router,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::AppState;
+use crate::auth::SessionManager;
+use crate::db::models::CreateUserDto;
+use crate::db::repositories::{UserRepository, TUserRepository};
+use crate::middleware::auth::AuthenticatedUser;
+
+// GET /api/v1/auth/login
+pub async fn login(
+    State(state): State<AppState>,
+) -> Result<Redirect, StatusCode> {
+    let (auth_url, _state_token) = state.oidc_client.get_authorization_url();
+    
+    // TODO: Store state_token in session/cache for verification
+    // For now, we'll verify it in the callback
+    
+    Ok(Redirect::to(auth_url.as_str()))
+}
+
+// GET /api/v1/auth/callback?code=...&state=...
+#[derive(Deserialize)]
+pub struct CallbackQuery {
+    code: String,
+    state: String,
+}
+
+pub async fn callback(
+    State(state): State<AppState>,
+    Query(params): Query<CallbackQuery>,
+) -> Result<Redirect, StatusCode> {
+    // TODO: Verify state token from session/cache
+    
+    // Exchange code for tokens using cached OIDC client
+    let token_response = state.oidc_client.exchange_code(params.code, params.state).await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    
+    // Get user info using cached OIDC client
+    let user_info = state.oidc_client.get_user_info(token_response.access_token.clone()).await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    
+    // Create or update user in database
+    let user_repo = UserRepository::new(state.db.clone());
+    
+    // Normalize email
+    let _normalized_email = user_info.email.to_lowercase();
+    
+    let user = match user_repo.get(user_info.sub.clone()).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? {
+        Some(u) => {
+            // Update existing user
+            // TODO: Update user info if needed
+            u
+        }
+        None => {
+            // Create new user
+            let create_user_dto = CreateUserDto {
+                id: user_info.sub.clone(),
+                email: user_info.email.clone(),
+                email_verified: user_info.email_verified,
+                name: user_info.name.clone(),
+                username: None,
+                avatar_url: user_info.picture.clone(),
+                provider: Some("oidc".to_string()),
+            };
+            
+            // Convert to NewUser for creation
+            let new_user: crate::db::models::NewUser = create_user_dto.into();
+            let user_model = crate::db::models::UserModel {
+                id: new_user.id.clone(),
+                email: new_user.email.clone(),
+                normalized_email: new_user.normalized_email.clone(),
+                email_verified: new_user.email_verified,
+                name: new_user.name.clone(),
+                username: new_user.username.clone(),
+                normalized_username: new_user.normalized_username.clone(),
+                avatar_url: new_user.avatar_url.clone(),
+                provider: new_user.provider.clone(),
+                role: new_user.role.clone(),
+                disabled: new_user.disabled,
+                locked_out: new_user.locked_out,
+                lockout_end: None,
+                access_failed_count: new_user.access_failed_count,
+                password_hash: None,
+                password_changed_at: None,
+                two_factor_enabled: None,
+                totp_secret: None,
+                last_login_at: None,
+                login_count: new_user.login_count,
+                preferences: new_user.preferences.clone(),
+                terms_accepted: None,
+                terms_accepted_at: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            };
+            
+            user_repo.create(user_model).await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        }
+    };
+    
+    // Generate session token (JWT)
+    let session_manager = SessionManager::new(
+        crate::env::get_jwt_secret().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        crate::env::get_jwt_expiry_seconds(),
+    );
+    
+    let session_token = session_manager.generate_token(&user)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    // Redirect to frontend with token
+    let frontend_url = std::env::var("FRONTEND_URL")
+        .unwrap_or_else(|_| "http://localhost:5173".to_string());
+    
+    Ok(Redirect::to(&format!("{}/auth/callback?token={}", frontend_url, session_token)))
+}
+
+// POST /api/v1/auth/logout
+#[derive(Serialize)]
+pub struct LogoutResponse {
+    success: bool,
+}
+
+pub async fn logout() -> Result<Json<LogoutResponse>, StatusCode> {
+    // Invalidate session/token (client-side for JWT)
+    Ok(Json(LogoutResponse { success: true }))
+}
+
+// POST /api/v1/auth/refresh
+#[derive(Deserialize)]
+pub struct RefreshRequest {
+    refresh_token: String,
+}
+
+#[derive(Serialize)]
+pub struct RefreshResponse {
+    access_token: String,
+    expires_in: Option<u64>,
+}
+
+pub async fn refresh(
+    State(state): State<AppState>,
+    Json(req): Json<RefreshRequest>,
+) -> Result<Json<RefreshResponse>, StatusCode> {
+    let token_response = state.oidc_client.refresh_token(req.refresh_token).await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    
+    Ok(Json(RefreshResponse {
+        access_token: token_response.access_token,
+        expires_in: token_response.expires_in,
+    }))
+}
+
+// GET /api/v1/auth/me
+#[derive(Serialize)]
+pub struct UserResponse {
+    pub id: String,
+    pub email: String,
+    pub email_verified: Option<bool>,
+    pub name: Option<String>,
+    pub username: Option<String>,
+    pub avatar_url: Option<String>,
+    pub roles: Vec<String>,
+}
+
+pub async fn me(
+    State(state): State<AppState>,
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<Json<UserResponse>, StatusCode> {
+    let user_repo = UserRepository::new(state.db.clone());
+    
+    // Get user roles
+    let roles = user_repo.get_user_roles(&user.id).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    
+    Ok(Json(UserResponse {
+        id: user.id,
+        email: user.email,
+        email_verified: user.email_verified,
+        name: user.name,
+        username: user.username,
+        avatar_url: user.avatar_url,
+        roles,
+    }))
+}
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/login", get(login))
+        .route("/callback", get(callback))
+        .route("/logout", post(logout))
+        .route("/refresh", post(refresh))
+}
+
+

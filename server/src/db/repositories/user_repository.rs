@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
+use diesel::QueryableByName;
 use diesel_async::RunQueryDsl;
 use emixdiesel::{Error, Result};
 
 use crate::db::dto::{Pagination, ResultSet};
 use crate::db::models::{CreateUserDto, NewUser, UpdateUser, UpdateUserDto, UserModel};
-use crate::db::{DbPool, schema::users};
+use crate::db::{schema::users, DbPool};
 
 // Placeholder trait for FilterCondition - not currently used
 pub trait FilterCondition<T>: Send + Sync {}
@@ -122,12 +123,18 @@ impl TUserRepository for UserRepository {
         let new_user = NewUser {
             id: model.id,
             email: model.email,
+            normalized_email: model.normalized_email,
             email_verified: model.email_verified,
             name: model.name,
             username: model.username,
+            normalized_username: model.normalized_username,
             avatar_url: model.avatar_url,
             provider: model.provider,
             role: model.role,
+            disabled: model.disabled,
+            locked_out: model.locked_out,
+            access_failed_count: model.access_failed_count,
+            login_count: model.login_count,
             preferences: model.preferences,
         };
 
@@ -202,5 +209,263 @@ impl TUserRepository for UserRepository {
             .map_err(Error::from_std_error)?;
 
         Ok(())
+    }
+}
+
+// Extension methods for account management and roles
+impl UserRepository {
+    pub async fn get_by_email(&self, email: &str) -> Result<Option<UserModel>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Case-insensitive lookup using normalized_email
+        // Note: This uses raw SQL since normalized_email may not be in schema.rs yet
+        // For now, fall back to case-insensitive email lookup
+        let normalized_email = email.to_lowercase();
+
+        // Try to find by email (case-insensitive)
+        let result = users::table
+            .filter(users::email.ilike(&normalized_email))
+            .first::<UserModel>(&mut conn)
+            .await
+            .optional()
+            .map_err(Error::from_std_error)?;
+
+        Ok(result)
+    }
+
+    pub async fn enable_user(&self, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Note: disabled field may not be in schema.rs yet, use raw SQL
+        diesel::sql_query("UPDATE users SET disabled = false WHERE id = $1")
+            .bind::<diesel::sql_types::Text, _>(user_id)
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn disable_user(&self, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Note: disabled field may not be in schema.rs yet, use raw SQL
+        diesel::sql_query("UPDATE users SET disabled = true WHERE id = $1")
+            .bind::<diesel::sql_types::Text, _>(user_id)
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn lock_user(&self, user_id: &str, duration_minutes: i32) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        let lockout_end = chrono::Utc::now() + chrono::Duration::minutes(duration_minutes as i64);
+
+        // Use raw SQL since lockout_end may not be in schema.rs yet
+        diesel::sql_query("UPDATE users SET locked_out = true, lockout_end = $1 WHERE id = $2")
+            .bind::<diesel::sql_types::Timestamptz, _>(&lockout_end)
+            .bind::<diesel::sql_types::Text, _>(user_id)
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn unlock_user(&self, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Use raw SQL since locked_out and lockout_end may not be in schema.rs yet
+        diesel::sql_query("UPDATE users SET locked_out = false, lockout_end = NULL WHERE id = $1")
+            .bind::<diesel::sql_types::Text, _>(user_id)
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn increment_failed_login(&self, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Use raw SQL to increment and check for lockout
+        const MAX_FAILED_ATTEMPTS: i32 = 5;
+        const LOCKOUT_DURATION_MINUTES: i32 = 15;
+
+        // Increment access_failed_count and lock if >= MAX_FAILED_ATTEMPTS
+        diesel::sql_query(
+            r#"
+            UPDATE users 
+            SET access_failed_count = access_failed_count + 1,
+                locked_out = CASE 
+                    WHEN access_failed_count + 1 >= $1 THEN true 
+                    ELSE locked_out 
+                END,
+                lockout_end = CASE 
+                    WHEN access_failed_count + 1 >= $1 THEN NOW() + ($2 || ' minutes')::INTERVAL
+                    ELSE lockout_end 
+                END
+            WHERE id = $3
+            "#,
+        )
+        .bind::<diesel::sql_types::Int4, _>(&MAX_FAILED_ATTEMPTS)
+        .bind::<diesel::sql_types::Int4, _>(&LOCKOUT_DURATION_MINUTES)
+        .bind::<diesel::sql_types::Text, _>(user_id)
+        .execute(&mut conn)
+        .await
+        .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn reset_failed_login(&self, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::sql_query("UPDATE users SET access_failed_count = 0 WHERE id = $1")
+            .bind::<diesel::sql_types::Text, _>(user_id)
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn update_last_login(&self, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::sql_query(
+            "UPDATE users SET last_login_at = NOW(), login_count = login_count + 1 WHERE id = $1",
+        )
+        .bind::<diesel::sql_types::Text, _>(user_id)
+        .execute(&mut conn)
+        .await
+        .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn get_user_roles(&self, user_id: &str) -> Result<Vec<String>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        #[derive(QueryableByName)]
+        struct RoleRow {
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            role_name: String,
+        }
+
+        let roles: Vec<RoleRow> =
+            diesel::sql_query("SELECT role_name FROM user_roles WHERE user_id = $1")
+                .bind::<diesel::sql_types::Text, _>(user_id)
+                .load(&mut conn)
+                .await
+                .map_err(Error::from_std_error)?;
+
+        Ok(roles.into_iter().map(|r| r.role_name).collect())
+    }
+
+    pub async fn add_role(
+        &self,
+        user_id: &str,
+        role_name: &str,
+        assigned_by: Option<&str>,
+    ) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::sql_query(
+            "INSERT INTO user_roles (user_id, role_name, assigned_by) VALUES ($1, $2, $3) ON CONFLICT (user_id, role_name) DO NOTHING"
+        )
+        .bind::<diesel::sql_types::Text, _>(user_id)
+        .bind::<diesel::sql_types::Text, _>(role_name)
+        .bind::<diesel::sql_types::Nullable<diesel::sql_types::Text>, _>(assigned_by)
+        .execute(&mut conn)
+        .await
+        .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn remove_role(&self, user_id: &str, role_name: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::sql_query("DELETE FROM user_roles WHERE user_id = $1 AND role_name = $2")
+            .bind::<diesel::sql_types::Text, _>(user_id)
+            .bind::<diesel::sql_types::Text, _>(role_name)
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    pub async fn has_role(&self, user_id: &str, role_name: &str) -> Result<bool> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        #[derive(QueryableByName)]
+        struct ExistsRow {
+            #[diesel(sql_type = diesel::sql_types::Bool)]
+            exists: bool,
+        }
+
+        let result: Vec<ExistsRow> = diesel::sql_query(
+            "SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id = $1 AND role_name = $2) as exists"
+        )
+        .bind::<diesel::sql_types::Text, _>(user_id)
+        .bind::<diesel::sql_types::Text, _>(role_name)
+        .load(&mut conn)
+        .await
+        .map_err(Error::from_std_error)?;
+
+        Ok(result.into_iter().next().map(|r| r.exists).unwrap_or(false))
     }
 }

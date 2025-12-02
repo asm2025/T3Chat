@@ -6,7 +6,7 @@ license = "MIT"
 authors = ["asm <asm2do@gmail.com>"]
 
 [[bin]]
-name = "t3chat-server"
+name = "t3chtsrv"
 path = "src/main.rs"
 
 [dependencies]
@@ -42,4 +42,9 @@ emixlog = { git = "https://github.com/asm2025/essentialMix-rs.git", tag = "0.5.0
 emixdiesel = { git = "https://github.com/asm2025/essentialMix-rs.git", tag = "0.5.0", package = "emixdiesel", features = ["postgres"] }
 utoipa = { version = "5", features = ["axum_extras", "chrono", "decimal", "uuid"] }
 utoipa-swagger-ui = { version = "8", features = ["axum"] }
+oauth2 = "4"
+openidconnect = "2"
+tower_governor = "0.4"  # Pin to 0.4.x for axum 0.7 compatibility
+rand = "0.8"
+governor = "0.6"
 

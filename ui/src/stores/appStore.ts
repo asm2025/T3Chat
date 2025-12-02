@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
-import type { User } from "firebase/auth";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import type { Message, Chat, ChatWithMessages } from "@/types/chat";
 import type { AIModel } from "@/types/model";
@@ -37,7 +36,7 @@ interface UserProfile {
 
 interface AuthSlice {
     // State
-    user: User | null;
+    user: UserProfile | null;
     userProfile: UserProfile | null;
     loading: boolean; // Renamed from authLoading for consistency
     profileLoading: boolean;
@@ -45,7 +44,7 @@ interface AuthSlice {
     refreshTrigger: number;
 
     // Actions
-    setUser: (user: User | null) => void;
+    setUser: (user: UserProfile | null) => void;
     setUserProfile: (profile: UserProfile | null) => void;
     setLoading: (loading: boolean) => void;
     setProfileLoading: (loading: boolean) => void;

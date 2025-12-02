@@ -1,4 +1,6 @@
 // API v1 module - all v1 endpoints organized by resource hierarchy
+pub mod admin;
+pub mod auth;
 pub mod chat;
 pub mod chats;
 pub mod features;

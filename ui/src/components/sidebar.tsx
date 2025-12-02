@@ -1,9 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useAuth } from "@/stores/appStore";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
 import { useNavigate } from "react-router-dom";
 import { Search, User, History, Brain, Key, Paperclip, Settings, LogOut, PanelLeft } from "lucide-react";
 import { useState } from "react";
@@ -11,27 +9,24 @@ import { Sidebar as ShadcnSidebar, SidebarHeader, SidebarContent, SidebarFooter,
 import { useChat } from "@/stores/appStore";
 
 interface AppSidebarProps {
-    onSignInClick?: () => void;
     variant?: "sidebar" | "floating" | "inset";
     collapsible?: "offcanvas" | "icon" | "none";
     className?: string;
     style?: React.CSSProperties;
 }
 
-export function Sidebar({ onSignInClick, variant = "sidebar", collapsible = "offcanvas", className, style }: AppSidebarProps) {
-    const { user, logout, userProfile } = useAuth();
+export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", className, style }: AppSidebarProps) {
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState("");
     const { open, toggleSidebar, isMobile } = useSidebar();
     const { clearChat } = useChat();
 
-    const handleLogout = () => {
-        logout();
-        signOut(auth);
+    const handleLogout = async () => {
+        await logout();
     };
 
-    const isAnonymous = user?.isAnonymous ?? false;
-    const displayName = userProfile?.display_name || user?.displayName || user?.email || "User";
+    const displayName = user?.name || user?.email || "User";
     const userInitials = displayName
         .split(" ")
         .map((n) => n[0])
@@ -101,12 +96,16 @@ export function Sidebar({ onSignInClick, variant = "sidebar", collapsible = "off
                 </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-                {user && !isAnonymous ? (
+                {user ? (
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" className="w-full justify-start gap-2 px-2 hover:bg-muted">
                                 <Avatar className="h-8 w-8 border border-border bg-muted">
-                                    <AvatarFallback className="text-xs font-medium">{userInitials}</AvatarFallback>
+                                    {user.avatar_url ? (
+                                        <img src={user.avatar_url} alt={displayName} />
+                                    ) : (
+                                        <AvatarFallback className="text-xs font-medium">{userInitials}</AvatarFallback>
+                                    )}
                                 </Avatar>
                                 <span className="flex-1 truncate text-left text-sm">{displayName}</span>
                             </Button>
@@ -127,11 +126,7 @@ export function Sidebar({ onSignInClick, variant = "sidebar", collapsible = "off
                             </div>
                         </PopoverContent>
                     </Popover>
-                ) : (
-                    <Button variant="outline" className="w-full" onClick={onSignInClick}>
-                        Login
-                    </Button>
-                )}
+                ) : null}
             </SidebarFooter>
         </ShadcnSidebar>
     );

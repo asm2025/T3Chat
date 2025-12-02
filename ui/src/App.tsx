@@ -1,11 +1,21 @@
 import { useState, useEffect, useRef } from "react";
-import { useAuth } from "@/stores/appStore";
-import { useAuthInit } from "@/hooks/useAuthInit";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { LoginForm } from "@/components/login-form";
+import { ProtectedRoute } from "@/components/protected-route";
+import { AdminRoute } from "@/components/admin-route";
 import { Settings } from "@/pages/Settings";
 import { Chat } from "@/pages/Chat";
 import { Profile } from "@/pages/Profile";
+import { Models } from "@/pages/Models";
+import { Home } from "@/pages/Home";
+import { About } from "@/pages/About";
+import { Health } from "@/pages/Health";
+import { AdminDashboard } from "@/pages/admin/dashboard";
+import { AdminUsers } from "@/pages/admin/users";
+import { AdminProviders } from "@/pages/admin/providers";
+import { AdminModels } from "@/pages/admin/models";
+import { AuthCallback } from "@/pages/AuthCallback";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -20,11 +30,7 @@ const DEFAULT_SIDEBAR_WIDTH = 20; // 20% of viewport width
 const MIN_SIDEBAR_WIDTH = 5; // 5% of viewport width
 const MAX_SIDEBAR_WIDTH = 95; // 95% of viewport width
 
-function AppContent() {
-    // Initialize Firebase auth listener
-    useAuthInit();
-    const { user, loading, profileLoading } = useAuth();
-    const [showLoginForAnonymous, setShowLoginForAnonymous] = useState(false);
+function AuthenticatedLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
     const isMobile = useIsMobile();
@@ -82,166 +88,109 @@ function AppContent() {
         };
     }, []);
 
-    // Reset login form state when user upgrades from anonymous to authenticated
-    useEffect(() => {
-        if (user && !user.isAnonymous) {
-            setShowLoginForAnonymous(false);
-        }
-    }, [user]);
-
-    // Show loading while authentication or profile is loading
-    if (loading || profileLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
-    // Determine if login form should be shown
-    const allowAnonymous = import.meta.env.VITE_ALLOW_ANONYMOUS_USERS === "true";
-
-    let shouldShowLogin: boolean;
-
-    if (allowAnonymous) {
-        // Anonymous users are allowed - only show login if there's no user at all
-        // OR if anonymous user clicked "Sign In" to upgrade
-        shouldShowLogin = !user || (user.isAnonymous && showLoginForAnonymous);
-    } else {
-        // Anonymous users NOT allowed - show login if no user OR if user is anonymous
-        // (force authentication with real credentials)
-        shouldShowLogin = !user || user.isAnonymous;
-    }
-
-    const handleSignInClick = () => {
-        setShowLoginForAnonymous(true);
-    };
-
     return (
         <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <div className="flex min-h-screen w-full bg-background">
                 <MobileWarningBanner />
-                {shouldShowLogin ? (
-                    <main className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6">
-                        <LoginForm />
-                    </main>
-                ) : (
+                {/* Mobile: Use ShadCN Sidebar with Sheet */}
+                {isMobile ? (
                     <>
-                        {/* Mobile: Use ShadCN Sidebar with Sheet */}
-                        {isMobile ? (
-                            <>
-                                {!sidebarOpen && (
-                                    <div className="fixed left-2 top-2 z-50 md:hidden">
-                                        <SidebarTrigger />
-                                    </div>
-                                )}
-                                <Sidebar variant="sidebar" collapsible="offcanvas" onSignInClick={handleSignInClick} />
-                                <SidebarInset className="h-screen">
-                                    <Routes>
-                                        <Route path="/:chatId?" element={<Chat />} />
-                                        <Route path="/profile" element={<Profile />} />
-                                        <Route path="/settings" element={<Settings />} />
-                                        <Route
-                                            path="/history"
-                                            element={
-                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                    <h1 className="text-2xl font-semibold">History & Sync</h1>
-                                                </div>
-                                            }
-                                        />
-                                        <Route
-                                            path="/models"
-                                            element={
-                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                    <h1 className="text-2xl font-semibold">Models</h1>
-                                                </div>
-                                            }
-                                        />
-                                        <Route
-                                            path="/api-keys"
-                                            element={
-                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                    <h1 className="text-2xl font-semibold">API Keys</h1>
-                                                </div>
-                                            }
-                                        />
-                                        <Route
-                                            path="/attachments"
-                                            element={
-                                                <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                    <h1 className="text-2xl font-semibold">Attachments</h1>
-                                                </div>
-                                            }
-                                        />
-                                    </Routes>
-                                </SidebarInset>
-                            </>
-                        ) : (
-                            // Desktop: Use ResizablePanelGroup with ShadCN Sidebar
-                            <ResizablePanelGroup key={sidebarOpen ? "open" : "closed"} direction="horizontal" className="min-h-screen" onLayout={handleSidebarResize}>
-                                {sidebarOpen && (
-                                    <>
-                                        <ResizablePanel
-                                            id="sidebar-panel"
-                                            defaultSize={Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth))}
-                                            minSize={MIN_SIDEBAR_WIDTH}
-                                            maxSize={MAX_SIDEBAR_WIDTH}
-                                            className="hidden md:flex flex-shrink-0 overflow-hidden">
-                                            <Sidebar variant="sidebar" collapsible="none" className="h-full w-full flex flex-col" style={{ width: "100%", minWidth: 0 }} onSignInClick={handleSignInClick} />
-                                        </ResizablePanel>
-                                        <ResizableHandle withHandle className="hidden md:flex w-1 bg-transparent hover:bg-border transition-colors cursor-col-resize" />
-                                    </>
-                                )}
-                                <ResizablePanel
-                                    id="main-panel"
-                                    defaultSize={sidebarOpen ? Math.max(5, Math.min(95, 100 - Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth)))) : 100}
-                                    minSize={5}
-                                    maxSize={sidebarOpen ? 95 : 100}
-                                    className="flex-1">
-                                    <SidebarInset className="h-screen overflow-hidden">
-                                        <FloatingToolbar />
-                                        <Routes>
-                                            <Route path="/:chatId?" element={<Chat />} />
-                                            <Route path="/profile" element={<Profile />} />
-                                            <Route path="/settings" element={<Settings />} />
-                                            <Route
-                                                path="/history"
-                                                element={
-                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                        <h1 className="text-2xl font-semibold">History & Sync</h1>
-                                                    </div>
-                                                }
-                                            />
-                                            <Route
-                                                path="/models"
-                                                element={
-                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                        <h1 className="text-2xl font-semibold">Models</h1>
-                                                    </div>
-                                                }
-                                            />
-                                            <Route
-                                                path="/api-keys"
-                                                element={
-                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                        <h1 className="text-2xl font-semibold">API Keys</h1>
-                                                    </div>
-                                                }
-                                            />
-                                            <Route
-                                                path="/attachments"
-                                                element={
-                                                    <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
-                                                        <h1 className="text-2xl font-semibold">Attachments</h1>
-                                                    </div>
-                                                }
-                                            />
-                                        </Routes>
-                                    </SidebarInset>
-                                </ResizablePanel>
-                            </ResizablePanelGroup>
+                        {!sidebarOpen && (
+                            <div className="fixed left-2 top-2 z-50 md:hidden">
+                                <SidebarTrigger />
+                            </div>
                         )}
+                        <Sidebar variant="sidebar" collapsible="offcanvas" />
+                        <SidebarInset className="h-screen">
+                            <Routes>
+                                <Route path="/:chatId?" element={<Chat />} />
+                                <Route path="/profile" element={<Profile />} />
+                                <Route path="/settings" element={<Settings />} />
+                                <Route
+                                    path="/history"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">History & Sync</h1>
+                                        </div>
+                                    }
+                                />
+                                <Route path="/models" element={<Models />} />
+                                <Route
+                                    path="/api-keys"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">API Keys</h1>
+                                        </div>
+                                    }
+                                />
+                                <Route
+                                    path="/attachments"
+                                    element={
+                                        <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                            <h1 className="text-2xl font-semibold">Attachments</h1>
+                                        </div>
+                                    }
+                                />
+                            </Routes>
+                        </SidebarInset>
                     </>
+                ) : (
+                    // Desktop: Use ResizablePanelGroup with ShadCN Sidebar
+                    <ResizablePanelGroup key={sidebarOpen ? "open" : "closed"} direction="horizontal" className="min-h-screen" onLayout={handleSidebarResize}>
+                        {sidebarOpen && (
+                            <>
+                                <ResizablePanel
+                                    id="sidebar-panel"
+                                    defaultSize={Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth))}
+                                    minSize={MIN_SIDEBAR_WIDTH}
+                                    maxSize={MAX_SIDEBAR_WIDTH}
+                                    className="hidden md:flex shrink-0 overflow-hidden">
+                                    <Sidebar variant="sidebar" collapsible="none" className="h-full w-full flex flex-col" style={{ width: "100%", minWidth: 0 }} />
+                                </ResizablePanel>
+                                <ResizableHandle withHandle className="hidden md:flex w-1 bg-transparent hover:bg-border transition-colors cursor-col-resize" />
+                            </>
+                        )}
+                        <ResizablePanel
+                            id="main-panel"
+                            defaultSize={sidebarOpen ? Math.max(5, Math.min(95, 100 - Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, sidebarWidth)))) : 100}
+                            minSize={5}
+                            maxSize={sidebarOpen ? 95 : 100}
+                            className="flex-1">
+                            <SidebarInset className="h-screen overflow-hidden">
+                                <FloatingToolbar />
+                                <Routes>
+                                    <Route path="/:chatId?" element={<Chat />} />
+                                    <Route path="/profile" element={<Profile />} />
+                                    <Route path="/settings" element={<Settings />} />
+                                    <Route
+                                        path="/history"
+                                        element={
+                                            <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                <h1 className="text-2xl font-semibold">History & Sync</h1>
+                                            </div>
+                                        }
+                                    />
+                                    <Route path="/models" element={<Models />} />
+                                    <Route
+                                        path="/api-keys"
+                                        element={
+                                            <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                <h1 className="text-2xl font-semibold">API Keys</h1>
+                                            </div>
+                                        }
+                                    />
+                                    <Route
+                                        path="/attachments"
+                                        element={
+                                            <div className="h-screen overflow-y-auto border-l border-gray-300 dark:border-border bg-white dark:bg-background p-6">
+                                                <h1 className="text-2xl font-semibold">Attachments</h1>
+                                            </div>
+                                        }
+                                    />
+                                </Routes>
+                            </SidebarInset>
+                        </ResizablePanel>
+                    </ResizablePanelGroup>
                 )}
             </div>
         </SidebarProvider>
@@ -249,14 +198,81 @@ function AppContent() {
 }
 
 function App() {
+    const { loading } = useAuth();
+
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="t3chat-theme">
             <Router>
-                <AppContent />
+                {loading ? (
+                    <div className="flex items-center justify-center min-h-screen">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                ) : (
+                    <Routes>
+                        {/* Public routes */}
+                        <Route path="/" element={<Home />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/health" element={<Health />} />
+                        <Route path="/login" element={<LoginForm />} />
+                        <Route path="/auth/callback" element={<AuthCallback />} />
+
+                        {/* Admin routes */}
+                        <Route
+                            path="/admin"
+                            element={
+                                <AdminRoute>
+                                    <AdminDashboard />
+                                </AdminRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/users"
+                            element={
+                                <AdminRoute>
+                                    <AdminUsers />
+                                </AdminRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/providers"
+                            element={
+                                <AdminRoute>
+                                    <AdminProviders />
+                                </AdminRoute>
+                            }
+                        />
+                        <Route
+                            path="/admin/models"
+                            element={
+                                <AdminRoute>
+                                    <AdminModels />
+                                </AdminRoute>
+                            }
+                        />
+
+                        {/* Protected routes */}
+                        <Route
+                            path="/*"
+                            element={
+                                <ProtectedRoute>
+                                    <AuthenticatedLayout />
+                                </ProtectedRoute>
+                            }
+                        />
+                    </Routes>
+                )}
+                <Toaster />
             </Router>
-            <Toaster />
         </ThemeProvider>
     );
 }
 
-export default App;
+function AppWithAuth() {
+    return (
+        <AuthProvider>
+            <App />
+        </AuthProvider>
+    );
+}
+
+export default AppWithAuth;

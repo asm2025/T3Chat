@@ -1,11 +1,11 @@
 # Rust Backend Server
 
-The Rust backend for T3Chat. Built with Axum, async Diesel, and Firebase Authentication. This crate replaces the earlier Node.js Hono server while keeping the same HTTP surface area and data model.
+The Rust backend for T3Chat. Built with Axum, async Diesel, and OIDC Authentication. This crate replaces the earlier Node.js Hono server while keeping the same HTTP surface area and data model.
 
 ## Status
 
-✅ Works in local development with embedded PostgreSQL and Firebase emulator  
-✅ Production-ready authentication via JWKS  
+✅ Works in local development with embedded PostgreSQL  
+✅ Production-ready authentication via OIDC/JWKS  
 ✅ Compatible with external PostgreSQL providers (Supabase, self-hosted, etc.)
 
 ## Features
@@ -13,7 +13,7 @@ The Rust backend for T3Chat. Built with Axum, async Diesel, and Firebase Authent
 -   **Axum Web Framework**: Fast, ergonomic async web framework
 -   **Diesel + diesel_async**: Type-safe PostgreSQL ORM with async pooling
 -   **Diesel migrations**: Embedded SQL migrations (`server/migrations`) with optional auto-run
--   **Firebase Authentication**: JWKS-based JWT verification for production and emulator support
+-   **OIDC Authentication**: JWKS-based JWT verification for production
 -   **Repository pattern**: Dedicated repositories in `db/repositories` for query encapsulation
 -   **Graceful Shutdown**: Handles SIGINT/SIGTERM signals properly
 -   **Structured Logging**: `tracing` + daily rotating file appender
@@ -50,15 +50,18 @@ The server reads environment variables from `.env` files. See [`variables.md`](.
 ### Required Variables
 
 -   `DATABASE_URL` – PostgreSQL connection string
--   `FIREBASE_PROJECT_ID` – Firebase project ID
 -   `CORS_ORIGINS` – Comma-separated list of allowed CORS origins
 
 ### Optional Variables
 
 -   `PORT` – Overrides the listening port (defaults to 3000 or `--port` CLI argument)
 -   `APP_ENV` – Application environment: `development`, `staging`, or `release` (defaults to `development`)
--   `FIREBASE_AUTH_EMULATOR_HOST` – Host/port for the Firebase Auth emulator (e.g., `localhost:9099`)
 -   `DEBUG_ROUTES` – Enable route debugging middleware (`true`/`false`, defaults to `false`)
+-   `OIDC_ISSUER_URL` – OIDC provider issuer URL (required for authentication)
+-   `OIDC_CLIENT_ID` – OIDC client ID (required for authentication)
+-   `OIDC_CLIENT_SECRET` – OIDC client secret (required for authentication)
+-   `OIDC_REDIRECT_URI` – OIDC callback redirect URI (required for authentication)
+-   `JWT_SECRET` – Secret key for local JWT token signing (required for session tokens)
 
 ### Environment File Loading
 
@@ -76,11 +79,14 @@ Create separate files such as `.env.development`, `.env.staging`, and `.env.rele
 **Development (`server/.env.development`):**
 ```bash
 DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
-FIREBASE_PROJECT_ID=t3chat-dev
-FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
 CORS_ORIGINS=http://localhost:3010,http://localhost:3000
 APP_ENV=development
 PORT=3000
+OIDC_ISSUER_URL=https://your-oidc-provider.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+JWT_SECRET=your-secure-jwt-secret
 ```
 
 📖 **For complete environment variable documentation**, see [`variables.md`](../variables.md)
@@ -125,7 +131,11 @@ Example `.env` snippet:
 
 ```bash
 DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
-FIREBASE_PROJECT_ID=t3chat-dev
+OIDC_ISSUER_URL=https://your-oidc-provider.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+JWT_SECRET=your-secure-jwt-secret
 ```
 
 Then run `cargo run` from `server/`. Auto-migrate is enabled by the call to `db::connect(&database_url, true)` in `main.rs`. Set the second argument to `false` if you want to manage migrations manually.
@@ -205,7 +215,7 @@ Update models in `src/db/models/` and, if needed, regenerate the Diesel schema w
 ## Differences from Node.js Version
 
 -   Uses Diesel + `diesel_async` instead of Drizzle ORM
--   Firebase token verification with JWKS-based JWT validation (production ready)
+-   OIDC token verification with JWKS-based JWT validation (production ready)
 -   Repository pattern replaces direct SQL queries from the Hono server
 -   Structured logging with `tracing` instead of console logging
 -   Graceful shutdown handling for SIGINT/SIGTERM signals
@@ -214,14 +224,14 @@ Update models in `src/db/models/` and, if needed, regenerate the Diesel schema w
 
 ## ✅ Implementation Status
 
-### ✅ Production Firebase Authentication - IMPLEMENTED
+### ✅ Production OIDC Authentication - IMPLEMENTED
 
 Full production token verification with JWKS-based JWT verification is now implemented.
 
 **Status:** ✅ Complete  
 **Implementation:**
 
--   Proper JWKS fetching from Google's Firebase public keys
+-   Proper JWKS fetching from OIDC provider
 -   Token header kid (key ID) extraction
 -   RSA key selection and validation
 -   Full JWT verification with issuer and audience validation
@@ -247,7 +257,7 @@ Server now properly handles SIGINT/SIGTERM signals for graceful shutdown.
 
 | Environment     | Status   | Notes                                              |
 | --------------- | -------- | -------------------------------------------------- |
-| **Development** | ✅ Ready | Full compatibility with Firebase emulator          |
+| **Development** | ✅ Ready | Full OIDC authentication support                  |
 | **Production**  | ✅ Ready | Full JWKS-based authentication + graceful shutdown |
 
 ## 🚨 Known Limitations

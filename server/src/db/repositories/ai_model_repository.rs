@@ -4,7 +4,7 @@ use diesel_async::RunQueryDsl;
 use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
-use crate::db::models::{AiModelModel, AiProvider};
+use crate::db::models::{AiModelModel, NewAiModel, UpdateAiModel, AiProvider};
 use crate::db::{DbPool, schema::ai_models};
 
 #[async_trait]
@@ -17,6 +17,11 @@ pub trait TAiModelRepository: Send + Sync {
         model_id: &str,
     ) -> Result<Option<AiModelModel>>;
     async fn get(&self, id: Uuid) -> Result<Option<AiModelModel>>;
+    async fn create(&self, model: NewAiModel) -> Result<AiModelModel>;
+    async fn update(&self, id: Uuid, model: UpdateAiModel) -> Result<AiModelModel>;
+    async fn delete(&self, id: Uuid) -> Result<()>;
+    async fn enable(&self, id: Uuid) -> Result<()>;
+    async fn disable(&self, id: Uuid) -> Result<()>;
     async fn enable_for_user(&self, user_id: &str, model_id: Uuid) -> Result<()>;
     async fn disable_for_user(&self, user_id: &str, model_id: Uuid) -> Result<()>;
     async fn list_for_user(&self, user_id: &str) -> Result<Vec<AiModelModel>>;
@@ -94,6 +99,90 @@ impl TAiModelRepository for AiModelRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)
+    }
+
+    async fn create(&self, model: NewAiModel) -> Result<AiModelModel> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::insert_into(ai_models::table)
+            .values(&model)
+            .get_result(&mut conn)
+            .await
+            .map_err(Error::from_std_error)
+    }
+
+    async fn update(&self, id: Uuid, model: UpdateAiModel) -> Result<AiModelModel> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        // Check if model exists
+        let _existing = ai_models::table
+            .find(&id)
+            .first::<AiModelModel>(&mut conn)
+            .await
+            .optional()
+            .map_err(Error::from_std_error)?
+            .ok_or_else(|| Error::from_other_error("Model not found".to_string()))?;
+
+        diesel::update(ai_models::table.find(&id))
+            .set(&model)
+            .get_result(&mut conn)
+            .await
+            .map_err(Error::from_std_error)
+    }
+
+    async fn delete(&self, id: Uuid) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::delete(ai_models::table.find(id))
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    async fn enable(&self, id: Uuid) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::update(ai_models::table.find(&id))
+            .set(ai_models::disabled.eq(false))
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
+    }
+
+    async fn disable(&self, id: Uuid) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| Error::from_std_error(e))?;
+
+        diesel::update(ai_models::table.find(&id))
+            .set(ai_models::disabled.eq(true))
+            .execute(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok(())
     }
 
     async fn enable_for_user(&self, user_id: &str, model_id: Uuid) -> Result<()> {
