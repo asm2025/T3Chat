@@ -84,9 +84,9 @@ pub trait AIProvider: Send + Sync {
 -   `GET /api/v1/models/:id` - Get model details (public)
 -   `POST /api/v1/chat` - Send chat message (non-streaming, authenticated)
 -   `POST /api/v1/chat/stream` - Send chat message (streaming, authenticated)
--   `GET /api/v1/user-api-keys` - Get user's API keys (authenticated)
--   `POST /api/v1/user-api-keys` - Add/update API key (authenticated)
--   `DELETE /api/v1/user-api-keys/:id` - Delete API key (authenticated)
+-   `GET /api/v1/keys` - Get user's API keys (authenticated)
+-   `POST /api/v1/keys` - Add/update API key (authenticated)
+-   `DELETE /api/v1/keys/:id` - Delete API key (authenticated)
 
 ### 2. Authentication & Sync
 
@@ -496,10 +496,10 @@ pub trait AIProvider: Send + Sync {
 
 #### 8.3 API Endpoints
 
--   `POST /api/v1/user-api-keys` - Add API key (authenticated)
--   `PUT /api/v1/user-api-keys/:id` - Update API key (authenticated)
--   `DELETE /api/v1/user-api-keys/:id` - Delete API key (authenticated)
--   `POST /api/v1/user-api-keys/:id/validate` - Validate API key (authenticated)
+-   `POST /api/v1/keys` - Add API key (authenticated)
+-   `PUT /api/v1/keys/:id` - Update API key (authenticated)
+-   `DELETE /api/v1/keys/:id` - Delete API key (authenticated)
+-   `POST /api/v1/keys/:id/validate` - Validate API key (authenticated)
 
 #### 8.4 Frontend Components
 

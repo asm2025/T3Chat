@@ -58,6 +58,9 @@ Start with everything running locally on your machine, then progressively connec
 
 ## 🗂 Environment Configuration
 
+Environment variables are configured per environment for both backend and frontend. See [`variables.md`](variables.md) for a complete reference of all environment variables.
+
+**Quick Setup:**
 -   Create per-environment files for both the backend and frontend:
     -   `server/.env.development`, `server/.env.staging`, `server/.env.release`
     -   `ui/.env.development`, `ui/.env.staging`, `ui/.env.release`
@@ -65,6 +68,12 @@ Start with everything running locally on your machine, then progressively connec
 -   `pnpm run dev -- --env staging` launches the stack with staging configuration and exposes Swagger UI
 -   For manual runs: `APP_ENV=staging cargo run` or `APP_ENV=release cargo run --release`
 -   Vite automatically loads `ui/.env.<mode>`; the dev script forwards the selected environment via `--mode` so the frontend and backend stay aligned
+
+**Required Variables:**
+-   Backend: `DATABASE_URL`, `FIREBASE_PROJECT_ID`, `CORS_ORIGINS`
+-   Frontend: `VITE_API_URL` (optional, defaults to `http://localhost:3000`)
+
+📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 
 **Production (when connected):**
 
@@ -597,11 +606,12 @@ cargo build --release
 
 **Environment variables required:**
 
--   `DATABASE_URL` - PostgreSQL connection string
-
--   `FIREBASE_PROJECT_ID` - Firebase project ID
-
+-   `DATABASE_URL` - PostgreSQL connection string (required)
+-   `FIREBASE_PROJECT_ID` - Firebase project ID (required)
+-   `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (required)
 -   `PORT` - Server port (optional, defaults to 3000)
+
+📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 
 **Note**: Cloudflare Workers deployment is not supported for the Rust backend. For serverless deployment, consider platforms like [Fly.io](http://Fly.io), Railway, or Render that support Rust applications.
 
@@ -621,17 +631,17 @@ cargo build --release
 
 **Backend Server Environment Variables:**
 
--   `DATABASE_URL` - Your database connection string
-
--   `FIREBASE_PROJECT_ID` - Firebase project ID
-
+-   `DATABASE_URL` - Your database connection string (required)
+-   `FIREBASE_PROJECT_ID` - Firebase project ID (required)
+-   `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (required)
 -   `PORT` - Server port (optional, defaults to 3000)
-
--   `NODE_ENV` - Set to `production` for production mode
+-   `APP_ENV` - Application environment: `development`, `staging`, or `release` (optional, defaults to `development`)
 
 **Pages Environment Variables (Frontend):**
 
--   `VITE_API_URL` - Your deployed backend server URL (e.g., `https://api.yourdomain.com`)
+-   `VITE_API_URL` - Your deployed backend server URL (e.g., `https://api.yourdomain.com`) (optional, defaults to `http://localhost:3000`)
+
+📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 
 ### Post-Deployment Setup
 

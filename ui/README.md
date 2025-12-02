@@ -30,11 +30,35 @@ This app uses Firebase for authentication. To set up Firebase:
 
 Note: Make sure to add `firebase-config.json` to your `.gitignore` if you're using version control.
 
-## Environment Modes
+## Environment Variables
+
+The frontend reads environment variables from `.env` files. See [`variables.md`](../variables.md) for a complete reference of all environment variables.
+
+### Available Variables
+
+-   `VITE_API_URL` – Backend API base URL (optional, defaults to `http://localhost:3000`)
+
+**Note**: Only variables prefixed with `VITE_` are exposed to the frontend code.
+
+### Environment Modes
 
 -   Place frontend configuration in `.env.development`, `.env.staging`, and `.env.release`
 -   Vite automatically loads `.env.<mode>`; the dev script passes `--mode <APP_ENV>` so the selected backend environment stays in sync
 -   For manual runs use `pnpm run dev -- --mode staging` or `pnpm run build -- --mode release`
+
+### Example Configuration
+
+**Development (`ui/.env.development`):**
+```bash
+VITE_API_URL=http://localhost:3000
+```
+
+**Production (`ui/.env.release`):**
+```bash
+VITE_API_URL=https://api.example.com
+```
+
+📖 **For complete environment variable documentation**, see [`variables.md`](../variables.md)
 
 ## Expanding the ESLint configuration
 

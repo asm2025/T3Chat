@@ -520,13 +520,13 @@ pub async fn stream_chat(user: AuthenticatedUser, state: State<AppState>, Json(p
 
 ```rust
 // server/src/api/user_api_keys.rs
-// GET /api/v1/user-api-keys - Get user's API keys (authenticated)
+// GET /api/v1/keys - Get user's API keys (authenticated)
 pub async fn list_keys(user: AuthenticatedUser, state: State<AppState>) -> Result<Json<Vec<UserApiKeyResponse>>, StatusCode>;
 
-// POST /api/v1/user-api-keys - Add API key (authenticated)
+// POST /api/v1/keys - Add API key (authenticated)
 pub async fn create_key(user: AuthenticatedUser, state: State<AppState>, Json(payload): Json<CreateUserApiKeyRequest>) -> Result<Json<UserApiKeyResponse>, StatusCode>;
 
-// DELETE /api/v1/user-api-keys/:id - Delete API key (authenticated)
+// DELETE /api/v1/keys/:id - Delete API key (authenticated)
 pub async fn delete_key(user: AuthenticatedUser, state: State<AppState>, Path(id): Path<Uuid>) -> Result<StatusCode, StatusCode>;
 ```
 
@@ -571,7 +571,7 @@ Router::new()
     .nest("/api/v1/models", models_routes)
     .nest("/api/v1/chats", chats_routes)
     .nest("/api/v1/chat", chat_routes)
-    .nest("/api/v1/user-api-keys", user_api_keys_routes)
+    .nest("/api/v1/keys", user_api_keys_routes)
     .nest("/api/v1", authenticated_routes)
     // ... rest of router
 ```
@@ -879,12 +879,12 @@ import { fetchWithAuth } from "../serverComm";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
 
 export async function listUserApiKeys(): Promise<UserApiKey[]> {
-    const response = await fetchWithAuth("/api/v1/user-api-keys");
+    const response = await fetchWithAuth("/api/v1/keys");
     return response.json();
 }
 
 export async function createUserApiKey(data: CreateUserApiKeyRequest): Promise<UserApiKey> {
-    const response = await fetchWithAuth("/api/v1/user-api-keys", {
+    const response = await fetchWithAuth("/api/v1/keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -893,7 +893,7 @@ export async function createUserApiKey(data: CreateUserApiKeyRequest): Promise<U
 }
 
 export async function deleteUserApiKey(id: string): Promise<void> {
-    await fetchWithAuth(`/api/v1/user-api-keys/${id}`, {
+    await fetchWithAuth(`/api/v1/keys/${id}`, {
         method: "DELETE",
     });
 }

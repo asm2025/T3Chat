@@ -1,8 +1,8 @@
 use anyhow::Result;
 use axum::{
-    Router,
     http::HeaderValue,
     routing::{delete, get, post, put},
+    Router,
 };
 use emix::env::{get_env, get_port_or};
 use std::{net::SocketAddr, sync::Arc};
@@ -14,7 +14,7 @@ use tower_http::{
 };
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
-    EnvFilter, filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt,
+    filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
 };
 use utoipa::OpenApi;
 
@@ -63,9 +63,9 @@ async fn main() -> Result<()> {
 async fn run() -> Result<()> {
     // Connect to database
     tracing::info!("Configuring database");
-    
-    let database_url = get_env("DATABASE_URL")
-        .ok_or_else(|| anyhow::anyhow!("DATABASE_URL is not set"))?;
+
+    let database_url =
+        get_env("DATABASE_URL").ok_or_else(|| anyhow::anyhow!("DATABASE_URL is not set"))?;
     if database_url.is_empty() {
         tracing::error!("DATABASE_URL is empty");
         return Err(anyhow::anyhow!("DATABASE_URL is empty"));
@@ -339,7 +339,7 @@ fn setup_router(state: AppState) -> Result<Router> {
         .nest("/api/v1/models", models_routes)
         .nest("/api/v1/chats", chats_routes)
         .nest("/api/v1/chat", chat_routes)
-        .nest("/api/v1/user-api-keys", user_api_keys_routes)
+        .nest("/api/v1/keys", user_api_keys_routes)
         .nest("/api/v1/features", features_routes)
         .nest("/api/v1", user_routes);
 
@@ -420,7 +420,7 @@ async fn confirm_shutdown(prompt: &str) -> bool {
     // Use a blocking read in a background thread to avoid stalling the async runtime
     let prompt_owned = prompt.to_owned();
     match spawn_blocking(move || {
-        use std::io::{Write, stdin, stdout};
+        use std::io::{stdin, stdout, Write};
         let prompt = prompt_owned;
         print!("{prompt}");
         let _ = stdout().flush();

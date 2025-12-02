@@ -115,15 +115,15 @@ export class T3ChatClient extends ApiClient {
 
     // User API Keys endpoints
     async listUserApiKeys(): Promise<UserApiKey[]> {
-        return this.list<UserApiKey[]>("/v1/user-api-keys");
+        return this.list<UserApiKey[]>("/v1/keys");
     }
 
     async createUserApiKey(data: CreateUserApiKeyRequest): Promise<UserApiKey> {
-        return this.post<UserApiKey>("/v1/user-api-keys", data);
+        return this.post<UserApiKey>("/v1/keys", data);
     }
 
     async deleteUserApiKey(id: string): Promise<void> {
-        return this.delete(`/v1/user-api-keys/${id}`);
+        return this.delete(`/v1/keys/${id}`);
     }
 
     // Features endpoints

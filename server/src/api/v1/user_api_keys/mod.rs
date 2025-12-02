@@ -1,6 +1,6 @@
 use crate::{
-    AppState, db::prelude::*, db::repositories::TUserApiKeyRepository,
-    middleware::auth::AuthenticatedUser,
+    db::prelude::*, db::repositories::TUserApiKeyRepository, middleware::auth::AuthenticatedUser,
+    AppState,
 };
 use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
@@ -40,7 +40,7 @@ pub struct CreateUserApiKeyRequest {
 /// List all API keys for the authenticated user
 #[utoipa::path(
     get,
-    path = "/api/v1/user-api-keys",
+    path = "/api/v1/keys",
     tag = "User API Keys",
     security(("bearer_auth" = [])),
     responses(
@@ -67,7 +67,7 @@ pub async fn list_keys(
 /// Create a new API key for the authenticated user
 #[utoipa::path(
     post,
-    path = "/api/v1/user-api-keys",
+    path = "/api/v1/keys",
     tag = "User API Keys",
     security(("bearer_auth" = [])),
     request_body = CreateUserApiKeyRequest,
@@ -123,7 +123,7 @@ pub async fn create_key(
 /// Delete an API key
 #[utoipa::path(
     delete,
-    path = "/api/v1/user-api-keys/{id}",
+    path = "/api/v1/keys/{id}",
     tag = "User API Keys",
     security(("bearer_auth" = [])),
     params(

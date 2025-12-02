@@ -35,9 +35,9 @@ The Rust backend for T3Chat. Built with Axum, async Diesel, and Firebase Authent
 -   `POST /api/v1/chat/stream` – Streaming chat completion (Server-Sent Events)
 -   `GET /api/v1/me` – Fetch authenticated user profile
 -   `PUT /api/v1/me` – Update authenticated user profile
--   `GET /api/v1/user-api-keys` – List user API keys
--   `POST /api/v1/user-api-keys` – Create a new API key
--   `DELETE /api/v1/user-api-keys/{id}` – Delete an API key
+-   `GET /api/v1/keys` – List user API keys
+-   `POST /api/v1/keys` – Create a new API key
+-   `DELETE /api/v1/keys/{id}` – Delete an API key
 
 ## API Documentation
 
@@ -45,25 +45,45 @@ Interactive Swagger UI is available at `http://localhost:<port>/swagger-ui` when
 
 ## Environment Variables
 
-The server reads these environment variables (typically via `.env` during development):
+The server reads environment variables from `.env` files. See [`variables.md`](../variables.md) for a complete reference of all environment variables.
 
--   `DATABASE_URL` – PostgreSQL connection string (required)
--   `FIREBASE_PROJECT_ID` – Firebase project ID (required)
--   `FIREBASE_AUTH_EMULATOR_HOST` – Host/port for the Firebase Auth emulator (optional)
--   `PORT` – Overrides the listening port (otherwise defaults to 3000 or `--port`)
--   `CORS_ORIGINS` – Comma-separated list of allowed origins (defaults to `http://localhost`)
--   `APP_ENV` – Optional override for the active environment (`development`, `staging`, or `release`); defaults to `development`
+### Required Variables
 
-### Environment files
+-   `DATABASE_URL` – PostgreSQL connection string
+-   `FIREBASE_PROJECT_ID` – Firebase project ID
+-   `CORS_ORIGINS` – Comma-separated list of allowed CORS origins
+
+### Optional Variables
+
+-   `PORT` – Overrides the listening port (defaults to 3000 or `--port` CLI argument)
+-   `APP_ENV` – Application environment: `development`, `staging`, or `release` (defaults to `development`)
+-   `FIREBASE_AUTH_EMULATOR_HOST` – Host/port for the Firebase Auth emulator (e.g., `localhost:9099`)
+-   `DEBUG_ROUTES` – Enable route debugging middleware (`true`/`false`, defaults to `false`)
+
+### Environment File Loading
 
 Environment variables are loaded from `.env` files based on `APP_ENV` using the following priority order:
 
-1. `server/.env.<APP_ENV>.local`
+1. `server/.env.<APP_ENV>.local` (highest priority)
 2. `server/.env.<APP_ENV>`
 3. `server/.env.local`
-4. `server/.env`
+4. `server/.env` (lowest priority)
 
 Create separate files such as `.env.development`, `.env.staging`, and `.env.release` to isolate configuration per environment. When running locally with the provided scripts you can pass `--env staging` (or set `APP_ENV=staging`) to switch to another configuration.
+
+### Example Configuration
+
+**Development (`server/.env.development`):**
+```bash
+DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
+FIREBASE_PROJECT_ID=t3chat-dev
+FIREBASE_AUTH_EMULATOR_HOST=localhost:9099
+CORS_ORIGINS=http://localhost:3010,http://localhost:3000
+APP_ENV=development
+PORT=3000
+```
+
+📖 **For complete environment variable documentation**, see [`variables.md`](../variables.md)
 
 ## Running the Server
 
