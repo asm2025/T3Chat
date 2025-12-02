@@ -27,9 +27,17 @@ CREATE DATABASE t3chat;
 \q
 ```
 
-## Step 2: Set Up OIDC Authentication
+## Step 2: Configure Authentication
 
-T3Chat requires an OIDC provider for authentication. Google OAuth is the quickest to set up:
+T3Chat uses **local username/password authentication by default**. OIDC authentication (Google OAuth, Firebase, Auth0, Keycloak) is optional and can be enabled by configuring the OIDC environment variables below.
+
+### Option A: Local Authentication Only (Default - No Additional Setup Required)
+
+Local authentication works out of the box with the default admin user. Skip to Step 3 if you only want local authentication.
+
+### Option B: Enable OIDC Authentication (Optional)
+
+If you want to enable OIDC authentication, follow these steps. Google OAuth is the quickest to set up:
 
 ### Using Google OAuth (Recommended)
 
@@ -58,14 +66,15 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 # CORS (must include your frontend URL)
 CORS_ORIGINS=http://localhost:3010
 
-# OIDC Authentication (Google)
-OIDC_ISSUER_URL=https://accounts.google.com
-OIDC_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
-OIDC_CLIENT_SECRET=YOUR_CLIENT_SECRET
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
-
 # JWT Session Token Secret (generate with: openssl rand -base64 32)
 JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
+
+# Optional: OIDC Authentication (only needed if you want OIDC login)
+# Leave these commented out if you only want local authentication
+# OIDC_ISSUER_URL=https://accounts.google.com
+# OIDC_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
+# OIDC_CLIENT_SECRET=YOUR_CLIENT_SECRET
+# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 
 # Optional: Development settings
 APP_ENV=development
@@ -74,7 +83,7 @@ DEBUG_ROUTES=false
 EOF
 ```
 
-**Important**: Replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` with your actual Google OAuth credentials!
+**Note**: If you want to enable OIDC authentication, uncomment and fill in the OIDC variables above. Otherwise, local authentication will work without them.
 
 Generate a secure JWT secret:
 
@@ -130,23 +139,22 @@ The UI will start on `http://localhost:3010`
 
 ## Step 6: Log In
 
-You can log in using either OIDC or local authentication:
-
-### Option A: OIDC Login (Google OAuth)
+### Local Login (Default - Username & Password)
 
 1. Open your browser to `http://localhost:3010`
-2. Click "Login with OIDC"
-3. Complete the OAuth flow
-4. You'll be redirected back to T3Chat
-
-### Option B: Local Login (Username & Password)
-
-1. Open your browser to `http://localhost:3010`
-2. Click "Login with Username & Password"
+2. The login form will show username/password fields by default
 3. Use the default admin credentials:
-   - **Username**: `admin`
-   - **Password**: `P@$$w0rd`
+    - **Username**: `admin`
+    - **Password**: `P@$$w0rd`
 4. You'll be logged in immediately
+
+### OIDC Login (Optional - Only if Configured)
+
+If you configured OIDC in Step 2, you'll see an "Or" separator and a "Login with OIDC" button:
+
+1. Click "Login with OIDC" in the login form
+2. Complete the OAuth flow
+3. You'll be redirected back to T3Chat
 
 **⚠️ Security Note**: The default admin password should be changed immediately after first login!
 
@@ -186,16 +194,19 @@ You can log in using either OIDC or local authentication:
 
 T3Chat supports two authentication methods:
 
-1. **Local Authentication** (simplest for testing):
-   - Uses username/password stored in the database
-   - Default admin user: `admin` / `P@$$w0rd`
-   - No external services required
-   - Best for development and testing
+1. **Local Authentication** (Primary - Default):
 
-2. **OIDC Authentication** (recommended for production):
-   - Supports Google OAuth, Firebase, Auth0, Keycloak, and other OIDC providers
-   - More secure for production environments
-   - See configuration examples below
+    - Uses username/password stored in the database
+    - Default admin user: `admin` / `P@$$w0rd`
+    - No external services required
+    - Works out of the box - no additional configuration needed
+    - Best for development, testing, and self-hosted deployments
+
+2. **OIDC Authentication** (Optional):
+    - Supports Google OAuth, Firebase, Auth0, Keycloak, and other OIDC providers
+    - Only appears in the login form if configured
+    - Enable by setting OIDC environment variables (see Step 3)
+    - See configuration examples below
 
 ## Alternative OIDC Providers
 
@@ -220,28 +231,32 @@ OIDC_CLIENT_SECRET=your-auth0-client-secret
 Firebase Authentication can be used via Google Cloud Identity Platform, which supports OIDC:
 
 1. **Create a Firebase Project**:
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Create a new project or select an existing one
-   - Note your project ID
+
+    - Go to [Firebase Console](https://console.firebase.google.com/)
+    - Create a new project or select an existing one
+    - Note your project ID
 
 2. **Enable Google Cloud Identity Platform**:
-   - In Firebase Console, go to "Authentication" > "Providers"
-   - Enable "Google Cloud Identity Platform" (if not already enabled)
-   - This enables OIDC support for your Firebase project
+
+    - In Firebase Console, go to "Authentication" > "Providers"
+    - Enable "Google Cloud Identity Platform" (if not already enabled)
+    - This enables OIDC support for your Firebase project
 
 3. **Configure OAuth Consent Screen** (in Google Cloud Console):
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Select your Firebase project
-   - Navigate to "APIs & Services" > "OAuth consent screen"
-   - Configure the consent screen (use "External" for testing)
+
+    - Go to [Google Cloud Console](https://console.cloud.google.com/)
+    - Select your Firebase project
+    - Navigate to "APIs & Services" > "OAuth consent screen"
+    - Configure the consent screen (use "External" for testing)
 
 4. **Create OAuth 2.0 Client**:
-   - Navigate to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth 2.0 Client ID"
-   - Choose "Web application"
-   - Add authorized redirect URI: `http://localhost:3000/api/v1/auth/callback`
-   - Add authorized JavaScript origin: `http://localhost:3010`
-   - Copy the Client ID and Client Secret
+
+    - Navigate to "APIs & Services" > "Credentials"
+    - Click "Create Credentials" > "OAuth 2.0 Client ID"
+    - Choose "Web application"
+    - Add authorized redirect URI: `http://localhost:3000/api/v1/auth/callback`
+    - Add authorized JavaScript origin: `http://localhost:3010`
+    - Copy the Client ID and Client Secret
 
 5. **Update `.env`**:
 

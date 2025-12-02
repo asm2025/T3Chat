@@ -38,7 +38,7 @@ Start with everything running locally on your machine, then progressively connec
 
 -   ⚡ Runs UI + Server on your computer
 
--   🔐 Supports both OIDC authentication (Google OAuth, Firebase, Auth0, Keycloak) and local username/password authentication
+-   🔐 Local username/password authentication (primary). OIDC authentication (Google OAuth, Firebase, Auth0, Keycloak) is optional and appears only if configured.
 
 **Key Features:**
 
@@ -70,7 +70,8 @@ Environment variables are configured per environment for both backend and fronte
 -   Vite automatically loads `ui/.env.<mode>`; the dev script forwards the selected environment via `--mode` so the frontend and backend stay aligned
 
 **Required Variables:**
--   Backend: `DATABASE_URL`, `CORS_ORIGINS`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`, `JWT_SECRET`
+-   Backend: `DATABASE_URL`, `CORS_ORIGINS`, `JWT_SECRET`
+-   Backend (Optional - for OIDC): `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI` (only needed if you want to enable OIDC authentication)
 -   Frontend: `VITE_API_URL` (optional, defaults to `http://localhost:3000`)
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
@@ -656,9 +657,21 @@ curl https://api.yourdomain.com/api/v1/hello
 
 ## 🔐 **Authentication Flow**
 
-Your app includes a complete authentication system that supports both OIDC and local authentication:
+Your app includes a complete authentication system with **local username/password authentication as the primary method**. OIDC authentication is optional and will only appear in the login form if configured.
 
-### OIDC Authentication Flow
+### Local Authentication Flow (Primary)
+
+1. **Login**: Users sign in with username/email and password
+
+2. **Verification**: Backend verifies credentials against bcrypt password hash
+
+3. **Token**: Backend generates JWT session token
+
+4. **API calls**: Token sent in `Authorization: Bearer <token>` header
+
+5. **Protection**: Same middleware handles both local and OIDC auth tokens
+
+### OIDC Authentication Flow (Optional)
 
 1. **Login**: Users sign in via OIDC provider (Google, Firebase, Auth0, Keycloak)
 
@@ -670,17 +683,8 @@ Your app includes a complete authentication system that supports both OIDC and l
 
 5. **Protection**: Protected routes automatically have user context
 
-### Local Authentication Flow
 
-1. **Login**: Users sign in with username/email and password
-
-2. **Verification**: Backend verifies credentials against bcrypt password hash
-
-3. **Token**: Backend generates JWT session token
-
-4. **API calls**: Token sent in `Authorization: Bearer <token>` header
-
-5. **Protection**: Same middleware handles both OIDC and local auth tokens
+OIDC authentication is optional and only appears in the login form if OIDC is configured. To enable OIDC, set the following environment variables: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `OIDC_REDIRECT_URI`.
 
 ### Default Admin User
 

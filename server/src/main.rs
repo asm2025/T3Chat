@@ -38,8 +38,8 @@ pub struct AppState {
     pub user_api_key_repository: Arc<db::repositories::UserApiKeyRepository>,
     pub chat_repository: Arc<db::repositories::ChatRepository>,
     pub user_feature_repository: Arc<db::repositories::UserFeatureRepository>,
-    pub oidc_client: Arc<auth::OidcClient>,
-    pub jwks_cache: Arc<auth::JwksCache>,
+    pub oidc_client: Option<Arc<auth::OidcClient>>,
+    pub jwks_cache: Option<Arc<auth::JwksCache>>,
 }
 
 #[tokio::main]
@@ -81,42 +81,49 @@ async fn run() -> Result<()> {
 
     let user_repository = Arc::new(db::repositories::UserRepository::new(pool.clone()));
     let ai_model_repository = Arc::new(db::repositories::AiModelRepository::new(pool.clone()));
-    let ai_provider_repository = Arc::new(db::repositories::AiProviderRepository::new(pool.clone()));
+    let ai_provider_repository =
+        Arc::new(db::repositories::AiProviderRepository::new(pool.clone()));
     let user_api_key_repository =
         Arc::new(db::repositories::UserApiKeyRepository::new(pool.clone()));
     let chat_repository = Arc::new(db::repositories::ChatRepository::new(pool.clone()));
     let user_feature_repository =
         Arc::new(db::repositories::UserFeatureRepository::new(pool.clone()));
 
-    // Initialize OIDC client and JWKS cache
-    tracing::info!("Initializing OIDC client and JWKS cache...");
-    let oidc_issuer_url = env::get_oidc_issuer_url()
-        .map_err(|e| anyhow::anyhow!("Failed to get OIDC_ISSUER_URL: {}", e))?;
-    let oidc_client_id = env::get_oidc_client_id()
-        .map_err(|e| anyhow::anyhow!("Failed to get OIDC_CLIENT_ID: {}", e))?;
-    let oidc_client_secret = env::get_oidc_client_secret()
-        .map_err(|e| anyhow::anyhow!("Failed to get OIDC_CLIENT_SECRET: {}", e))?;
-    let oidc_redirect_uri = env::get_oidc_redirect_uri()
-        .map_err(|e| anyhow::anyhow!("Failed to get OIDC_REDIRECT_URI: {}", e))?;
+    // Initialize OIDC client and JWKS cache (optional)
+    let (oidc_client, jwks_cache) = if env::is_oidc_configured() {
+        tracing::info!("OIDC configuration detected. Initializing OIDC client and JWKS cache...");
+        let oidc_issuer_url = env::get_oidc_issuer_url()
+            .map_err(|e| anyhow::anyhow!("Failed to get OIDC_ISSUER_URL: {}", e))?;
+        let oidc_client_id = env::get_oidc_client_id()
+            .map_err(|e| anyhow::anyhow!("Failed to get OIDC_CLIENT_ID: {}", e))?;
+        let oidc_client_secret = env::get_oidc_client_secret()
+            .map_err(|e| anyhow::anyhow!("Failed to get OIDC_CLIENT_SECRET: {}", e))?;
+        let oidc_redirect_uri = env::get_oidc_redirect_uri()
+            .map_err(|e| anyhow::anyhow!("Failed to get OIDC_REDIRECT_URI: {}", e))?;
 
-    let oidc_client = Arc::new(
-        auth::OidcClient::new(
-            oidc_issuer_url.clone(),
-            oidc_client_id,
-            oidc_client_secret,
-            oidc_redirect_uri,
-        )
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to create OIDC client: {}", e))?,
-    );
-
-    let jwks_cache = Arc::new(
-        auth::JwksCache::new(oidc_issuer_url)
+        let client = Arc::new(
+            auth::OidcClient::new(
+                oidc_issuer_url.clone(),
+                oidc_client_id,
+                oidc_client_secret,
+                oidc_redirect_uri,
+            )
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to create JWKS cache: {}", e))?,
-    );
+            .map_err(|e| anyhow::anyhow!("Failed to create OIDC client: {}", e))?,
+        );
 
-    tracing::info!("OIDC client and JWKS cache initialized successfully.");
+        let cache = Arc::new(
+            auth::JwksCache::new(oidc_issuer_url)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to create JWKS cache: {}", e))?,
+        );
+
+        tracing::info!("OIDC client and JWKS cache initialized successfully.");
+        (Some(client), Some(cache))
+    } else {
+        tracing::info!("OIDC not configured. Local authentication will be used.");
+        (None, None)
+    };
 
     let state = AppState {
         db: pool,

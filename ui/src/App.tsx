@@ -90,7 +90,7 @@ function AuthenticatedLayout() {
 
     return (
         <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <div className="flex min-h-screen w-full bg-background">
+            <div className="flex flex-col min-h-screen w-full justify-between bg-background dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
                 <MobileWarningBanner />
                 {/* Mobile: Use ShadCN Sidebar with Sheet */}
                 {isMobile ? (

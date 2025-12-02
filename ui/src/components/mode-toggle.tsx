@@ -48,7 +48,7 @@ export function ModeToggle() {
                     <span className="sr-only">Theme settings</span>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[8rem] outline-chat-border/20! outline-1! outline-solid! dark:outline-white/5!">
+            <DropdownMenuContent align="end" className="min-w-32 outline-chat-border/20! outline-1! outline-solid! dark:outline-white/5!">
                 <DropdownMenuGroup>
                     <DropdownMenuItem className="flex flex-row items-center gap-2 px-2 py-1.5 text-sm cursor-default" onSelect={(e) => e.preventDefault()}>
                         <span>Theme</span>

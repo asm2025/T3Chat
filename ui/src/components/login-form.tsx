@@ -6,18 +6,24 @@ import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 import { Separator } from "./ui/separator"
 import { useAuth } from "@/lib/auth-context"
-import { handleCallback, localLogin } from "@/lib/auth"
+import { handleCallback, localLogin, isOidcEnabled } from "@/lib/auth"
 import { toast } from "@/lib/toast"
 import { Loader2 } from "lucide-react"
 
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
-  const [isLocalLogin, setIsLocalLogin] = useState(false)
+  const [showOidcOption, setShowOidcOption] = useState(false)
+  const [oidcEnabled, setOidcEnabled] = useState(false)
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { login } = useAuth()
+
+  // Check if OIDC is enabled on mount
+  useEffect(() => {
+    isOidcEnabled().then(setOidcEnabled)
+  }, [])
 
   // Handle OIDC callback
   useEffect(() => {
@@ -69,60 +75,17 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md rounded-2xl border border-border bg-card shadow-lg">
       <CardHeader>
-        <CardTitle>Authentication</CardTitle>
+        <CardTitle>Sign In</CardTitle>
         <CardDescription>
-          {isLocalLogin 
-            ? "Sign in with your username and password" 
-            : "Sign in with your OIDC provider or use local authentication"
+          {showOidcOption && oidcEnabled
+            ? "Sign in with your OIDC provider or use local authentication"
+            : "Sign in with your username and password"
           }
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {!isLocalLogin ? (
-          <>
-            <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Click the button below to sign in with your organization's identity provider.
-              </p>
-            </div>
-            
-            <Button
-              type="button"
-              className="w-full"
-              onClick={handleOidcLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Redirecting...
-                </>
-              ) : (
-                "Login with OIDC"
-              )}
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => setIsLocalLogin(true)}
-              disabled={isLoading}
-            >
-              Login with Username & Password
-            </Button>
-          </>
-        ) : (
+        {!showOidcOption ? (
           <form onSubmit={handleLocalLoginSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username or Email</Label>
@@ -167,16 +130,72 @@ export function LoginForm() {
               )}
             </Button>
 
+            {oidcEnabled && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or</span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowOidcOption(true)}
+                  disabled={isLoading}
+                >
+                  Login with OIDC
+                </Button>
+              </>
+            )}
+          </form>
+        ) : (
+          <>
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Click the button below to sign in with your organization's identity provider.
+              </p>
+            </div>
+            
             <Button
               type="button"
-              variant="ghost"
               className="w-full"
-              onClick={() => setIsLocalLogin(false)}
+              onClick={handleOidcLogin}
               disabled={isLoading}
             >
-              Back to OIDC Login
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecting...
+                </>
+              ) : (
+                "Login with OIDC"
+              )}
             </Button>
-          </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowOidcOption(false)}
+              disabled={isLoading}
+            >
+              Login with Username & Password
+            </Button>
+          </>
         )}
       </CardContent>
     </Card>

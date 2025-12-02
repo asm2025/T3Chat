@@ -38,7 +38,7 @@ This document provides a comprehensive reference for all environment variables u
 -   **Description**: OIDC provider issuer URL
 -   **Format**: URL
 -   **Example**: `https://accounts.google.com`
--   **Required**: ✅ Yes
+-   **Required**: ❌ No (optional - only needed if enabling OIDC)
 -   **Default**: None
 -   **Notes**:
     -   Used for OIDC discovery and token verification
@@ -47,39 +47,42 @@ This document provides a comprehensive reference for all environment variables u
     -   For Firebase (GCIP): `https://securetoken.google.com/YOUR_PROJECT_ID`
     -   For Auth0: `https://YOUR_DOMAIN.auth0.com`
     -   For Keycloak: `https://your-keycloak.com/realms/YOUR_REALM`
+    -   **OIDC is optional** - local authentication works without these variables
 
 ##### `OIDC_CLIENT_ID`
 
 -   **Description**: OIDC client ID
 -   **Format**: String
 -   **Example**: `your-client-id.apps.googleusercontent.com`
--   **Required**: ✅ Yes
+-   **Required**: ❌ No (optional - only needed if enabling OIDC)
 -   **Default**: None
--   **Notes**: OAuth2/OIDC client identifier obtained from your OIDC provider.
+-   **Notes**: OAuth2/OIDC client identifier obtained from your OIDC provider. Required only if `OIDC_ISSUER_URL` is set.
 
 ##### `OIDC_CLIENT_SECRET`
 
 -   **Description**: OIDC client secret
 -   **Format**: String (secure)
 -   **Example**: `GOCSPX-xxxxxxxxxxxxxxxxxxxx`
--   **Required**: ✅ Yes
+-   **Required**: ❌ No (optional - only needed if enabling OIDC)
 -   **Default**: None
 -   **Notes**:
     -   OAuth2/OIDC client secret. **Keep secure!**
     -   Never commit this to version control
     -   Obtain from your OIDC provider's console
+    -   **OIDC is optional** - local authentication works without this
 
 ##### `OIDC_REDIRECT_URI`
 
 -   **Description**: OIDC callback redirect URI
 -   **Format**: URL
 -   **Example**: `http://localhost:3000/api/v1/auth/callback`
--   **Required**: ✅ Yes
+-   **Required**: ❌ No (optional - only needed if enabling OIDC)
 -   **Default**: None
 -   **Notes**:
     -   Must **exactly match** the redirect URI configured in your OIDC provider
     -   For local development: `http://localhost:3000/api/v1/auth/callback`
     -   For production: `https://your-domain.com/api/v1/auth/callback`
+    -   **OIDC is optional** - local authentication works without this
 
 ##### `JWT_SECRET`
 
@@ -89,7 +92,7 @@ This document provides a comprehensive reference for all environment variables u
 -   **Required**: ✅ Yes
 -   **Default**: None
 -   **Notes**:
-    -   Used for signing session tokens issued after OIDC authentication
+    -   Used for signing session tokens for both local and OIDC authentication
     -   Generate with: `openssl rand -base64 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
     -   **Keep secure!** Never commit to version control
 
@@ -255,14 +258,18 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 # CORS (must include your frontend URL)
 CORS_ORIGINS=http://localhost:3010
 
-# OIDC Authentication (REQUIRED)
+# JWT Session Token Secret (generate with: openssl rand -base64 32)
+JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
+
+# OIDC Authentication (OPTIONAL - only needed if you want OIDC login)
+# Leave these commented out if you only want local authentication
 # Choose one of the following OIDC provider configurations:
 
 # Option 1: Google OAuth (recommended for quick start)
-OIDC_ISSUER_URL=https://accounts.google.com
-OIDC_CLIENT_ID=your-client-id.apps.googleusercontent.com
-OIDC_CLIENT_SECRET=your-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_ISSUER_URL=https://accounts.google.com
+# OIDC_CLIENT_ID=your-client-id.apps.googleusercontent.com
+# OIDC_CLIENT_SECRET=your-client-secret
+# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 
 # Option 2: Firebase (Google Cloud Identity Platform)
 # OIDC_ISSUER_URL=https://securetoken.google.com/YOUR_PROJECT_ID
@@ -277,13 +284,10 @@ OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 # OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 
 # Option 4: Keycloak (for self-hosted)
-# OIDC_ISSUER_URL=https://your-keycloak.com/realms/YOUR_REALM
+# OIDC_ISSUER_URL=http://localhost:8080/realms/t3chat
 # OIDC_CLIENT_ID=your-keycloak-client-id
 # OIDC_CLIENT_SECRET=your-keycloak-client-secret
 # OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
-
-# JWT Session Token Secret (generate with: openssl rand -base64 32)
-JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 ```
 
 #### Frontend (`ui/.env.development`)
@@ -431,7 +435,7 @@ VITE_API_URL=https://api.example.com
 
 T3Chat supports two authentication methods:
 
-### 1. Local Authentication (Username & Password)
+### 1. Local Authentication (Username & Password) - Primary Method
 
 Local authentication is enabled by default and requires no additional configuration. The database includes a seeded admin user:
 
@@ -447,9 +451,9 @@ Local authentication is ideal for:
 - Self-hosted deployments without external identity providers
 - Quick setup without OIDC configuration
 
-### 2. OIDC Authentication (OpenID Connect)
+### 2. OIDC Authentication (OpenID Connect) - Optional
 
-T3Chat also supports OpenID Connect (OIDC) for integration with external identity providers. This is recommended for production deployments.
+T3Chat also supports OpenID Connect (OIDC) for integration with external identity providers. OIDC is optional and will only appear in the login form if configured. To enable OIDC, set the OIDC environment variables listed above.
 
 ### Option 1: Google OAuth (Recommended for Quick Start)
 

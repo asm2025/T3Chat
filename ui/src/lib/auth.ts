@@ -20,6 +20,20 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const EXPIRES_AT_KEY = 'auth_token_expires_at';
 
 /**
+ * Check if OIDC authentication is enabled
+ */
+export async function isOidcEnabled(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/config`);
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.oidc_enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Initiate OIDC login flow by redirecting to backend login endpoint
  */
 export async function initiateLogin(): Promise<void> {

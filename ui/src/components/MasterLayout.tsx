@@ -15,13 +15,13 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
     const isCollapsed = !sidebarOpen && !isMobile;
 
     return (
-        <div className="flex h-screen flex-col bg-background relative">
+        <div className="flex h-screen flex-col relative">
             <div
                 className={cn(
                     "bg-chat-background ease-snappy absolute top-0 bottom-0 left-0 right-0 overflow-hidden bg-fixed pb-[140px] transition-all select-none print:hidden",
-                    isCollapsed ? "!translate-y-0 !rounded-none border-none max-sm:border-none" : "border-chat-border border-t border-l max-sm:border-none sm:translate-y-3.5 sm:rounded-tl-xl",
+                    isCollapsed ? "translate-y-0! rounded-none! border-none max-sm:border-none" : "border-chat-border border-t border-l max-sm:border-none sm:translate-y-3.5 sm:rounded-tl-xl",
                 )}>
-                <div className={cn("bg-noise ease-snappy absolute inset-0 -top-3.5 bg-fixed [background-position:right_bottom] transition-transform", isCollapsed && "translate-y-3.5")}></div>
+                <div className={cn("bg-noise ease-snappy absolute inset-0 -top-3.5 bg-fixed bg-bottom-right transition-transform", isCollapsed && "translate-y-3.5")}></div>
             </div>
 
             {/* Top decorative border */}
@@ -31,8 +31,8 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
                     isCollapsed ? "-translate-y-[15px] border-transparent" : "border-chat-border border-b",
                 )}
                 aria-hidden="true">
-                <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 left-0 h-full w-8 bg-gradient-to-r to-transparent"></div>
-                <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 right-24 h-full w-8 bg-gradient-to-l to-transparent"></div>
+                <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 left-0 h-full w-8 bg-linear-to-r to-transparent"></div>
+                <div className="from-gradient-noise-top blur-fallback:hidden absolute top-0 right-24 h-full w-8 bg-linear-to-l to-transparent"></div>
                 <div className="bg-gradient-noise-top blur-fallback:hidden absolute top-0 right-0 h-full w-24"></div>
             </div>
 
@@ -42,11 +42,7 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
                 {!isCollapsed && (
                     <div className="fixed top-0 right-0 max-sm:hidden">
                         <div className="ease-snappy group pointer-events-none absolute top-3.5 z-10 -mb-8 h-32 w-full origin-top transition-all" style={{ boxShadow: "10px -10px 8px 2px var(--gradient-noise-top)" }}>
-                            <svg
-                                className="absolute h-9 origin-top-left skew-x-30 overflow-visible ease-snappy -right-[4rem] transform-gpu transition-transform duration-300 translate-x-1"
-                                version="1.1"
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 128 32">
+                            <svg className="absolute h-9 origin-top-left skew-x-30 overflow-visible ease-snappy -right-16 transform-gpu transition-transform duration-300 translate-x-1" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 32">
                                 <line stroke="var(--gradient-noise-top)" strokeWidth="2px" shapeRendering="optimizeQuality" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeMiterlimit="10" x1="1" y1="0" x2="128" y2="0"></line>
                                 <path
                                     stroke="var(--chat-border)"
@@ -80,7 +76,7 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
                         <div className="pointer-events-none fixed top-0 right-0 z-20 h-20 w-40 print:invisible max-sm:hidden" style={{ clipPath: "inset(0px 12px 0px 0px)" }}>
                             <div className="ease-snappy group pointer-events-none absolute top-3.5 z-10 -mb-8 h-32 w-full origin-top transition-all" style={{ boxShadow: "10px -10px 8px 2px var(--gradient-noise-top)" }}>
                                 <svg
-                                    className="absolute h-9 origin-top-left skew-x-30 overflow-visible ease-snappy -right-[4rem] transform-gpu transition-transform duration-300 translate-x-1"
+                                    className="absolute h-9 origin-top-left skew-x-30 overflow-visible ease-snappy -right-16 transform-gpu transition-transform duration-300 translate-x-1"
                                     version="1.1"
                                     xmlns="http://www.w3.org/2000/svg"
                                     viewBox="0 0 128 32">
@@ -109,9 +105,7 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
                     </div>
 
                     <div role="log" aria-live="polite" className="pt-safe-offset-10 mx-auto flex w-full max-w-3xl flex-col space-y-12 px-4 pb-10 print:space-y-0 print:pt-0">
-                        <div className={cn(contentClassName)}>
-                            {children}
-                        </div>
+                        <div className={cn(contentClassName)}>{children}</div>
                     </div>
                 </div>
             </div>

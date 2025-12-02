@@ -61,6 +61,14 @@ pub fn get_oidc_redirect_uri() -> Result<String> {
     get_required_env("OIDC_REDIRECT_URI").map_err(|e| e.into())
 }
 
+/// Check if OIDC is configured (all required variables are present)
+pub fn is_oidc_configured() -> bool {
+    get_oidc_issuer_url().is_ok()
+        && get_oidc_client_id().is_ok()
+        && get_oidc_client_secret().is_ok()
+        && get_oidc_redirect_uri().is_ok()
+}
+
 pub fn get_jwt_secret() -> Result<String> {
     get_required_env("JWT_SECRET").map_err(|e| e.into())
 }

@@ -10,6 +10,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use std::sync::Arc;
 
 use crate::auth::SessionManager;
 use crate::AppState;
@@ -55,10 +56,14 @@ pub async fn auth_middleware(
     let user_id = match verify_session_token(token).await {
         Ok(claims) => claims.sub,
         Err(_) => {
-            // If session token fails, try OIDC token
-            match verify_oidc_token(token, &state).await {
-                Ok(claims) => claims.sub,
-                Err(_) => return Err(StatusCode::UNAUTHORIZED),
+            // If session token fails, try OIDC token (if configured)
+            if let (Some(_), Some(jwks_cache)) = (&state.oidc_client, &state.jwks_cache) {
+                match verify_oidc_token(token, jwks_cache).await {
+                    Ok(claims) => claims.sub,
+                    Err(_) => return Err(StatusCode::UNAUTHORIZED),
+                }
+            } else {
+                return Err(StatusCode::UNAUTHORIZED);
             }
         }
     };
@@ -115,11 +120,10 @@ async fn verify_session_token(
 
 async fn verify_oidc_token(
     token: &str,
-    state: &AppState,
+    jwks_cache: &Arc<crate::auth::JwksCache>,
 ) -> Result<crate::auth::jwt::UserClaims, StatusCode> {
     // Use cached JWKS from AppState
-    state
-        .jwks_cache
+    jwks_cache
         .verify_token(token)
         .await
         .map_err(|_| StatusCode::UNAUTHORIZED)

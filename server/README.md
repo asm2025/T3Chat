@@ -51,16 +51,17 @@ The server reads environment variables from `.env` files. See [`variables.md`](.
 
 -   `DATABASE_URL` – PostgreSQL connection string
 -   `CORS_ORIGINS` – Comma-separated list of allowed CORS origins
+-   `JWT_SECRET` – Secret key for local JWT token signing (required for session tokens)
 
 ### Optional Variables
 
 -   `PORT` – Overrides the listening port (defaults to 3000 or `--port` CLI argument)
 -   `APP_ENV` – Application environment: `development`, `staging`, or `release` (defaults to `development`)
 -   `DEBUG_ROUTES` – Enable route debugging middleware (`true`/`false`, defaults to `false`)
--   `OIDC_ISSUER_URL` – OIDC provider issuer URL (required for authentication)
--   `OIDC_CLIENT_ID` – OIDC client ID (required for authentication)
--   `OIDC_CLIENT_SECRET` – OIDC client secret (required for authentication)
--   `OIDC_REDIRECT_URI` – OIDC callback redirect URI (required for authentication)
+-   `OIDC_ISSUER_URL` – OIDC provider issuer URL (optional - only needed if enabling OIDC authentication)
+-   `OIDC_CLIENT_ID` – OIDC client ID (optional - only needed if enabling OIDC authentication)
+-   `OIDC_CLIENT_SECRET` – OIDC client secret (optional - only needed if enabling OIDC authentication)
+-   `OIDC_REDIRECT_URI` – OIDC callback redirect URI (optional - only needed if enabling OIDC authentication)
 -   `JWT_SECRET` – Secret key for local JWT token signing (required for session tokens)
 
 ### Environment File Loading
@@ -82,11 +83,13 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 CORS_ORIGINS=http://localhost:3010,http://localhost:3000
 APP_ENV=development
 PORT=3000
-OIDC_ISSUER_URL=https://your-oidc-provider.com
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 JWT_SECRET=your-secure-jwt-secret
+
+# OIDC Authentication (optional - only needed if you want OIDC login)
+# OIDC_ISSUER_URL=https://your-oidc-provider.com
+# OIDC_CLIENT_ID=your-client-id
+# OIDC_CLIENT_SECRET=your-client-secret
+# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 ```
 
 📖 **For complete environment variable documentation**, see [`variables.md`](../variables.md)
@@ -131,11 +134,13 @@ Example `.env` snippet:
 
 ```bash
 DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
-OIDC_ISSUER_URL=https://your-oidc-provider.com
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 JWT_SECRET=your-secure-jwt-secret
+
+# OIDC Authentication (optional - only needed if you want OIDC login)
+# OIDC_ISSUER_URL=https://your-oidc-provider.com
+# OIDC_CLIENT_ID=your-client-id
+# OIDC_CLIENT_SECRET=your-client-secret
+# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
 ```
 
 Then run `cargo run` from `server/`. Auto-migrate is enabled by the call to `db::connect(&database_url, true)` in `main.rs`. Set the second argument to `false` if you want to manage migrations manually.

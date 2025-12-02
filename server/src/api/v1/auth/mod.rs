@@ -13,12 +13,16 @@ use crate::db::models::CreateUserDto;
 use crate::db::repositories::{UserRepository, TUserRepository};
 use crate::middleware::auth::AuthenticatedUser;
 use crate::utils::password::verify_password;
+use crate::env;
 
 // GET /api/v1/auth/login
 pub async fn login(
     State(state): State<AppState>,
 ) -> Result<Redirect, StatusCode> {
-    let (auth_url, _state_token) = state.oidc_client.get_authorization_url();
+    let oidc_client = state.oidc_client.as_ref()
+        .ok_or(StatusCode::NOT_FOUND)?;
+    
+    let (auth_url, _state_token) = oidc_client.get_authorization_url();
     
     // TODO: Store state_token in session/cache for verification
     // For now, we'll verify it in the callback
@@ -37,14 +41,17 @@ pub async fn callback(
     State(state): State<AppState>,
     Query(params): Query<CallbackQuery>,
 ) -> Result<Redirect, StatusCode> {
+    let oidc_client = state.oidc_client.as_ref()
+        .ok_or(StatusCode::NOT_FOUND)?;
+    
     // TODO: Verify state token from session/cache
     
     // Exchange code for tokens using cached OIDC client
-    let token_response = state.oidc_client.exchange_code(params.code, params.state).await
+    let token_response = oidc_client.exchange_code(params.code, params.state).await
         .map_err(|_| StatusCode::BAD_REQUEST)?;
     
     // Get user info using cached OIDC client
-    let user_info = state.oidc_client.get_user_info(token_response.access_token.clone()).await
+    let user_info = oidc_client.get_user_info(token_response.access_token.clone()).await
         .map_err(|_| StatusCode::BAD_REQUEST)?;
     
     // Create or update user in database
@@ -238,7 +245,10 @@ pub async fn refresh(
     State(state): State<AppState>,
     Json(req): Json<RefreshRequest>,
 ) -> Result<Json<RefreshResponse>, StatusCode> {
-    let token_response = state.oidc_client.refresh_token(req.refresh_token).await
+    let oidc_client = state.oidc_client.as_ref()
+        .ok_or(StatusCode::NOT_FOUND)?;
+    
+    let token_response = oidc_client.refresh_token(req.refresh_token).await
         .map_err(|_| StatusCode::BAD_REQUEST)?;
     
     Ok(Json(RefreshResponse {
@@ -280,13 +290,33 @@ pub async fn me(
     }))
 }
 
+// GET /api/v1/auth/config
+#[derive(Serialize)]
+pub struct AuthConfigResponse {
+    pub oidc_enabled: bool,
+}
+
+pub async fn get_auth_config() -> Json<AuthConfigResponse> {
+    Json(AuthConfigResponse {
+        oidc_enabled: env::is_oidc_configured(),
+    })
+}
+
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/login", get(login))
-        .route("/callback", get(callback))
+    let mut router = Router::new()
         .route("/local/login", post(local_login))
         .route("/logout", post(logout))
-        .route("/refresh", post(refresh))
+        .route("/config", get(get_auth_config));
+    
+    // Only register OIDC routes if OIDC is configured
+    if env::is_oidc_configured() {
+        router = router
+            .route("/login", get(login))
+            .route("/callback", get(callback))
+            .route("/refresh", post(refresh));
+    }
+    
+    router
 }
 
 
