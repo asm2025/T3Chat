@@ -10,9 +10,9 @@ name = "t3chtsrv"
 path = "src/main.rs"
 
 [dependencies]
-axum = { version = "0.7", features = ["http2", "multipart"] }
+axum = { version = "0", features = ["http2", "multipart"] }
 tower = "0"
-tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
+tower-http = { version = "0", features = ["fs", "cors", "trace"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
@@ -42,10 +42,10 @@ emixlog = { git = "https://github.com/asm2025/essentialMix-rs.git", tag = "0.5.0
 emixdiesel = { git = "https://github.com/asm2025/essentialMix-rs.git", tag = "0.5.0", package = "emixdiesel", features = ["postgres"] }
 utoipa = { version = "5", features = ["axum_extras", "chrono", "decimal", "uuid"] }
 utoipa-swagger-ui = { version = "8", features = ["axum"] }
-oauth2 = "4"
-openidconnect = "2"
-tower_governor = "0.4"  # Pin to 0.4.x for axum 0.7 compatibility
-rand = "0.8"
-governor = "0.6"
-bcrypt = "0.15"
+oauth2 = "5"
+openidconnect = "4"
+tower_governor = "0"  # Pin to 0.4.x for axum 0.7 compatibility
+rand = "0"
+governor = "0"
+bcrypt = "0"
 

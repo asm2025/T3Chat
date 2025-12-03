@@ -12,11 +12,11 @@ use crate::db::schema::user_api_keys;
 pub struct UserApiKey {
     pub id: Uuid,
     pub user_id: String,
-    pub provider: String,  // openai, anthropic, google, custom
-    pub encrypted_key: String,  // AES-256-GCM encrypted
-    pub key_name: Option<String>,  // user-friendly name
+    pub provider: String,         // openai, anthropic, google, custom
+    pub encrypted_key: String,    // AES-256-GCM encrypted
+    pub key_name: Option<String>, // user-friendly name
     pub is_default: Option<bool>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

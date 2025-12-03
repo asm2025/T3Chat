@@ -8,4 +8,3 @@ pub struct UserRole {
     pub assigned_at: DateTime<Utc>,
     pub assigned_by: Option<String>,
 }
-

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import { LoginForm } from "@/components/login-form";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminRoute } from "@/components/admin-route";
 import { Settings } from "@/pages/Settings";
@@ -16,6 +15,7 @@ import { AdminUsers } from "@/pages/admin/users";
 import { AdminProviders } from "@/pages/admin/providers";
 import { AdminModels } from "@/pages/admin/models";
 import { AuthCallback } from "@/pages/AuthCallback";
+import { Login } from "@/pages/Login";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -213,7 +213,7 @@ function App() {
                         <Route path="/" element={<Home />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/health" element={<Health />} />
-                        <Route path="/login" element={<LoginForm />} />
+                        <Route path="/login" element={<Login />} />
                         <Route path="/auth/callback" element={<AuthCallback />} />
 
                         {/* Admin routes */}

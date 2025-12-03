@@ -4,8 +4,8 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
-    models::{Transaction, NewTransaction, Balance, NewBalance, UpdateBalance},
-    schema::{transactions, balances},
+    models::{Balance, NewBalance, NewTransaction, Transaction, UpdateBalance},
+    schema::{balances, transactions},
     DbPool,
 };
 
@@ -24,8 +24,12 @@ impl TransactionRepository {
 
     /// Create a new transaction
     pub async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(transactions::table)
             .values(&new_transaction)
             .get_result(&mut conn)
@@ -35,8 +39,12 @@ impl TransactionRepository {
 
     /// Get transaction by ID
     pub async fn get_transaction_by_id(&self, id: Uuid) -> Result<Option<Transaction>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         transactions::table
             .filter(transactions::id.eq(id))
             .first(&mut conn)
@@ -46,9 +54,17 @@ impl TransactionRepository {
     }
 
     /// List transactions by user
-    pub async fn list_transactions_by_user(&self, user_id: &str, limit: i64) -> Result<Vec<Transaction>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+    pub async fn list_transactions_by_user(
+        &self,
+        user_id: &str,
+        limit: i64,
+    ) -> Result<Vec<Transaction>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         transactions::table
             .filter(transactions::user_id.eq(user_id))
             .order(transactions::created_at.desc())
@@ -64,8 +80,12 @@ impl TransactionRepository {
 
     /// Create a new balance
     pub async fn create_balance(&self, new_balance: NewBalance) -> Result<Balance> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(balances::table)
             .values(&new_balance)
             .get_result(&mut conn)
@@ -75,8 +95,12 @@ impl TransactionRepository {
 
     /// Get balance by user ID
     pub async fn get_balance_by_user(&self, user_id: &str) -> Result<Option<Balance>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         balances::table
             .filter(balances::user_id.eq(user_id))
             .first(&mut conn)
@@ -87,8 +111,12 @@ impl TransactionRepository {
 
     /// Update balance
     pub async fn update_balance(&self, user_id: &str, update: UpdateBalance) -> Result<Balance> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::update(balances::table)
             .filter(balances::user_id.eq(user_id))
             .set(&update)
@@ -97,4 +125,3 @@ impl TransactionRepository {
             .context("Failed to update balance")
     }
 }
-

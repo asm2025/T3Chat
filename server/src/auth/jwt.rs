@@ -1,5 +1,5 @@
 use anyhow::Result;
-use jsonwebtoken::{decode, decode_header, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -43,23 +43,23 @@ struct Jwk {
 }
 
 impl JwksCache {
-    pub async fn new(issuer: String) -> Result<Self> {
-        let jwks_url = format!("{}/.well-known/jwks.json", issuer.trim_end_matches('/'));
-        
+    /// Create a cache that pulls JWKS keys from the provider's advertised JWKS URI.
+    /// The issuer is still tracked so we can validate the `iss` claim during verification.
+    pub async fn new(issuer: String, jwks_url: String) -> Result<Self> {
         let cache = Self {
             keys: Arc::new(RwLock::new(HashMap::new())),
-            issuer: issuer.clone(),
+            issuer,
             jwks_url,
             last_refresh: Arc::new(RwLock::new(None)),
         };
-        
+
         cache.refresh_keys().await?;
         Ok(cache)
     }
 
     pub async fn refresh_keys(&self) -> Result<()> {
         tracing::debug!("Fetching JWKS from {}", self.jwks_url);
-        
+
         let response = reqwest::get(&self.jwks_url)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to fetch JWKS: {}", e))?;
@@ -107,9 +107,9 @@ impl JwksCache {
         let header = decode_header(token)
             .map_err(|e| anyhow::anyhow!("Failed to decode token header: {}", e))?;
 
-        let kid = header.kid.ok_or_else(|| {
-            anyhow::anyhow!("Token header missing 'kid' field")
-        })?;
+        let kid = header
+            .kid
+            .ok_or_else(|| anyhow::anyhow!("Token header missing 'kid' field"))?;
 
         // Check if we need to refresh keys (refresh every hour)
         let should_refresh = {
@@ -145,4 +145,3 @@ impl JwksCache {
         Ok(token_data.claims)
     }
 }
-

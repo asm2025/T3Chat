@@ -4,8 +4,8 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
-    models::{Tag, NewTag, UpdateTag, NewConversationTag},
-    schema::{tags, conversation_tags_map},
+    models::{NewConversationTag, NewTag, Tag, UpdateTag},
+    schema::{conversation_tags_map, tags},
     DbPool,
 };
 
@@ -20,8 +20,12 @@ impl TagRepository {
 
     /// Create a new tag
     pub async fn create(&self, new_tag: NewTag) -> Result<Tag> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(tags::table)
             .values(&new_tag)
             .get_result(&mut conn)
@@ -31,8 +35,12 @@ impl TagRepository {
 
     /// Get tag by ID
     pub async fn get_by_id(&self, id: Uuid, user_id: &str) -> Result<Option<Tag>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         tags::table
             .filter(tags::id.eq(id))
             .filter(tags::user_id.eq(user_id))
@@ -44,8 +52,12 @@ impl TagRepository {
 
     /// List tags for a user
     pub async fn list_by_user(&self, user_id: &str) -> Result<Vec<Tag>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         tags::table
             .filter(tags::user_id.eq(user_id))
             .order(tags::position.asc())
@@ -56,8 +68,12 @@ impl TagRepository {
 
     /// Update tag
     pub async fn update(&self, id: Uuid, user_id: &str, update: UpdateTag) -> Result<Tag> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::update(tags::table)
             .filter(tags::id.eq(id))
             .filter(tags::user_id.eq(user_id))
@@ -69,22 +85,30 @@ impl TagRepository {
 
     /// Delete tag
     pub async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let deleted = diesel::delete(tags::table)
             .filter(tags::id.eq(id))
             .filter(tags::user_id.eq(user_id))
             .execute(&mut conn)
             .await
             .context("Failed to delete tag")?;
-        
+
         Ok(deleted > 0)
     }
 
     /// Add tag to conversation
     pub async fn add_to_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<()> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let new_mapping = NewConversationTag {
             conversation_id,
             tag_id,
@@ -95,22 +119,29 @@ impl TagRepository {
             .execute(&mut conn)
             .await
             .context("Failed to add tag to conversation")?;
-        
+
         Ok(())
     }
 
     /// Remove tag from conversation
-    pub async fn remove_from_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<bool> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+    pub async fn remove_from_conversation(
+        &self,
+        conversation_id: Uuid,
+        tag_id: Uuid,
+    ) -> Result<bool> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let deleted = diesel::delete(conversation_tags_map::table)
             .filter(conversation_tags_map::conversation_id.eq(conversation_id))
             .filter(conversation_tags_map::tag_id.eq(tag_id))
             .execute(&mut conn)
             .await
             .context("Failed to remove tag from conversation")?;
-        
+
         Ok(deleted > 0)
     }
 }
-

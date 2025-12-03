@@ -81,7 +81,7 @@ impl AIProvider for OpenAIProvider {
 
         // Convert messages, prepending system message if provided
         let mut messages: Vec<OpenAIMessage> = Vec::new();
-        
+
         if let Some(system_msg) = request.system_message {
             messages.push(OpenAIMessage {
                 role: "system".to_string(),
@@ -152,9 +152,7 @@ impl AIProvider for OpenAIProvider {
     async fn stream_chat(
         &self,
         request: ChatRequest,
-    ) -> anyhow::Result<
-        Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>,
-    > {
+    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>> {
         #[derive(Serialize)]
         struct OpenAIRequest {
             model: String,
@@ -203,7 +201,7 @@ impl AIProvider for OpenAIProvider {
 
         // Convert messages
         let mut messages: Vec<OpenAIMessage> = Vec::new();
-        
+
         if let Some(system_msg) = request.system_message {
             messages.push(OpenAIMessage {
                 role: "system".to_string(),
@@ -237,7 +235,7 @@ impl AIProvider for OpenAIProvider {
 
         let url = format!("{}/chat/completions", self.base_url);
         let model = request.model.clone();
-        
+
         let response = self
             .client
             .post(&url)
@@ -253,46 +251,49 @@ impl AIProvider for OpenAIProvider {
             anyhow::bail!("OpenAI API error ({}): {}", status, error_text);
         }
 
-        let stream = response.bytes_stream().map(move |result| {
-            match result {
-                Ok(bytes) => {
-                    let text = String::from_utf8_lossy(bytes.as_ref());
-                    
-                    // Parse SSE format
-                    let mut chunks = Vec::new();
-                    for line in text.lines() {
-                        if line.starts_with("data: ") {
-                            let data = &line[6..];
-                            if data == "[DONE]" {
-                                chunks.push(Ok(ChatResponseChunk {
-                                    delta: String::new(),
-                                    done: true,
-                                    model: Some(model.clone()),
-                                    finish_reason: Some("stop".to_string()),
-                                }));
-                                break;
-                            }
-                            
-                            if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data) {
-                                if let Some(choice) = parsed.choices.first() {
+        let stream = response
+            .bytes_stream()
+            .map(move |result| {
+                match result {
+                    Ok(bytes) => {
+                        let text = String::from_utf8_lossy(bytes.as_ref());
+
+                        // Parse SSE format
+                        let mut chunks = Vec::new();
+                        for line in text.lines() {
+                            if line.starts_with("data: ") {
+                                let data = &line[6..];
+                                if data == "[DONE]" {
                                     chunks.push(Ok(ChatResponseChunk {
-                                        delta: choice.delta.content.clone(),
-                                        done: choice.finish_reason.is_some(),
-                                        model: Some(parsed.model.clone()),
-                                        finish_reason: choice.finish_reason.clone(),
+                                        delta: String::new(),
+                                        done: true,
+                                        model: Some(model.clone()),
+                                        finish_reason: Some("stop".to_string()),
                                     }));
+                                    break;
+                                }
+
+                                if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data) {
+                                    if let Some(choice) = parsed.choices.first() {
+                                        chunks.push(Ok(ChatResponseChunk {
+                                            delta: choice.delta.content.clone(),
+                                            done: choice.finish_reason.is_some(),
+                                            model: Some(parsed.model.clone()),
+                                            finish_reason: choice.finish_reason.clone(),
+                                        }));
+                                    }
                                 }
                             }
                         }
+
+                        futures::stream::iter(chunks)
                     }
-                    
-                    futures::stream::iter(chunks)
+                    Err(e) => {
+                        futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
+                    }
                 }
-                Err(e) => {
-                    futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
-                }
-            }
-        }).flatten();
+            })
+            .flatten();
 
         Ok(Box::pin(stream))
     }

@@ -1,8 +1,6 @@
 use crate::{
-    AppState,
-    db::models::Feature,
-    db::repositories::user_feature_repository::TUserFeatureRepository,
-    middleware::auth::AuthenticatedUser,
+    db::models::Feature, db::repositories::user_feature_repository::TUserFeatureRepository,
+    middleware::auth::AuthenticatedUser, AppState,
 };
 use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};
@@ -59,7 +57,8 @@ pub async fn list_features(
         })?;
 
     // Build a map of enabled features
-    let mut feature_map: std::collections::HashMap<Feature, bool> = std::collections::HashMap::new();
+    let mut feature_map: std::collections::HashMap<Feature, bool> =
+        std::collections::HashMap::new();
     for feature_model in &features {
         feature_map.insert(feature_model.feature, feature_model.enabled);
     }
@@ -122,6 +121,8 @@ pub async fn update_feature(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    Ok(Json(UserFeatureResponse::from((updated_feature.feature, updated_feature.enabled))))
+    Ok(Json(UserFeatureResponse::from((
+        updated_feature.feature,
+        updated_feature.enabled,
+    ))))
 }
-

@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::schema::{tags, conversation_tags_map};
+use crate::db::schema::{conversation_tags_map, tags};
 
 /// Tag model
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -14,9 +14,9 @@ pub struct Tag {
     pub user_id: String,
     pub name: String,
     pub description: Option<String>,
-    pub color: Option<String>,  // hex color for UI
+    pub color: Option<String>, // hex color for UI
     pub position: Option<i32>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -70,4 +70,3 @@ pub struct NewConversationTag {
     pub conversation_id: Uuid,
     pub tag_id: Uuid,
 }
-

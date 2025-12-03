@@ -173,9 +173,7 @@ impl AIProvider for AnthropicProvider {
     async fn stream_chat(
         &self,
         request: ChatRequest,
-    ) -> anyhow::Result<
-        Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>,
-    > {
+    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>> {
         #[derive(Serialize)]
         struct AnthropicRequest {
             model: String,
@@ -280,7 +278,7 @@ impl AIProvider for AnthropicProvider {
 
         let url = format!("{}/messages", self.base_url);
         let model = request.model.clone();
-        
+
         let response = self
             .client
             .post(&url)
@@ -297,50 +295,53 @@ impl AIProvider for AnthropicProvider {
             anyhow::bail!("Anthropic API error ({}): {}", status, error_text);
         }
 
-        let stream = response.bytes_stream().map(move |result| {
-            match result {
-                Ok(bytes) => {
-                    let text = String::from_utf8_lossy(bytes.as_ref());
-                    let mut chunks = Vec::new();
+        let stream = response
+            .bytes_stream()
+            .map(move |result| {
+                match result {
+                    Ok(bytes) => {
+                        let text = String::from_utf8_lossy(bytes.as_ref());
+                        let mut chunks = Vec::new();
 
-                    // Parse SSE format
-                    for line in text.lines() {
-                        if line.starts_with("data: ") {
-                            let data = &line[6..];
-                            
-                            if let Ok(event) = serde_json::from_str::<StreamEvent>(data) {
-                                match event.event_type.as_str() {
-                                    "content_block_delta" => {
-                                        if let Some(delta) = event.delta {
+                        // Parse SSE format
+                        for line in text.lines() {
+                            if line.starts_with("data: ") {
+                                let data = &line[6..];
+
+                                if let Ok(event) = serde_json::from_str::<StreamEvent>(data) {
+                                    match event.event_type.as_str() {
+                                        "content_block_delta" => {
+                                            if let Some(delta) = event.delta {
+                                                chunks.push(Ok(ChatResponseChunk {
+                                                    delta: delta.text,
+                                                    done: delta.stop_reason.is_some(),
+                                                    model: Some(model.clone()),
+                                                    finish_reason: delta.stop_reason,
+                                                }));
+                                            }
+                                        }
+                                        "message_stop" => {
                                             chunks.push(Ok(ChatResponseChunk {
-                                                delta: delta.text,
-                                                done: delta.stop_reason.is_some(),
+                                                delta: String::new(),
+                                                done: true,
                                                 model: Some(model.clone()),
-                                                finish_reason: delta.stop_reason,
+                                                finish_reason: Some("end_turn".to_string()),
                                             }));
                                         }
+                                        _ => {}
                                     }
-                                    "message_stop" => {
-                                        chunks.push(Ok(ChatResponseChunk {
-                                            delta: String::new(),
-                                            done: true,
-                                            model: Some(model.clone()),
-                                            finish_reason: Some("end_turn".to_string()),
-                                        }));
-                                    }
-                                    _ => {}
                                 }
                             }
                         }
-                    }
 
-                    futures::stream::iter(chunks)
+                        futures::stream::iter(chunks)
+                    }
+                    Err(e) => {
+                        futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
+                    }
                 }
-                Err(e) => {
-                    futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
-                }
-            }
-        }).flatten();
+            })
+            .flatten();
 
         Ok(Box::pin(stream))
     }
@@ -412,7 +413,7 @@ impl AIProvider for AnthropicProvider {
         // Anthropic doesn't have a simple validation endpoint
         // We can try a minimal request to check the key
         let url = format!("{}/messages", self.base_url);
-        
+
         #[derive(Serialize)]
         struct TestRequest {
             model: String,

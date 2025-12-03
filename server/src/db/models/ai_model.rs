@@ -1,6 +1,6 @@
-use rust_decimal::Decimal;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -13,11 +13,11 @@ use crate::db::schema::ai_models;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct AiModel {
     pub id: Uuid,
-    pub provider: String,  // openai, anthropic, google, custom
-    pub model_id: String,  // gpt-4-turbo, claude-3-opus, gemini-pro, etc.
+    pub provider: String, // openai, anthropic, google, custom
+    pub model_id: String, // gpt-4-turbo, claude-3-opus, gemini-pro, etc.
     pub display_name: String,
     pub description: Option<String>,
-    
+
     // Capabilities
     pub context_window: i32,
     pub max_output_tokens: Option<i32>,
@@ -25,22 +25,22 @@ pub struct AiModel {
     pub supports_images: Option<bool>,
     pub supports_functions: Option<bool>,
     pub supports_vision: Option<bool>,
-    
+
     // Pricing (per 1M tokens)
     pub cost_per_input_token: Option<Decimal>,
     pub cost_per_output_token: Option<Decimal>,
-    
+
     // Status
     pub is_active: Option<bool>,
     pub deprecated_at: Option<DateTime<Utc>>,
-    
+
     // Timestamps (must come before provider_id, disabled, is_paid to match schema order)
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    
+
     // Provider relation
     pub provider_id: Option<Uuid>,
-    
+
     // Admin fields
     pub disabled: bool,
     pub is_paid: bool,

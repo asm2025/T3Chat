@@ -7,18 +7,19 @@ use crate::db::models::{
     CreateUserFeatureDto, Feature, NewUserFeature, UpdateUserFeature, UpdateUserFeatureDto,
     UserFeatureModel,
 };
-use crate::db::{DbPool, schema::user_features};
+use crate::db::{schema::user_features, DbPool};
 
 #[async_trait]
 pub trait TUserFeatureRepository: Send + Sync {
     async fn list(&self, user_id: &str) -> Result<Vec<UserFeatureModel>>;
-    async fn get(
+    async fn get(&self, user_id: &str, feature: &Feature) -> Result<Option<UserFeatureModel>>;
+    async fn upsert(&self, model: CreateUserFeatureDto) -> Result<UserFeatureModel>;
+    async fn update(
         &self,
         user_id: &str,
         feature: &Feature,
-    ) -> Result<Option<UserFeatureModel>>;
-    async fn upsert(&self, model: CreateUserFeatureDto) -> Result<UserFeatureModel>;
-    async fn update(&self, user_id: &str, feature: &Feature, model: UpdateUserFeatureDto) -> Result<UserFeatureModel>;
+        model: UpdateUserFeatureDto,
+    ) -> Result<UserFeatureModel>;
 }
 
 pub struct UserFeatureRepository {
@@ -47,11 +48,7 @@ impl TUserFeatureRepository for UserFeatureRepository {
             .map_err(Error::from_std_error)
     }
 
-    async fn get(
-        &self,
-        user_id: &str,
-        feature: &Feature,
-    ) -> Result<Option<UserFeatureModel>> {
+    async fn get(&self, user_id: &str, feature: &Feature) -> Result<Option<UserFeatureModel>> {
         let mut conn = self
             .pool
             .get()
@@ -90,7 +87,12 @@ impl TUserFeatureRepository for UserFeatureRepository {
             .map_err(Error::from_std_error)
     }
 
-    async fn update(&self, user_id: &str, feature: &Feature, model: UpdateUserFeatureDto) -> Result<UserFeatureModel> {
+    async fn update(
+        &self,
+        user_id: &str,
+        feature: &Feature,
+        model: UpdateUserFeatureDto,
+    ) -> Result<UserFeatureModel> {
         let mut conn = self
             .pool
             .get()

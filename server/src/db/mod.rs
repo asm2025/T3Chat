@@ -13,8 +13,8 @@ pub mod prelude {
 
 use anyhow::{Context, Result};
 use diesel_async::{
+    pooled_connection::{deadpool::Pool, AsyncDieselConnectionManager},
     AsyncPgConnection,
-    pooled_connection::{AsyncDieselConnectionManager, deadpool::Pool},
 };
 
 pub type DbPool = Pool<AsyncPgConnection>;
@@ -135,7 +135,7 @@ pub async fn connect(db_url: &str, auto_migrate: bool) -> Result<DbPool> {
 /// Run pending migrations
 async fn run_migrations(_pool: &DbPool) -> Result<()> {
     use diesel::Connection;
-    use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 

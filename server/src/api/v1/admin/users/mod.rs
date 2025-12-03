@@ -7,11 +7,11 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::AppState;
 use crate::db::dto::Pagination;
 use crate::db::models::{CreateUserDto, UpdateUserDto, UserModel};
-use crate::db::repositories::{UserRepository, TUserRepository};
+use crate::db::repositories::{TUserRepository, UserRepository};
 use crate::middleware::auth::AuthenticatedUser;
+use crate::AppState;
 
 // DTOs
 #[derive(Debug, Deserialize)]
@@ -110,7 +110,7 @@ impl From<UserModel> for AdminUserResponse {
         // Note: We'll need to fetch roles separately
         let normalized_email = user.email.to_lowercase();
         let normalized_username = user.username.as_ref().map(|u| u.to_lowercase());
-        
+
         AdminUserResponse {
             id: user.id,
             email: user.email,
@@ -121,13 +121,13 @@ impl From<UserModel> for AdminUserResponse {
             normalized_username,
             avatar_url: user.avatar_url,
             provider: user.provider,
-            disabled: false, // TODO: Get from DB
-            locked_out: false, // TODO: Get from DB
-            lockout_end: None, // TODO: Get from DB
+            disabled: false,        // TODO: Get from DB
+            locked_out: false,      // TODO: Get from DB
+            lockout_end: None,      // TODO: Get from DB
             access_failed_count: 0, // TODO: Get from DB
-            last_login_at: None, // TODO: Get from DB
-            login_count: 0, // TODO: Get from DB
-            roles: vec![], // Will be populated separately
+            last_login_at: None,    // TODO: Get from DB
+            login_count: 0,         // TODO: Get from DB
+            roles: vec![],          // Will be populated separately
             created_at: user.created_at,
             updated_at: user.updated_at,
         }
@@ -141,7 +141,7 @@ pub async fn list_users(
     _user: AuthenticatedUser,
 ) -> Result<Json<ListUsersResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let pagination = Pagination {
         page: params.page,
         page_size: params.limit,
@@ -156,11 +156,8 @@ pub async fn list_users(
     // Fetch roles for each user
     let mut users_with_roles = Vec::new();
     for user in result.data {
-        let roles = user_repo
-            .get_user_roles(&user.id)
-            .await
-            .unwrap_or_default();
-        
+        let roles = user_repo.get_user_roles(&user.id).await.unwrap_or_default();
+
         // All fields are now in the User model
 
         users_with_roles.push(AdminUserResponse {
@@ -200,17 +197,14 @@ pub async fn get_user(
     _user: AuthenticatedUser,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let user = user_repo
         .get(id.clone())
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    let roles = user_repo
-        .get_user_roles(&user.id)
-        .await
-        .unwrap_or_default();
+    let roles = user_repo.get_user_roles(&user.id).await.unwrap_or_default();
 
     Ok(Json(AdminUserResponse {
         id: user.id,
@@ -241,7 +235,7 @@ pub async fn create_user(
     Json(req): Json<CreateUserRequest>,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let create_dto = CreateUserDto {
         id: req.id,
         email: req.email,
@@ -287,10 +281,7 @@ pub async fn create_user(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let roles = user_repo
-        .get_user_roles(&user.id)
-        .await
-        .unwrap_or_default();
+    let roles = user_repo.get_user_roles(&user.id).await.unwrap_or_default();
 
     Ok(Json(AdminUserResponse {
         id: user.id,
@@ -322,7 +313,7 @@ pub async fn update_user(
     Json(req): Json<UpdateUserRequest>,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let update_dto = UpdateUserDto {
         name: req.name,
         username: req.username,
@@ -335,10 +326,7 @@ pub async fn update_user(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let roles = user_repo
-        .get_user_roles(&user.id)
-        .await
-        .unwrap_or_default();
+    let roles = user_repo.get_user_roles(&user.id).await.unwrap_or_default();
 
     Ok(Json(AdminUserResponse {
         id: user.id,
@@ -369,7 +357,7 @@ pub async fn delete_user(
     _user: AuthenticatedUser,
 ) -> Result<StatusCode, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     user_repo
         .delete(id)
         .await
@@ -385,7 +373,7 @@ pub async fn enable_user(
     _user: AuthenticatedUser,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     user_repo
         .enable_user(&id)
         .await
@@ -401,7 +389,7 @@ pub async fn disable_user(
     _user: AuthenticatedUser,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     user_repo
         .disable_user(&id)
         .await
@@ -418,7 +406,7 @@ pub async fn lock_user(
     Json(req): Json<LockUserRequest>,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let duration = req.duration_minutes.unwrap_or(15);
     user_repo
         .lock_user(&id, duration)
@@ -435,7 +423,7 @@ pub async fn unlock_user(
     _user: AuthenticatedUser,
 ) -> Result<Json<AdminUserResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     user_repo
         .unlock_user(&id)
         .await
@@ -451,7 +439,7 @@ pub async fn get_user_roles(
     _user: AuthenticatedUser,
 ) -> Result<Json<Vec<String>>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let roles = user_repo
         .get_user_roles(&id)
         .await
@@ -468,9 +456,13 @@ pub async fn add_user_role(
     Json(req): Json<AddRoleRequest>,
 ) -> Result<Json<Vec<String>>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     user_repo
-        .add_role(&id, &req.role_name, req.assigned_by.as_deref().or(Some(&user.0.id)))
+        .add_role(
+            &id,
+            &req.role_name,
+            req.assigned_by.as_deref().or(Some(&user.0.id)),
+        )
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -489,7 +481,7 @@ pub async fn remove_user_role(
     _user: AuthenticatedUser,
 ) -> Result<Json<Vec<String>>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     user_repo
         .remove_role(&id, &role)
         .await
@@ -510,7 +502,7 @@ pub async fn get_user_stats(
     _user: AuthenticatedUser,
 ) -> Result<Json<UserStatsResponse>, StatusCode> {
     let user_repo = UserRepository::new(state.db.clone());
-    
+
     let user = user_repo
         .get(id)
         .await
@@ -539,4 +531,3 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/roles/{role}", delete(remove_user_role))
         .route("/{id}/stats", get(get_user_stats))
 }
-

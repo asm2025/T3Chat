@@ -107,10 +107,10 @@ mod tests {
         let plaintext = "sk-test123456789";
         let encrypted1 = encrypt(plaintext).unwrap();
         let encrypted2 = encrypt(plaintext).unwrap();
-        
+
         // Same plaintext should produce different ciphertext (different nonces)
         assert_ne!(encrypted1, encrypted2);
-        
+
         // But both should decrypt to the same plaintext
         assert_eq!(decrypt(&encrypted1).unwrap(), plaintext);
         assert_eq!(decrypt(&encrypted2).unwrap(), plaintext);
@@ -126,12 +126,11 @@ mod tests {
     fn test_generate_key() {
         let key = generate_encryption_key();
         assert!(!key.is_empty());
-        
+
         // Should be valid base64
         let decoded = general_purpose::STANDARD.decode(&key).unwrap();
-        
+
         // Should be 32 bytes
         assert_eq!(decoded.len(), 32);
     }
 }
-

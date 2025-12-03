@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
-use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
+use diesel_async::{scoped_futures::ScopedFutureExt, AsyncConnection, RunQueryDsl};
 use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
@@ -8,7 +8,7 @@ use crate::db::models::{
     AiProvider, CreateUserApiKeyDto, NewUserApiKey, UpdateUserApiKey, UpdateUserApiKeyDto,
     UserApiKeyModel,
 };
-use crate::db::{DbPool, schema::user_api_keys};
+use crate::db::{schema::user_api_keys, DbPool};
 
 #[async_trait]
 pub trait TUserApiKeyRepository: Send + Sync {

@@ -7,7 +7,19 @@ import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 
 export function ModeToggle() {
-    const { open: sidebarOpen, isMobile } = useSidebar();
+    // Try to use sidebar context, but default to collapsed state if not available
+    let sidebarOpen = false;
+    let isMobile = false;
+
+    try {
+        const sidebar = useSidebar();
+        sidebarOpen = sidebar.open;
+        isMobile = sidebar.isMobile;
+    } catch {
+        // SidebarProvider not available (e.g., on public pages like Login)
+        // Default to collapsed state
+    }
+
     const isCollapsed = !sidebarOpen && !isMobile;
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);

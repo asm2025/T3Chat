@@ -1,6 +1,6 @@
 use crate::db::models::UpdateUserDto;
 use crate::db::repositories::TUserRepository;
-use crate::{AppState, api::UserResponse, middleware::auth::AuthenticatedUser};
+use crate::{api::UserResponse, middleware::auth::AuthenticatedUser, AppState};
 use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -85,10 +85,7 @@ pub async fn update_profile(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    tracing::debug!(
-        "User updated successfully: name={:?}",
-        updated_user.name
-    );
+    tracing::debug!("User updated successfully: name={:?}", updated_user.name);
 
     Ok(Json(UserResponse::from(updated_user)))
 }

@@ -11,21 +11,21 @@ use crate::db::schema::shared_links;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct SharedLink {
     pub id: Uuid,
-    pub share_id: String,  // public share ID
+    pub share_id: String, // public share ID
     pub conversation_id: Uuid,
     pub user_id: String,
-    
+
     // Sharing settings
     pub is_public: Option<bool>,
-    pub is_anonymous: Option<bool>,  // hide user info
-    pub title: Option<String>,  // custom title for shared link
-    
+    pub is_anonymous: Option<bool>, // hide user info
+    pub title: Option<String>,      // custom title for shared link
+
     // Access control
     pub password_hash: Option<String>,
     pub max_views: Option<i32>,
     pub view_count: Option<i32>,
     pub expires_at: Option<DateTime<Utc>>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -102,4 +102,3 @@ impl SharedLink {
         !self.is_expired() && !self.has_reached_max_views()
     }
 }
-

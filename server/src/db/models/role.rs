@@ -11,4 +11,3 @@ pub struct Role {
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
 }
-

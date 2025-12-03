@@ -12,31 +12,31 @@ use crate::db::schema::presets;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Preset {
     pub id: Uuid,
-    pub preset_id: String,  // for API compatibility
+    pub preset_id: String, // for API compatibility
     pub user_id: String,
     pub title: String,
     pub is_default: Option<bool>,
     pub order_index: Option<i32>,
-    
+
     // Provider/Model
     pub endpoint: String,
     pub model: String,
     pub model_label: Option<String>,
-    
+
     // AI Parameters (same structure as conversations)
     pub model_parameters: Option<JsonValue>,
-    
+
     // System/Instructions
     pub system_message: Option<String>,
     pub instructions: Option<String>,
-    
+
     // Feature Flags
     pub feature_flags: Option<JsonValue>,
-    
+
     // Agent reference (optional)
     pub agent_id: Option<Uuid>,
     pub agent_options: Option<JsonValue>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -103,4 +103,3 @@ pub struct UpdatePreset {
     pub agent_options: Option<JsonValue>,
     pub updated_at: DateTime<Utc>,
 }
-

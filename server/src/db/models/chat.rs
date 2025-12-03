@@ -23,9 +23,8 @@ pub struct ChatModel {
 impl From<Conversation> for ChatModel {
     fn from(conv: Conversation) -> Self {
         // Parse provider from endpoint string
-        let model_provider = AiProvider::from_str(&conv.endpoint)
-            .unwrap_or(AiProvider::OpenAI);
-        
+        let model_provider = AiProvider::from_str(&conv.endpoint).unwrap_or(AiProvider::OpenAI);
+
         Self {
             id: conv.id,
             user_id: conv.user_id,
@@ -34,7 +33,7 @@ impl From<Conversation> for ChatModel {
             model_id: conv.model,
             created_at: conv.created_at,
             updated_at: conv.updated_at,
-            deleted_at: None,  // Conversations use is_archived instead
+            deleted_at: None, // Conversations use is_archived instead
         }
     }
 }
@@ -102,28 +101,3 @@ impl From<UpdateChatDto> for UpdateChat {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

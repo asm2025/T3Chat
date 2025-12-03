@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use diesel::prelude::*;
+use diesel::OptionalExtension;
 use diesel::QueryableByName;
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use emixdiesel::{Error, Result};
+use uuid::Uuid;
 
 use crate::db::dto::{Pagination, ResultSet};
 use crate::db::models::{CreateUserDto, NewUser, UpdateUser, UpdateUserDto, UserModel};
@@ -36,6 +38,29 @@ pub struct UserRepository {
 impl UserRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
+    }
+
+    async fn resolve_role_id(conn: &mut AsyncPgConnection, role_name: &str) -> Result<Uuid> {
+        #[derive(QueryableByName)]
+        struct RoleIdRow {
+            #[diesel(sql_type = diesel::sql_types::Uuid)]
+            id: Uuid,
+        }
+
+        let normalized = role_name.trim().to_uppercase();
+
+        let role = diesel::sql_query(
+            "SELECT id FROM roles WHERE normalized_name = $1 OR name = $2 LIMIT 1",
+        )
+        .bind::<diesel::sql_types::Text, _>(&normalized)
+        .bind::<diesel::sql_types::Text, _>(role_name.trim())
+        .get_result::<RoleIdRow>(conn)
+        .await
+        .optional()
+        .map_err(Error::from_std_error)?;
+
+        role.map(|r| r.id)
+            .ok_or_else(|| Error::from_other_error(format!("Role '{}' not found", role_name)))
     }
 }
 
@@ -258,7 +283,10 @@ impl UserRepository {
         Ok(result)
     }
 
-    pub async fn get_by_username_or_email(&self, username_or_email: &str) -> Result<Option<UserModel>> {
+    pub async fn get_by_username_or_email(
+        &self,
+        username_or_email: &str,
+    ) -> Result<Option<UserModel>> {
         let mut conn = self
             .pool
             .get()
@@ -270,8 +298,9 @@ impl UserRepository {
         // Try to find by username or email (case-insensitive)
         let result = users::table
             .filter(
-                users::username.ilike(&normalized)
-                    .or(users::email.ilike(&normalized))
+                users::username
+                    .ilike(&normalized)
+                    .or(users::email.ilike(&normalized)),
             )
             .first::<UserModel>(&mut conn)
             .await
@@ -436,12 +465,19 @@ impl UserRepository {
             role_name: String,
         }
 
-        let roles: Vec<RoleRow> =
-            diesel::sql_query("SELECT role_name FROM user_roles WHERE user_id = $1")
-                .bind::<diesel::sql_types::Text, _>(user_id)
-                .load(&mut conn)
-                .await
-                .map_err(Error::from_std_error)?;
+        let roles: Vec<RoleRow> = diesel::sql_query(
+            r#"
+            SELECT r.name as role_name
+            FROM user_roles ur
+            INNER JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = $1
+            ORDER BY r.name
+            "#,
+        )
+        .bind::<diesel::sql_types::Text, _>(user_id)
+        .load(&mut conn)
+        .await
+        .map_err(Error::from_std_error)?;
 
         Ok(roles.into_iter().map(|r| r.role_name).collect())
     }
@@ -458,11 +494,13 @@ impl UserRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
+        let role_id = Self::resolve_role_id(&mut conn, role_name).await?;
+
         diesel::sql_query(
-            "INSERT INTO user_roles (user_id, role_name, assigned_by) VALUES ($1, $2, $3) ON CONFLICT (user_id, role_name) DO NOTHING"
+            "INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES ($1, $2, $3) ON CONFLICT (user_id, role_id) DO NOTHING"
         )
         .bind::<diesel::sql_types::Text, _>(user_id)
-        .bind::<diesel::sql_types::Text, _>(role_name)
+        .bind::<diesel::sql_types::Uuid, _>(&role_id)
         .bind::<diesel::sql_types::Nullable<diesel::sql_types::Text>, _>(assigned_by)
         .execute(&mut conn)
         .await
@@ -478,9 +516,11 @@ impl UserRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        diesel::sql_query("DELETE FROM user_roles WHERE user_id = $1 AND role_name = $2")
+        let role_id = Self::resolve_role_id(&mut conn, role_name).await?;
+
+        diesel::sql_query("DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2")
             .bind::<diesel::sql_types::Text, _>(user_id)
-            .bind::<diesel::sql_types::Text, _>(role_name)
+            .bind::<diesel::sql_types::Uuid, _>(&role_id)
             .execute(&mut conn)
             .await
             .map_err(Error::from_std_error)?;
@@ -495,6 +535,13 @@ impl UserRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
+        let role_id = match Self::resolve_role_id(&mut conn, role_name).await {
+            Ok(id) => id,
+            Err(_) => {
+                return Ok(false);
+            }
+        };
+
         #[derive(QueryableByName)]
         struct ExistsRow {
             #[diesel(sql_type = diesel::sql_types::Bool)]
@@ -502,10 +549,10 @@ impl UserRepository {
         }
 
         let result: Vec<ExistsRow> = diesel::sql_query(
-            "SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id = $1 AND role_name = $2) as exists"
+            "SELECT EXISTS(SELECT 1 FROM user_roles WHERE user_id = $1 AND role_id = $2) as exists",
         )
         .bind::<diesel::sql_types::Text, _>(user_id)
-        .bind::<diesel::sql_types::Text, _>(role_name)
+        .bind::<diesel::sql_types::Uuid, _>(&role_id)
         .load(&mut conn)
         .await
         .map_err(Error::from_std_error)?;

@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-use crate::db::schema::{agents, assistants, agent_conversation_starters, assistant_conversation_starters};
+use crate::db::schema::{
+    agent_conversation_starters, agents, assistant_conversation_starters, assistants,
+};
 
 /// Agent model
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -12,33 +14,33 @@ use crate::db::schema::{agents, assistants, agent_conversation_starters, assista
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Agent {
     pub id: Uuid,
-    pub agent_id: String,  // for API compatibility
+    pub agent_id: String, // for API compatibility
     pub author_id: String,
-    
+
     // Basic info
     pub name: String,
     pub description: Option<String>,
     pub instructions: Option<String>,
-    
+
     // Avatar
     pub avatar_filepath: Option<String>,
     pub avatar_source: Option<String>,
-    
+
     // Model configuration
     pub provider: String,
     pub model: String,
     pub model_parameters: Option<JsonValue>,
-    
+
     // Behavior
-    pub access_level: Option<i32>,  // 0=private, 1=shared, 2=public
+    pub access_level: Option<i32>, // 0=private, 1=shared, 2=public
     pub recursion_limit: Option<i32>,
     pub hide_sequential_outputs: Option<bool>,
     pub end_after_tools: Option<bool>,
     pub is_collaborative: Option<bool>,
-    
+
     // Tool resources (provider-specific configuration)
     pub tool_resources: Option<JsonValue>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -120,27 +122,27 @@ pub struct UpdateAgent {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Assistant {
     pub id: Uuid,
-    pub assistant_id: String,  // OpenAI assistant ID
+    pub assistant_id: String, // OpenAI assistant ID
     pub user_id: String,
-    
+
     // Basic info
     pub name: Option<String>,
     pub description: Option<String>,
     pub instructions: Option<String>,
-    
+
     // Avatar
     pub avatar_filepath: Option<String>,
     pub avatar_source: Option<String>,
-    
+
     // Configuration
     pub model: String,
-    pub tools: Option<JsonValue>,  // OpenAI tools format
+    pub tools: Option<JsonValue>, // OpenAI tools format
     pub file_ids: Option<Vec<Option<Uuid>>>,
-    
+
     // Behavior
     pub access_level: Option<i32>,
     pub append_current_datetime: Option<bool>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -249,4 +251,3 @@ pub struct NewAssistantConversationStarter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order_index: Option<i32>,
 }
-

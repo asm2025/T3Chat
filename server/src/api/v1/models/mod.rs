@@ -1,6 +1,6 @@
 use crate::{
-    AppState, db::prelude::*, db::repositories::TAiModelRepository,
-    middleware::auth::AuthenticatedUser,
+    db::prelude::*, db::repositories::TAiModelRepository, middleware::auth::AuthenticatedUser,
+    AppState,
 };
 use axum::{
     extract::{Path, State},
@@ -40,7 +40,7 @@ impl From<AiModelModel> for ModelResponse {
             supports_streaming: model.supports_streaming.unwrap_or(false),
             supports_images: model.supports_images.unwrap_or(false),
             supports_functions: model.supports_functions.unwrap_or(false),
-            cost_per_token: None,  // TODO: Calculate from input/output token costs
+            cost_per_token: None, // TODO: Calculate from input/output token costs
             is_active: model.is_active.unwrap_or(true),
             created_at: model.created_at.to_rfc3339(),
             updated_at: model.updated_at.to_rfc3339(),

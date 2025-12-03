@@ -41,7 +41,7 @@ pub enum AppError {
 
     // Database errors
     DatabaseError(String),
-    
+
     // Rate limiting
     RateLimitExceeded { retry_after: Option<u64> },
 
@@ -332,4 +332,3 @@ mod tests {
         assert!(validate_message("   ").is_err());
     }
 }
-

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-use crate::db::schema::{tools, tool_calls, actions, agent_tools, assistant_tools, agent_actions};
+use crate::db::schema::{actions, agent_actions, agent_tools, assistant_tools, tool_calls, tools};
 
 /// Tool model
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -12,15 +12,15 @@ use crate::db::schema::{tools, tool_calls, actions, agent_tools, assistant_tools
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Tool {
     pub id: Uuid,
-    pub name: String,  // web_search, code_interpreter, dalle, retrieval, etc.
+    pub name: String, // web_search, code_interpreter, dalle, retrieval, etc.
     pub display_name: String,
     pub description: Option<String>,
-    pub tool_type: String,  // system, plugin, function, action
+    pub tool_type: String, // system, plugin, function, action
     pub icon_url: Option<String>,
     pub is_active: Option<bool>,
     pub is_system: Option<bool>,
     pub configuration_schema: Option<JsonValue>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -71,21 +71,21 @@ pub struct UpdateTool {
 pub struct ToolCall {
     pub id: Uuid,
     pub message_id: Uuid,
-    
+
     // Tool info
     pub tool_call_id: String,
     pub tool_name: String,
-    pub tool_type: Option<String>,  // function, code_interpreter, retrieval, web_search
-    
+    pub tool_type: Option<String>, // function, code_interpreter, retrieval, web_search
+
     // Execution
     pub arguments: Option<JsonValue>,
     pub result: Option<JsonValue>,
-    pub status: Option<String>,  // pending, running, completed, failed
+    pub status: Option<String>, // pending, running, completed, failed
     pub error_message: Option<String>,
-    
+
     // Output files
     pub output_file_ids: Option<Vec<Option<Uuid>>>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -136,27 +136,27 @@ pub struct Action {
     pub id: Uuid,
     pub action_id: String,
     pub user_id: String,
-    
+
     // Basic info
     pub name: String,
     pub description: Option<String>,
-    pub action_type: Option<String>,  // openapi, function, webhook
-    
+    pub action_type: Option<String>, // openapi, function, webhook
+
     // Configuration
     pub domain: Option<String>,
     pub endpoint_url: Option<String>,
     pub settings: Option<JsonValue>,
-    
+
     // Authentication
-    pub auth_type: Option<String>,  // none, api_key, oauth, bearer
+    pub auth_type: Option<String>, // none, api_key, oauth, bearer
     pub auth_config: Option<JsonValue>,
-    
+
     // OpenAPI spec
     pub openapi_spec: Option<String>,
-    
+
     // Privacy
     pub privacy_policy_url: Option<String>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -285,4 +285,3 @@ pub struct NewAgentAction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_enabled: Option<bool>,
 }
-

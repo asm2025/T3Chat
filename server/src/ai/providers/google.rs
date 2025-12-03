@@ -203,9 +203,7 @@ impl AIProvider for GoogleProvider {
     async fn stream_chat(
         &self,
         request: ChatRequest,
-    ) -> anyhow::Result<
-        Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>,
-    > {
+    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>> {
         #[derive(Serialize)]
         struct GoogleRequest {
             contents: Vec<GoogleContent>,
@@ -330,7 +328,7 @@ impl AIProvider for GoogleProvider {
         );
 
         let model = request.model.clone();
-        
+
         let response = self
             .client
             .post(&url)
@@ -345,39 +343,44 @@ impl AIProvider for GoogleProvider {
             anyhow::bail!("Google API error ({}): {}", status, error_text);
         }
 
-        let stream = response.bytes_stream().map(move |result| {
-            match result {
-                Ok(bytes) => {
-                    let text = String::from_utf8_lossy(bytes.as_ref());
-                    let mut chunks = Vec::new();
+        let stream = response
+            .bytes_stream()
+            .map(move |result| {
+                match result {
+                    Ok(bytes) => {
+                        let text = String::from_utf8_lossy(bytes.as_ref());
+                        let mut chunks = Vec::new();
 
-                    // Parse SSE format
-                    for line in text.lines() {
-                        if line.starts_with("data: ") {
-                            let data = &line[6..];
-                            
-                            if let Ok(parsed) = serde_json::from_str::<GoogleStreamResponse>(data) {
-                                if let Some(candidate) = parsed.candidates.first() {
-                                    if let Some(part) = candidate.content.parts.first() {
-                                        chunks.push(Ok(ChatResponseChunk {
-                                            delta: part.text.clone(),
-                                            done: candidate.finish_reason.is_some(),
-                                            model: Some(model.clone()),
-                                            finish_reason: candidate.finish_reason.clone(),
-                                        }));
+                        // Parse SSE format
+                        for line in text.lines() {
+                            if line.starts_with("data: ") {
+                                let data = &line[6..];
+
+                                if let Ok(parsed) =
+                                    serde_json::from_str::<GoogleStreamResponse>(data)
+                                {
+                                    if let Some(candidate) = parsed.candidates.first() {
+                                        if let Some(part) = candidate.content.parts.first() {
+                                            chunks.push(Ok(ChatResponseChunk {
+                                                delta: part.text.clone(),
+                                                done: candidate.finish_reason.is_some(),
+                                                model: Some(model.clone()),
+                                                finish_reason: candidate.finish_reason.clone(),
+                                            }));
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    futures::stream::iter(chunks)
+                        futures::stream::iter(chunks)
+                    }
+                    Err(e) => {
+                        futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
+                    }
                 }
-                Err(e) => {
-                    futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
-                }
-            }
-        }).flatten();
+            })
+            .flatten();
 
         Ok(Box::pin(stream))
     }

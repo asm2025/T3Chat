@@ -61,4 +61,3 @@ impl SessionManager {
         Ok(token_data.claims)
     }
 }
-

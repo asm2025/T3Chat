@@ -118,4 +118,3 @@ impl From<UpdateUserFeatureDto> for UpdateUserFeature {
         }
     }
 }
-

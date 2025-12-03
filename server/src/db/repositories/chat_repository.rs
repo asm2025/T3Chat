@@ -6,18 +6,25 @@ use uuid::Uuid;
 
 use crate::db::dto::{Pagination, ResultSet};
 use crate::db::models::{
-    ChatModel, CreateChatDto, UpdateChatDto, CreateMessageDto,
-    // Use conversation models from the actual schema
-    Conversation, Message, NewConversation, UpdateConversation, UpdateMessageDto,
-    conversation::NewMessage,  // Explicitly use conversation types
+    conversation::NewMessage, // Explicitly use conversation types
     conversation::UpdateMessage,
+    ChatModel,
+    // Use conversation models from the actual schema
+    Conversation,
+    CreateChatDto,
+    CreateMessageDto,
+    Message,
+    NewConversation,
+    UpdateChatDto,
+    UpdateConversation,
+    UpdateMessageDto,
 };
 
 // Aliases for legacy API compatibility
 type UpdateChat = UpdateConversation;
 use crate::db::{
+    schema::{conversations as chats, messages}, // Map conversations to chats for legacy compatibility
     DbPool,
-    schema::{conversations as chats, messages},  // Map conversations to chats for legacy compatibility
 };
 
 // Type alias for API compatibility - the repository now returns conversation Message model
@@ -78,7 +85,11 @@ impl TChatRepository for ChatRepository {
         // Count total non-archived conversations for this user
         let total = chats::table
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .count()
             .get_result::<i64>(&mut conn)
             .await
@@ -87,7 +98,11 @@ impl TChatRepository for ChatRepository {
         // Build query - returns Conversation, convert to ChatModel
         let mut query = chats::table
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .order(chats::updated_at.desc())
             .into_boxed();
 
@@ -122,7 +137,11 @@ impl TChatRepository for ChatRepository {
         let conversation = chats::table
             .filter(chats::id.eq(id))
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .first::<Conversation>(&mut conn)
             .await
             .optional()
@@ -176,7 +195,11 @@ impl TChatRepository for ChatRepository {
         let _existing = chats::table
             .filter(chats::id.eq(id))
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .first::<Conversation>(&mut conn)
             .await
             .optional()
@@ -220,7 +243,11 @@ impl TChatRepository for ChatRepository {
         let _existing = chats::table
             .filter(chats::id.eq(id))
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .first::<Conversation>(&mut conn)
             .await
             .optional()
@@ -349,7 +376,11 @@ impl TChatRepository for ChatRepository {
         let _chat = chats::table
             .filter(chats::id.eq(chat_id))
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .first::<Conversation>(&mut conn)
             .await
             .optional()
@@ -386,7 +417,11 @@ impl TChatRepository for ChatRepository {
         let _chat = chats::table
             .filter(chats::id.eq(chat_id))
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .first::<Conversation>(&mut conn)
             .await
             .optional()
@@ -422,7 +457,11 @@ impl TChatRepository for ChatRepository {
         let _chat = chats::table
             .filter(chats::id.eq(chat_id))
             .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.eq(false).or(chats::is_archived.is_null()))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
             .first::<Conversation>(&mut conn)
             .await
             .optional()

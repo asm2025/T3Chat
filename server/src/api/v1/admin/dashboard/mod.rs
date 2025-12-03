@@ -1,14 +1,8 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-    routing::get,
-    Router,
-};
+use axum::{extract::State, http::StatusCode, response::Json, routing::get, Router};
 use serde::Serialize;
 
-use crate::AppState;
 use crate::middleware::auth::AuthenticatedUser;
+use crate::AppState;
 
 #[derive(Debug, Serialize)]
 pub struct DashboardStatsResponse {
@@ -30,7 +24,7 @@ pub async fn get_stats(
 ) -> Result<Json<DashboardStatsResponse>, StatusCode> {
     use diesel::QueryableByName;
     use diesel_async::RunQueryDsl;
-    
+
     #[derive(QueryableByName)]
     struct UserStatsRow {
         #[diesel(sql_type = diesel::sql_types::BigInt)]
@@ -63,7 +57,11 @@ pub async fn get_stats(
         disabled: i64,
     }
 
-    let mut conn = state.db.get().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let mut conn = state
+        .db
+        .get()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Get user stats
     let user_stats: Vec<UserStatsRow> = diesel::sql_query(
@@ -74,7 +72,7 @@ pub async fn get_stats(
             COUNT(*) FILTER (WHERE disabled = true) as disabled,
             COUNT(*) FILTER (WHERE locked_out = true) as locked
         FROM users
-        "#
+        "#,
     )
     .load(&mut conn)
     .await
@@ -88,7 +86,7 @@ pub async fn get_stats(
             COUNT(*) FILTER (WHERE disabled = false AND is_active = true) as active,
             COUNT(*) FILTER (WHERE disabled = true) as disabled
         FROM ai_providers
-        "#
+        "#,
     )
     .load(&mut conn)
     .await
@@ -108,9 +106,18 @@ pub async fn get_stats(
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let user_stats = user_stats.into_iter().next().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    let provider_stats = provider_stats.into_iter().next().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    let model_stats = model_stats.into_iter().next().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let user_stats = user_stats
+        .into_iter()
+        .next()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let provider_stats = provider_stats
+        .into_iter()
+        .next()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let model_stats = model_stats
+        .into_iter()
+        .next()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(DashboardStatsResponse {
         total_users: user_stats.total as u64,
@@ -127,7 +134,5 @@ pub async fn get_stats(
 }
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/stats", get(get_stats))
+    Router::new().route("/stats", get(get_stats))
 }
-

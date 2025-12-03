@@ -36,8 +36,7 @@ impl ProviderWrapper {
     pub async fn stream_chat(
         &self,
         request: ChatRequest,
-    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>>
-    {
+    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>> {
         match self {
             ProviderWrapper::OpenAI(p) => p.stream_chat(request).await,
             ProviderWrapper::Anthropic(p) => p.stream_chat(request).await,

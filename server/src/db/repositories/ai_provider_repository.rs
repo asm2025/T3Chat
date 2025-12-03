@@ -10,10 +10,7 @@ use crate::db::{schema::ai_providers, DbPool};
 
 #[async_trait]
 pub trait TAiProviderRepository: Send + Sync {
-    async fn list(
-        &self,
-        pagination: Option<Pagination>,
-    ) -> Result<ResultSet<AiProvider>>;
+    async fn list(&self, pagination: Option<Pagination>) -> Result<ResultSet<AiProvider>>;
     async fn count(&self) -> Result<u64>;
     async fn get(&self, id: Uuid) -> Result<Option<AiProvider>>;
     async fn get_by_provider_id(&self, provider_id: &str) -> Result<Option<AiProvider>>;
@@ -36,10 +33,7 @@ impl AiProviderRepository {
 
 #[async_trait]
 impl TAiProviderRepository for AiProviderRepository {
-    async fn list(
-        &self,
-        pagination: Option<Pagination>,
-    ) -> Result<ResultSet<AiProvider>> {
+    async fn list(&self, pagination: Option<Pagination>) -> Result<ResultSet<AiProvider>> {
         let mut conn = self
             .pool
             .get()
@@ -203,4 +197,3 @@ impl TAiProviderRepository for AiProviderRepository {
         Ok(())
     }
 }
-

@@ -2,7 +2,6 @@ use crate::{
     db::prelude::*,
     db::repositories::{TUserRepository, UserRepository},
 };
-use async_trait::async_trait;
 use axum::{
     body::Body,
     extract::{FromRequestParts, State},
@@ -10,7 +9,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use std::sync::Arc;
+use std::{future::Future, sync::Arc};
 
 use crate::auth::SessionManager;
 use crate::AppState;
@@ -18,19 +17,19 @@ use crate::AppState;
 #[derive(Clone)]
 pub struct AuthenticatedUser(pub UserModel);
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthenticatedUser
 where
     S: Send + Sync,
 {
     type Rejection = StatusCode;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        parts
-            .extensions
-            .get::<AuthenticatedUser>()
-            .cloned()
-            .ok_or(StatusCode::UNAUTHORIZED)
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        let user = parts.extensions.get::<AuthenticatedUser>().cloned();
+
+        async move { user.ok_or(StatusCode::UNAUTHORIZED) }
     }
 }
 

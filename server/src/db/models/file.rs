@@ -12,39 +12,39 @@ use crate::db::schema::files;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct File {
     pub id: Uuid,
-    pub file_id: String,  // for API compatibility
+    pub file_id: String, // for API compatibility
     pub user_id: String,
     pub conversation_id: Option<Uuid>,
-    
+
     // File info
     pub filename: String,
-    pub filepath: String,  // relative path in storage
+    pub filepath: String, // relative path in storage
     pub mime_type: String,
     pub size_bytes: i64,
-    
+
     // File type categorization
-    pub file_type: String,  // image, document, audio, video, other
-    
+    pub file_type: String, // image, document, audio, video, other
+
     // Content (for text files / OCR)
     pub text_content: Option<String>,
-    pub is_embedded: Option<bool>,  // vector embeddings created
-    
+    pub is_embedded: Option<bool>, // vector embeddings created
+
     // Image-specific
     pub width: Option<i32>,
     pub height: Option<i32>,
-    
+
     // Metadata
-    pub source: Option<String>,  // upload, url, generated
+    pub source: Option<String>, // upload, url, generated
     pub metadata: Option<JsonValue>,
-    
+
     // Usage tracking
     pub usage_count: Option<i32>,
     pub last_used_at: Option<DateTime<Utc>>,
-    
+
     // Temporary files
     pub is_temporary: Option<bool>,
     pub expires_at: Option<DateTime<Utc>>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -115,4 +115,3 @@ impl File {
         }
     }
 }
-

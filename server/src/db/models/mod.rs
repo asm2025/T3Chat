@@ -3,17 +3,17 @@ use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
 
 // Core models
-pub mod user;
-pub mod role;
-pub mod user_role;
 pub mod ai_model;
 pub mod ai_provider;
+pub mod role;
+pub mod user;
 pub mod user_api_key;
+pub mod user_role;
 
 // Conversation & messaging
 pub mod conversation;
-pub mod preset;
 pub mod file;
+pub mod preset;
 
 // Agent system
 pub mod agent;
@@ -22,8 +22,8 @@ pub mod agent;
 pub mod tool;
 
 // Organization
-pub mod tag;
 pub mod project;
+pub mod tag;
 
 // Billing & tracking
 pub mod transaction;
@@ -37,24 +37,24 @@ pub mod feature;
 pub mod message;
 
 // Re-export all models for convenience
-pub use user::*;
-pub use ai_model::*;
-pub use user_api_key::*;
-pub use conversation::*;
-pub use preset::*;
-pub use file::*;
 pub use agent::*;
-pub use tool::*;
-pub use tag::*;
+pub use ai_model::*;
+pub use conversation::*;
+pub use file::*;
+pub use preset::*;
 pub use project::*;
+pub use tag::*;
+pub use tool::*;
 pub use transaction::*;
+pub use user::*;
+pub use user_api_key::*;
 
 // Legacy re-exports - only export specific types to avoid conflicts
 pub use chat::{ChatModel, CreateChatDto, UpdateChatDto};
 pub use feature::*;
 // Note: message::NewMessage and message::UpdateMessage conflict with conversation types
 // Use conversation::NewMessage and conversation::UpdateMessage for database operations
-pub use message::{MessageRole, CreateMessageDto, UpdateMessageDto};
+pub use message::{CreateMessageDto, MessageRole, UpdateMessageDto};
 
 // Type aliases for compatibility
 pub type UserModel = User;
@@ -64,7 +64,9 @@ pub type ConversationModel = Conversation;
 pub type MessageModel = Message;
 
 // AI Provider enum
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, AsExpression, FromSqlRow)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, AsExpression, FromSqlRow,
+)]
 #[diesel(sql_type = Text)]
 pub enum AiProvider {
     OpenAI,

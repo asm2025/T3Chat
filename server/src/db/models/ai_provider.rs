@@ -12,7 +12,7 @@ use crate::db::schema::ai_providers;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct AiProvider {
     pub id: Uuid,
-    pub provider_id: String,  // openai, anthropic, google, etc.
+    pub provider_id: String, // openai, anthropic, google, etc.
     pub display_name: String,
     pub description: Option<String>,
     pub base_url: Option<String>,
@@ -107,4 +107,3 @@ impl AiProvider {
         self.is_active && !self.disabled
     }
 }
-

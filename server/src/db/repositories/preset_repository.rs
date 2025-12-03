@@ -4,7 +4,7 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
-    models::{Preset, NewPreset, UpdatePreset},
+    models::{NewPreset, Preset, UpdatePreset},
     schema::presets,
     DbPool,
 };
@@ -20,8 +20,12 @@ impl PresetRepository {
 
     /// Create a new preset
     pub async fn create(&self, new_preset: NewPreset) -> Result<Preset> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(presets::table)
             .values(&new_preset)
             .get_result(&mut conn)
@@ -31,8 +35,12 @@ impl PresetRepository {
 
     /// Get preset by ID
     pub async fn get_by_id(&self, id: Uuid, user_id: &str) -> Result<Option<Preset>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         presets::table
             .filter(presets::id.eq(id))
             .filter(presets::user_id.eq(user_id))
@@ -44,8 +52,12 @@ impl PresetRepository {
 
     /// List presets for a user
     pub async fn list_by_user(&self, user_id: &str) -> Result<Vec<Preset>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         presets::table
             .filter(presets::user_id.eq(user_id))
             .order(presets::order_index.asc())
@@ -56,8 +68,12 @@ impl PresetRepository {
 
     /// Update preset
     pub async fn update(&self, id: Uuid, user_id: &str, update: UpdatePreset) -> Result<Preset> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::update(presets::table)
             .filter(presets::id.eq(id))
             .filter(presets::user_id.eq(user_id))
@@ -69,16 +85,19 @@ impl PresetRepository {
 
     /// Delete preset
     pub async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let deleted = diesel::delete(presets::table)
             .filter(presets::id.eq(id))
             .filter(presets::user_id.eq(user_id))
             .execute(&mut conn)
             .await
             .context("Failed to delete preset")?;
-        
+
         Ok(deleted > 0)
     }
 }
-

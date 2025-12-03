@@ -10,7 +10,19 @@ interface MasterLayoutProps {
 }
 
 export function MasterLayout({ children, footer, contentClassName }: MasterLayoutProps) {
-    const { open: sidebarOpen, isMobile } = useSidebar();
+    // Try to use sidebar context, but default to collapsed state if not available
+    let sidebarOpen = false;
+    let isMobile = false;
+
+    try {
+        const sidebar = useSidebar();
+        sidebarOpen = sidebar.open;
+        isMobile = sidebar.isMobile;
+    } catch {
+        // SidebarProvider not available (e.g., on public pages like Login)
+        // Default to collapsed state
+    }
+
     // Only apply collapsed styles on desktop when sidebar is closed
     const isCollapsed = !sidebarOpen && !isMobile;
 

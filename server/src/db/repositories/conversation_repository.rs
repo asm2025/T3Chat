@@ -6,10 +6,8 @@ use uuid::Uuid;
 
 use crate::db::{
     models::{
-        Conversation, NewConversation, UpdateConversation,
-        Message,
-        conversation::NewMessage,
-        conversation::UpdateMessage,
+        conversation::NewMessage, conversation::UpdateMessage, Conversation, Message,
+        NewConversation, UpdateConversation,
     },
     schema::{conversations, messages},
     DbPool,
@@ -26,8 +24,12 @@ impl ConversationRepository {
 
     /// Create a new conversation
     pub async fn create(&self, new_conversation: NewConversation) -> Result<Conversation> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(conversations::table)
             .values(&new_conversation)
             .get_result(&mut conn)
@@ -37,8 +39,12 @@ impl ConversationRepository {
 
     /// Get conversation by ID
     pub async fn get_by_id(&self, id: Uuid, user_id: &str) -> Result<Option<Conversation>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         conversations::table
             .filter(conversations::id.eq(id))
             .filter(conversations::user_id.eq(user_id))
@@ -49,9 +55,17 @@ impl ConversationRepository {
     }
 
     /// Get conversation by conversation_id
-    pub async fn get_by_conversation_id(&self, conversation_id: &str, user_id: &str) -> Result<Option<Conversation>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+    pub async fn get_by_conversation_id(
+        &self,
+        conversation_id: &str,
+        user_id: &str,
+    ) -> Result<Option<Conversation>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         conversations::table
             .filter(conversations::conversation_id.eq(conversation_id))
             .filter(conversations::user_id.eq(user_id))
@@ -62,15 +76,27 @@ impl ConversationRepository {
     }
 
     /// List conversations for a user
-    pub async fn list_by_user(&self, user_id: &str, include_archived: bool) -> Result<Vec<Conversation>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+    pub async fn list_by_user(
+        &self,
+        user_id: &str,
+        include_archived: bool,
+    ) -> Result<Vec<Conversation>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let mut query = conversations::table
             .filter(conversations::user_id.eq(user_id))
             .into_boxed();
 
         if !include_archived {
-            query = query.filter(conversations::is_archived.eq(false).or(conversations::is_archived.is_null()));
+            query = query.filter(
+                conversations::is_archived
+                    .eq(false)
+                    .or(conversations::is_archived.is_null()),
+            );
         }
 
         query
@@ -81,9 +107,18 @@ impl ConversationRepository {
     }
 
     /// Update conversation
-    pub async fn update(&self, id: Uuid, user_id: &str, update: UpdateConversation) -> Result<Conversation> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+    pub async fn update(
+        &self,
+        id: Uuid,
+        user_id: &str,
+        update: UpdateConversation,
+    ) -> Result<Conversation> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::update(conversations::table)
             .filter(conversations::id.eq(id))
             .filter(conversations::user_id.eq(user_id))
@@ -95,15 +130,19 @@ impl ConversationRepository {
 
     /// Delete conversation
     pub async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let deleted = diesel::delete(conversations::table)
             .filter(conversations::id.eq(id))
             .filter(conversations::user_id.eq(user_id))
             .execute(&mut conn)
             .await
             .context("Failed to delete conversation")?;
-        
+
         Ok(deleted > 0)
     }
 
@@ -133,8 +172,12 @@ impl ConversationRepository {
 
     /// Create a new message
     pub async fn create_message(&self, new_message: NewMessage) -> Result<Message> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(messages::table)
             .values(&new_message)
             .get_result(&mut conn)
@@ -144,8 +187,12 @@ impl ConversationRepository {
 
     /// Get message by ID
     pub async fn get_message_by_id(&self, id: Uuid) -> Result<Option<Message>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         messages::table
             .filter(messages::id.eq(id))
             .first(&mut conn)
@@ -156,8 +203,12 @@ impl ConversationRepository {
 
     /// List messages for a conversation
     pub async fn list_messages(&self, conversation_id: Uuid) -> Result<Vec<Message>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         messages::table
             .filter(messages::conversation_id.eq(conversation_id))
             .order(messages::created_at.asc())
@@ -168,8 +219,12 @@ impl ConversationRepository {
 
     /// Update message
     pub async fn update_message(&self, id: Uuid, update: UpdateMessage) -> Result<Message> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::update(messages::table)
             .filter(messages::id.eq(id))
             .set(&update)
@@ -180,21 +235,29 @@ impl ConversationRepository {
 
     /// Delete message
     pub async fn delete_message(&self, id: Uuid) -> Result<bool> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let deleted = diesel::delete(messages::table)
             .filter(messages::id.eq(id))
             .execute(&mut conn)
             .await
             .context("Failed to delete message")?;
-        
+
         Ok(deleted > 0)
     }
 
     /// Delete all messages in a conversation
     pub async fn delete_all_messages(&self, conversation_id: Uuid) -> Result<usize> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::delete(messages::table)
             .filter(messages::conversation_id.eq(conversation_id))
             .execute(&mut conn)
@@ -222,4 +285,3 @@ impl Default for UpdateConversation {
         }
     }
 }
-

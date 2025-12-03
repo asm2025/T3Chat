@@ -8,10 +8,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::AppState;
 use crate::db::models::ai_model::AiModel;
 use crate::db::repositories::TAiModelRepository;
 use crate::middleware::auth::AuthenticatedUser;
+use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ListModelsQuery {
@@ -133,7 +133,8 @@ pub async fn list_models(
     _user: AuthenticatedUser,
 ) -> Result<Json<ListModelsResponse>, StatusCode> {
     // For now, use list() - TODO: Add filtering
-    let models = state.ai_model_repository
+    let models = state
+        .ai_model_repository
         .list()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -158,7 +159,8 @@ pub async fn get_model(
     Path(id): Path<Uuid>,
     _user: AuthenticatedUser,
 ) -> Result<Json<ModelResponse>, StatusCode> {
-    let model = state.ai_model_repository
+    let model = state
+        .ai_model_repository
         .get(id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
@@ -173,7 +175,7 @@ pub async fn create_model(
     Json(req): Json<CreateModelRequest>,
 ) -> Result<Json<ModelResponse>, StatusCode> {
     use crate::db::models::ai_model::NewAiModel;
-    
+
     let new_model = NewAiModel {
         id: None,
         provider: req.provider,
@@ -193,7 +195,8 @@ pub async fn create_model(
         is_paid: req.is_paid.unwrap_or(true),
     };
 
-    let model = state.ai_model_repository
+    let model = state
+        .ai_model_repository
         .create(new_model)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -208,7 +211,7 @@ pub async fn update_model(
     Json(req): Json<UpdateModelRequest>,
 ) -> Result<Json<ModelResponse>, StatusCode> {
     use crate::db::models::ai_model::UpdateAiModel;
-    
+
     let update_model = UpdateAiModel {
         display_name: req.display_name,
         description: req.description.map(Some),
@@ -222,13 +225,14 @@ pub async fn update_model(
         cost_per_output_token: req.cost_per_output_token.map(Some),
         is_active: req.is_active,
         deprecated_at: None, // Don't allow updating deprecated_at via this endpoint
-        provider_id: None, // Don't allow updating provider_id via this endpoint
+        provider_id: None,   // Don't allow updating provider_id via this endpoint
         disabled: req.disabled,
         is_paid: req.is_paid,
         updated_at: chrono::Utc::now(),
     };
 
-    let model = state.ai_model_repository
+    let model = state
+        .ai_model_repository
         .update(id, update_model)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -241,7 +245,8 @@ pub async fn delete_model(
     Path(id): Path<Uuid>,
     _user: AuthenticatedUser,
 ) -> Result<StatusCode, StatusCode> {
-    state.ai_model_repository
+    state
+        .ai_model_repository
         .delete(id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -254,7 +259,8 @@ pub async fn enable_model(
     Path(id): Path<Uuid>,
     _user: AuthenticatedUser,
 ) -> Result<Json<ModelResponse>, StatusCode> {
-    state.ai_model_repository
+    state
+        .ai_model_repository
         .enable(id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -267,7 +273,8 @@ pub async fn disable_model(
     Path(id): Path<Uuid>,
     _user: AuthenticatedUser,
 ) -> Result<Json<ModelResponse>, StatusCode> {
-    state.ai_model_repository
+    state
+        .ai_model_repository
         .disable(id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -281,8 +288,12 @@ pub async fn deprecate_model(
     _user: AuthenticatedUser,
 ) -> Result<Json<ModelResponse>, StatusCode> {
     use diesel_async::RunQueryDsl;
-    
-    let mut conn = state.db.get().await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let mut conn = state
+        .db
+        .get()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     diesel::sql_query("UPDATE ai_models SET deprecated_at = NOW() WHERE id = $1")
         .bind::<diesel::sql_types::Uuid, _>(&id)
         .execute(&mut conn)
@@ -304,10 +315,12 @@ pub async fn scan_models(
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(list_models).post(create_model))
-        .route("/{id}", get(get_model).put(update_model).delete(delete_model))
+        .route(
+            "/{id}",
+            get(get_model).put(update_model).delete(delete_model),
+        )
         .route("/{id}/enable", post(enable_model))
         .route("/{id}/disable", post(disable_model))
         .route("/{id}/deprecate", post(deprecate_model))
         .route("/scan", post(scan_models))
 }
-

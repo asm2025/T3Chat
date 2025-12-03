@@ -1,9 +1,8 @@
 use crate::{
-    ai::types::{ChatMessage, ChatRequest as AIChatRequest, ModelParameters, FeatureFlags},
+    ai::types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
     db::prelude::*,
     db::repositories::{
-        chat_repository::TChatRepository,
-        user_api_key_repository::TUserApiKeyRepository,
+        chat_repository::TChatRepository, user_api_key_repository::TUserApiKeyRepository,
     },
     middleware::auth::AuthenticatedUser,
     utils::encryption,
@@ -108,11 +107,10 @@ pub async fn chat(
         .ok_or(StatusCode::BAD_REQUEST)?;
 
     // Decrypt API key
-    let decrypted_key = encryption::decrypt(&api_key.encrypted_key)
-        .map_err(|e| {
-            tracing::error!("Failed to decrypt API key: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
+        tracing::error!("Failed to decrypt API key: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     // Get messages for context
     let messages = state
@@ -288,11 +286,10 @@ pub async fn stream_chat(
         .ok_or(StatusCode::BAD_REQUEST)?;
 
     // Decrypt API key
-    let decrypted_key = encryption::decrypt(&api_key.encrypted_key)
-        .map_err(|e| {
-            tracing::error!("Failed to decrypt API key: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
+        tracing::error!("Failed to decrypt API key: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     // Get messages for context
     let messages = state
@@ -352,19 +349,16 @@ pub async fn stream_chat(
     };
 
     // Get streaming response
-    let mut stream = ai_provider
-        .stream_chat(ai_request)
-        .await
-        .map_err(|e| {
-            tracing::error!("AI provider streaming error: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let mut stream = ai_provider.stream_chat(ai_request).await.map_err(|e| {
+        tracing::error!("AI provider streaming error: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     // Save user message
     let chat_repo = state.chat_repository.clone();
     let chat_id = payload.chat_id;
     let user_message = payload.message.clone();
-    
+
     let user_seq = state
         .chat_repository
         .get_next_sequence_number(chat_id)
@@ -402,7 +396,7 @@ pub async fn stream_chat(
                     let event = Event::default()
                         .json_data(&chunk)
                         .unwrap_or_else(|_| Event::default().data("error"));
-                    
+
                     yield Ok::<Event, Infallible>(event);
 
                     // If done, save assistant response
@@ -429,7 +423,7 @@ pub async fn stream_chat(
                                 .update_tokens_used(msg.id, 0, &model)
                                 .await;
                         }
-                        
+
                         break;
                     }
                 }

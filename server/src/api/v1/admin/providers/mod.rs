@@ -8,11 +8,11 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::AppState;
 use crate::db::dto::Pagination;
 use crate::db::models::ai_provider::{AiProvider, NewAiProvider, UpdateAiProvider};
 use crate::db::repositories::{AiProviderRepository, TAiProviderRepository};
 use crate::middleware::auth::AuthenticatedUser;
+use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ListProvidersQuery {
@@ -124,7 +124,7 @@ pub async fn list_providers(
     _user: AuthenticatedUser,
 ) -> Result<Json<ListProvidersResponse>, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     let pagination = Pagination {
         page: params.page,
         page_size: params.limit,
@@ -136,7 +136,11 @@ pub async fn list_providers(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(ListProvidersResponse {
-        data: result.data.into_iter().map(ProviderResponse::from).collect(),
+        data: result
+            .data
+            .into_iter()
+            .map(ProviderResponse::from)
+            .collect(),
         total: result.total,
         page: params.page,
         page_size: params.limit,
@@ -149,7 +153,7 @@ pub async fn get_provider(
     _user: AuthenticatedUser,
 ) -> Result<Json<ProviderResponse>, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     let provider = provider_repo
         .get(id)
         .await
@@ -165,7 +169,7 @@ pub async fn create_provider(
     Json(req): Json<CreateProviderRequest>,
 ) -> Result<Json<ProviderResponse>, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     let new_provider = NewAiProvider {
         id: None,
         provider_id: req.provider_id,
@@ -199,7 +203,7 @@ pub async fn update_provider(
     Json(req): Json<UpdateProviderRequest>,
 ) -> Result<Json<ProviderResponse>, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     let update_provider = UpdateAiProvider {
         display_name: req.display_name,
         description: req.description.map(Some),
@@ -231,7 +235,7 @@ pub async fn delete_provider(
     _user: AuthenticatedUser,
 ) -> Result<StatusCode, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     provider_repo
         .delete(id)
         .await
@@ -246,7 +250,7 @@ pub async fn enable_provider(
     _user: AuthenticatedUser,
 ) -> Result<Json<ProviderResponse>, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     provider_repo
         .enable(id)
         .await
@@ -261,7 +265,7 @@ pub async fn disable_provider(
     _user: AuthenticatedUser,
 ) -> Result<Json<ProviderResponse>, StatusCode> {
     let provider_repo = AiProviderRepository::new(state.db.clone());
-    
+
     provider_repo
         .disable(id)
         .await
@@ -283,9 +287,13 @@ pub async fn scan_provider(
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(list_providers).post(create_provider))
-        .route("/{id}", get(get_provider).put(update_provider).delete(delete_provider))
+        .route(
+            "/{id}",
+            get(get_provider)
+                .put(update_provider)
+                .delete(delete_provider),
+        )
         .route("/{id}/enable", post(enable_provider))
         .route("/{id}/disable", post(disable_provider))
         .route("/{id}/scan", post(scan_provider))
 }
-

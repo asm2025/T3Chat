@@ -1,15 +1,18 @@
 use anyhow::Result;
 use axum::{
-    http::HeaderValue,
+    body::Body,
+    extract::Path,
+    http::{header, HeaderValue, StatusCode},
+    response::{IntoResponse, Redirect, Response},
     routing::{delete, get, post, put},
-    Router,
+    Json, Router,
 };
 use emix::env::{get_env, get_port_or};
 use std::{net::SocketAddr, sync::Arc};
 use tokio::task::spawn_blocking;
 use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
-    services::ServeDir,
+    services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
@@ -112,8 +115,13 @@ async fn run() -> Result<()> {
             .map_err(|e| anyhow::anyhow!("Failed to create OIDC client: {}", e))?,
         );
 
+        let jwks_uri = client
+            .get_jwks_uri()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to resolve JWKS URI: {}", e))?;
+
         let cache = Arc::new(
-            auth::JwksCache::new(oidc_issuer_url)
+            auth::JwksCache::new(oidc_issuer_url, jwks_uri)
                 .await
                 .map_err(|e| anyhow::anyhow!("Failed to create JWKS cache: {}", e))?,
         );
@@ -413,8 +421,13 @@ fn setup_router(state: AppState) -> Result<Router> {
         .nest("/api/v1", user_routes)
         .nest("/api/v1/admin", admin_routes);
 
+    let index_html = static_path.join("index.html");
+    let static_files_service = ServeDir::new(static_path)
+        .append_index_html_on_directories(true)
+        .not_found_service(ServeFile::new(index_html));
+
     let mut router = api_router
-        .fallback_service(ServeDir::new(static_path).append_index_html_on_directories(true))
+        .fallback_service(static_files_service)
         .layer(
             TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
                 tracing::info_span!(
@@ -424,8 +437,7 @@ fn setup_router(state: AppState) -> Result<Router> {
                 )
             }),
         )
-        .layer(cors)
-        .with_state(state);
+        .layer(cors);
 
     // Add debug middleware if enabled
     if env::is_debug_routes_enabled() {
@@ -435,18 +447,89 @@ fn setup_router(state: AppState) -> Result<Router> {
 
     if env::is_swagger_enabled() {
         tracing::info!("📚 Swagger UI enabled at /swagger-ui");
-        Ok(router.merge(swagger_docs_router()))
-    } else {
-        Ok(router)
+        router = router.merge(swagger_docs_router());
     }
+
+    let router = router.with_state(state);
+
+    Ok(router)
 }
 
-fn swagger_docs_router() -> Router {
-    let open_api = docs::ApiDoc::openapi();
-    let swagger: Router = Into::<Router>::into(
-        utoipa_swagger_ui::SwaggerUi::new("/swagger-ui").url("/openapi.json", open_api),
+fn swagger_docs_router() -> Router<AppState> {
+    let open_api = Arc::new(docs::ApiDoc::openapi());
+    let swagger_config: Arc<utoipa_swagger_ui::Config<'static>> =
+        Arc::new(utoipa_swagger_ui::Config::from("/openapi.json"));
+
+    let openapi_route = Router::<AppState>::new().route(
+        "/openapi.json",
+        get({
+            let open_api = open_api.clone();
+            move || {
+                let open_api = open_api.clone();
+                async move { Json((*open_api).clone()) }
+            }
+        }),
     );
-    swagger
+
+    let ui_router = Router::<AppState>::new()
+        .route(
+            "/swagger-ui",
+            get(|| async { Redirect::temporary("/swagger-ui/") }),
+        )
+        .route(
+            "/swagger-ui/",
+            get({
+                let config = swagger_config.clone();
+                move || {
+                    let config = config.clone();
+                    async move { serve_swagger_ui_response("", config) }
+                }
+            }),
+        )
+        .route(
+            "/swagger-ui/*path",
+            get({
+                let config = swagger_config.clone();
+                move |Path(path): Path<String>| {
+                    let config = config.clone();
+                    async move { serve_swagger_ui_response(&path, config) }
+                }
+            }),
+        );
+
+    openapi_route.merge(ui_router)
+}
+
+fn serve_swagger_ui_response(
+    path: &str,
+    config: Arc<utoipa_swagger_ui::Config<'static>>,
+) -> Response {
+    let relative_path = path.trim_start_matches('/');
+    let request_path = if relative_path.is_empty() {
+        "/"
+    } else {
+        relative_path
+    };
+
+    match utoipa_swagger_ui::serve(request_path, config) {
+        Ok(Some(file)) => {
+            let body = Body::from(file.bytes.into_owned());
+            match Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, file.content_type)
+                .body(body)
+            {
+                Ok(response) => response,
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        }
+        Ok(None) => StatusCode::NOT_FOUND.into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            error.to_string(),
+        )
+            .into_response(),
+    }
 }
 
 async fn debug_route_middleware(

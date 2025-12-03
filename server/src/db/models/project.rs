@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::schema::{projects, prompt_groups, prompts, project_agents, agent_hierarchy};
+use crate::db::schema::{agent_hierarchy, project_agents, projects, prompt_groups, prompts};
 
 /// Project model
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ pub struct Project {
     pub name: String,
     pub description: Option<String>,
     pub owner_id: String,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -53,7 +53,7 @@ pub struct PromptGroup {
     pub description: Option<String>,
     pub author_id: String,
     pub project_id: Option<Uuid>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -95,10 +95,10 @@ pub struct Prompt {
     pub group_id: Uuid,
     pub title: Option<String>,
     pub prompt_text: String,
-    pub prompt_type: String,  // system, user, template
-    pub variables: Option<Vec<Option<String>>>,  // template variables
+    pub prompt_type: String,                    // system, user, template
+    pub variables: Option<Vec<Option<String>>>, // template variables
     pub order_index: Option<i32>,
-    
+
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -184,4 +184,3 @@ pub struct NewAgentHierarchy {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order_index: Option<i32>,
 }
-

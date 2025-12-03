@@ -11,17 +11,17 @@ use crate::db::schema::users;
 #[diesel(table_name = users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
-    pub id: String,  // OIDC subject (sub) claim
+    pub id: String, // OIDC subject (sub) claim
     pub email: String,
     pub email_verified: Option<bool>,
     pub name: Option<String>,
     pub username: Option<String>,
     pub avatar_url: Option<String>,
-    pub provider: String,  // oidc, google, local, etc.
-    pub role: Option<String>,  // user, admin, moderator
+    pub provider: String,     // oidc, google, local, etc.
+    pub role: Option<String>, // user, admin, moderator
     pub password_hash: Option<String>,
     pub two_factor_enabled: Option<bool>,
-    pub totp_secret: Option<String>,  // encrypted
+    pub totp_secret: Option<String>, // encrypted
     pub preferences: Option<JsonValue>,
     pub terms_accepted: Option<bool>,
     pub terms_accepted_at: Option<DateTime<Utc>>,
@@ -42,7 +42,7 @@ pub struct User {
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = users)]
 pub struct NewUser {
-    pub id: String,  // OIDC subject (sub) claim
+    pub id: String, // OIDC subject (sub) claim
     pub email: String,
     pub normalized_email: String,
     #[serde(skip_serializing_if = "Option::is_none")]

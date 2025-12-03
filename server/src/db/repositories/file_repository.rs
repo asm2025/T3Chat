@@ -20,8 +20,12 @@ impl FileRepository {
 
     /// Create a new file
     pub async fn create(&self, new_file: NewFile) -> Result<File> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::insert_into(files::table)
             .values(&new_file)
             .get_result(&mut conn)
@@ -31,8 +35,12 @@ impl FileRepository {
 
     /// Get file by ID
     pub async fn get_by_id(&self, id: Uuid) -> Result<Option<File>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         files::table
             .filter(files::id.eq(id))
             .first(&mut conn)
@@ -43,8 +51,12 @@ impl FileRepository {
 
     /// List files by user
     pub async fn list_by_user(&self, user_id: &str) -> Result<Vec<File>> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         files::table
             .filter(files::user_id.eq(user_id))
             .order(files::created_at.desc())
@@ -55,8 +67,12 @@ impl FileRepository {
 
     /// Update file
     pub async fn update(&self, id: Uuid, update: UpdateFile) -> Result<File> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         diesel::update(files::table)
             .filter(files::id.eq(id))
             .set(&update)
@@ -67,15 +83,18 @@ impl FileRepository {
 
     /// Delete file
     pub async fn delete(&self, id: Uuid) -> Result<bool> {
-        let mut conn = self.pool.get().await.context("Failed to get DB connection")?;
-        
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
         let deleted = diesel::delete(files::table)
             .filter(files::id.eq(id))
             .execute(&mut conn)
             .await
             .context("Failed to delete file")?;
-        
+
         Ok(deleted > 0)
     }
 }
-

@@ -19,9 +19,8 @@ mod tests {
     fn test_hash_and_verify() {
         let password = "test_password_123";
         let hash = hash_password(password).expect("Failed to hash password");
-        
+
         assert!(verify_password(password, &hash).expect("Failed to verify password"));
         assert!(!verify_password("wrong_password", &hash).expect("Failed to verify password"));
     }
 }
-

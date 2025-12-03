@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { MessageSquare, Zap, Shield, Users } from "lucide-react";
 
 export function Home() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -24,8 +24,8 @@ export function Home() {
                 <Link to="/chat">Go to Chat</Link>
               </Button>
             ) : (
-              <Button onClick={login} size="lg">
-                Get Started
+              <Button asChild size="lg">
+                <Link to="/login">Get Started</Link>
               </Button>
             )}
             <Button asChild variant="outline" size="lg">
@@ -84,8 +84,8 @@ export function Home() {
             Join thousands of users already using T3Chat
           </p>
           {!isAuthenticated && (
-            <Button onClick={login} size="lg">
-              Sign In Now
+            <Button asChild size="lg">
+              <Link to="/login">Sign In Now</Link>
             </Button>
           )}
         </div>

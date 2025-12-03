@@ -16,9 +16,7 @@ pub trait AIProvider: Send + Sync {
     async fn stream_chat(
         &self,
         request: ChatRequest,
-    ) -> anyhow::Result<
-        Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>,
-    >;
+    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>>;
 
     /// Get information about a specific model
     fn get_model_info(&self, model_id: &str) -> Option<ModelInfo>;
