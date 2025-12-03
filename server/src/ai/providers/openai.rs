@@ -1,5 +1,9 @@
 use crate::ai::providers::AIProvider;
-use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo, TokenUsage};
+use crate::ai::types::{
+    ChatMessage, ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo, ModelParameters,
+    TokenUsage,
+};
+use crate::db::models::MessageRole;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -24,6 +28,61 @@ impl OpenAIProvider {
         self.base_url = base_url;
         self
     }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct OpenAIMessage {
+    role: String,
+    content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+}
+
+fn build_openai_messages(
+    system_message: Option<String>,
+    messages: Vec<ChatMessage>,
+) -> Vec<OpenAIMessage> {
+    let mut system_parts = Vec::new();
+
+    if let Some(sys) = system_message {
+        system_parts.push(sys);
+    }
+
+    let mut converted: Vec<OpenAIMessage> = Vec::new();
+
+    for msg in messages {
+        match msg.role {
+            MessageRole::System => system_parts.push(msg.content),
+            MessageRole::User => converted.push(OpenAIMessage {
+                role: "user".to_string(),
+                content: msg.content,
+                name: msg.name,
+            }),
+            MessageRole::Assistant => converted.push(OpenAIMessage {
+                role: "assistant".to_string(),
+                content: msg.content,
+                name: msg.name,
+            }),
+            MessageRole::Tool => converted.push(OpenAIMessage {
+                role: "tool".to_string(),
+                content: msg.content,
+                name: msg.name,
+            }),
+        }
+    }
+
+    if !system_parts.is_empty() {
+        converted.insert(
+            0,
+            OpenAIMessage {
+                role: "system".to_string(),
+                content: system_parts.join("\n\n"),
+                name: None,
+            },
+        );
+    }
+
+    converted
 }
 
 #[async_trait]
@@ -51,14 +110,6 @@ impl AIProvider for OpenAIProvider {
             stop: Option<Vec<String>>,
         }
 
-        #[derive(Serialize, Deserialize)]
-        struct OpenAIMessage {
-            role: String,
-            content: String,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            name: Option<String>,
-        }
-
         #[derive(Deserialize)]
         struct OpenAIResponse {
             choices: Vec<OpenAIChoice>,
@@ -79,37 +130,35 @@ impl AIProvider for OpenAIProvider {
             total_tokens: u32,
         }
 
-        // Convert messages, prepending system message if provided
-        let mut messages: Vec<OpenAIMessage> = Vec::new();
+        let ChatRequest {
+            model,
+            messages,
+            parameters,
+            system_message,
+            ..
+        } = request;
 
-        if let Some(system_msg) = request.system_message {
-            messages.push(OpenAIMessage {
-                role: "system".to_string(),
-                content: system_msg,
-                name: None,
-            });
-        }
+        let messages = build_openai_messages(system_message, messages);
 
-        messages.extend(request.messages.into_iter().map(|m| OpenAIMessage {
-            role: match m.role {
-                crate::db::models::MessageRole::User => "user".to_string(),
-                crate::db::models::MessageRole::Assistant => "assistant".to_string(),
-                crate::db::models::MessageRole::System => "system".to_string(),
-                crate::db::models::MessageRole::Tool => "tool".to_string(),
-            },
-            content: m.content,
-            name: m.name,
-        }));
+        let ModelParameters {
+            temperature,
+            max_tokens,
+            top_p,
+            presence_penalty,
+            frequency_penalty,
+            stop_sequences,
+            ..
+        } = parameters;
 
         let req = OpenAIRequest {
-            model: request.model,
+            model,
             messages,
-            temperature: request.parameters.temperature,
-            max_tokens: request.parameters.max_tokens,
-            top_p: request.parameters.top_p,
-            presence_penalty: request.parameters.presence_penalty,
-            frequency_penalty: request.parameters.frequency_penalty,
-            stop: request.parameters.stop_sequences,
+            temperature,
+            max_tokens,
+            top_p,
+            presence_penalty,
+            frequency_penalty,
+            stop: stop_sequences,
         };
 
         let url = format!("{}/chat/completions", self.base_url);
@@ -172,14 +221,6 @@ impl AIProvider for OpenAIProvider {
             stop: Option<Vec<String>>,
         }
 
-        #[derive(Serialize)]
-        struct OpenAIMessage {
-            role: String,
-            content: String,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            name: Option<String>,
-        }
-
         #[derive(Deserialize)]
         struct StreamResponse {
             choices: Vec<StreamChoice>,
@@ -199,42 +240,40 @@ impl AIProvider for OpenAIProvider {
             content: String,
         }
 
-        // Convert messages
-        let mut messages: Vec<OpenAIMessage> = Vec::new();
+        let ChatRequest {
+            model,
+            messages,
+            parameters,
+            system_message,
+            ..
+        } = request;
 
-        if let Some(system_msg) = request.system_message {
-            messages.push(OpenAIMessage {
-                role: "system".to_string(),
-                content: system_msg,
-                name: None,
-            });
-        }
+        let messages = build_openai_messages(system_message, messages);
 
-        messages.extend(request.messages.into_iter().map(|m| OpenAIMessage {
-            role: match m.role {
-                crate::db::models::MessageRole::User => "user".to_string(),
-                crate::db::models::MessageRole::Assistant => "assistant".to_string(),
-                crate::db::models::MessageRole::System => "system".to_string(),
-                crate::db::models::MessageRole::Tool => "tool".to_string(),
-            },
-            content: m.content,
-            name: m.name,
-        }));
+        let ModelParameters {
+            temperature,
+            max_tokens,
+            top_p,
+            presence_penalty,
+            frequency_penalty,
+            stop_sequences,
+            ..
+        } = parameters;
 
         let req = OpenAIRequest {
-            model: request.model.clone(),
+            model: model.clone(),
             messages,
             stream: true,
-            temperature: request.parameters.temperature,
-            max_tokens: request.parameters.max_tokens,
-            top_p: request.parameters.top_p,
-            presence_penalty: request.parameters.presence_penalty,
-            frequency_penalty: request.parameters.frequency_penalty,
-            stop: request.parameters.stop_sequences,
+            temperature,
+            max_tokens,
+            top_p,
+            presence_penalty,
+            frequency_penalty,
+            stop: stop_sequences,
         };
 
         let url = format!("{}/chat/completions", self.base_url);
-        let model = request.model.clone();
+        let model = model.clone();
 
         let response = self
             .client

@@ -70,11 +70,13 @@ pub fn decrypt(encrypted: &str) -> Result<String> {
     }
 
     let (nonce_bytes, ciphertext) = combined.split_at(12);
-    let nonce = Nonce::from_slice(nonce_bytes);
+    let mut nonce_array = [0u8; 12];
+    nonce_array.copy_from_slice(nonce_bytes);
+    let nonce = Nonce::from(nonce_array);
 
     // Decrypt
     let plaintext_bytes = cipher
-        .decrypt(nonce, ciphertext)
+        .decrypt(&nonce, ciphertext)
         .map_err(|e| anyhow::anyhow!("Decryption failed - invalid key or corrupted data: {}", e))?;
 
     // Convert to string
@@ -87,7 +89,7 @@ pub fn decrypt(encrypted: &str) -> Result<String> {
 /// Returns a base64-encoded 32-byte key suitable for use as ENCRYPTION_KEY
 pub fn generate_encryption_key() -> String {
     let key = Aes256Gcm::generate_key(&mut OsRng);
-    general_purpose::STANDARD.encode(key.as_slice())
+    general_purpose::STANDARD.encode(&key[..])
 }
 
 #[cfg(test)]
