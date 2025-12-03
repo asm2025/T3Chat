@@ -70,3 +70,5 @@ worker-configuration.d.ts
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+build_output.json
