@@ -76,7 +76,7 @@ export function Models() {
                                     <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input placeholder="Search models..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8" />
                                 </div>
-                                <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value)} className="px-3 py-2 border rounded-md bg-background">
+                                <select value={selectedProvider} onChange={(e) => setSelectedProvider(e.target.value)} className="px-3 py-2 border rounded-md bg-background" aria-label="Filter models by provider">
                                     <option value="all">All Providers</option>
                                     {providers.map((provider) => (
                                         <option key={provider} value={provider}>

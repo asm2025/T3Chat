@@ -212,6 +212,7 @@ button {
     padding: 1px;
     background: linear-gradient(180deg, var(--chat-input-gradient), transparent, var(--chat-input-gradient)),
                 linear-gradient(15deg, var(--chat-input-gradient) 50%, transparent);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -229,6 +230,7 @@ button {
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent, rgba(255, 255, 255, 0.1));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
