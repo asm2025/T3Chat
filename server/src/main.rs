@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::Result;
 use axum::{
     body::Body,
@@ -129,7 +131,7 @@ async fn run() -> Result<()> {
         tracing::info!("OIDC client and JWKS cache initialized successfully.");
         (Some(client), Some(cache))
     } else {
-        tracing::info!("OIDC not configured. Local authentication will be used.");
+        tracing::info!("OIDC not configured.");
         (None, None)
     };
 
@@ -487,7 +489,7 @@ fn swagger_docs_router() -> Router<AppState> {
             }),
         )
         .route(
-            "/swagger-ui/*path",
+            "/swagger-ui/{*path}",
             get({
                 let config = swagger_config.clone();
                 move |Path(path): Path<String>| {
@@ -524,11 +526,7 @@ fn serve_swagger_ui_response(
             }
         }
         Ok(None) => StatusCode::NOT_FOUND.into_response(),
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            error.to_string(),
-        )
-            .into_response(),
+        Err(error) => (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response(),
     }
 }
 

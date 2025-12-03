@@ -25,7 +25,7 @@ pub trait TUserRepository: Send + Sync {
         filter: Option<Box<dyn FilterCondition<UserModel> + Send + Sync>>,
     ) -> Result<u64>;
     async fn get(&self, id: String) -> Result<Option<UserModel>>;
-    async fn create(&self, model: UserModel) -> Result<UserModel>;
+    async fn create(&self, model: NewUser) -> Result<UserModel>;
     async fn update(&self, id: String, model: UpdateUserDto) -> Result<UserModel>;
     async fn upsert(&self, model: CreateUserDto) -> Result<UserModel>;
     async fn delete(&self, id: String) -> Result<()>;
@@ -138,33 +138,15 @@ impl TUserRepository for UserRepository {
             .map_err(Error::from_std_error)
     }
 
-    async fn create(&self, model: UserModel) -> Result<UserModel> {
+    async fn create(&self, model: NewUser) -> Result<UserModel> {
         let mut conn = self
             .pool
             .get()
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        let new_user = NewUser {
-            id: model.id,
-            email: model.email,
-            normalized_email: model.normalized_email,
-            email_verified: model.email_verified,
-            name: model.name,
-            username: model.username,
-            normalized_username: model.normalized_username,
-            avatar_url: model.avatar_url,
-            provider: model.provider,
-            role: model.role,
-            disabled: model.disabled,
-            locked_out: model.locked_out,
-            access_failed_count: model.access_failed_count,
-            login_count: model.login_count,
-            preferences: model.preferences,
-        };
-
         diesel::insert_into(users::table)
-            .values(&new_user)
+            .values(&model)
             .get_result(&mut conn)
             .await
             .map_err(Error::from_std_error)

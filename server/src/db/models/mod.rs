@@ -147,12 +147,10 @@ impl From<CreateUserDto> for NewUser {
             normalized_username: dto.username.as_ref().map(|u| u.to_lowercase()),
             avatar_url: dto.avatar_url,
             provider: dto.provider.unwrap_or_else(|| "oidc".to_string()),
-            role: None,
             disabled: false,
             locked_out: false,
             access_failed_count: 0,
             login_count: 0,
-            preferences: None,
         }
     }
 }
@@ -162,7 +160,6 @@ pub struct UpdateUserDto {
     pub name: Option<String>,
     pub username: Option<String>,
     pub avatar_url: Option<String>,
-    pub preferences: Option<serde_json::Value>,
 }
 
 impl From<UpdateUserDto> for UpdateUser {
@@ -173,8 +170,6 @@ impl From<UpdateUserDto> for UpdateUser {
             name: dto.name,
             username: dto.username,
             avatar_url: dto.avatar_url,
-            role: None,
-            preferences: dto.preferences,
             terms_accepted: None,
             terms_accepted_at: None,
             updated_at: chrono::Utc::now(),

@@ -67,7 +67,6 @@ pub async fn update_profile(
         name: payload.display_name,
         username: None,
         avatar_url: payload.image_url,
-        preferences: None,
     };
 
     tracing::debug!(

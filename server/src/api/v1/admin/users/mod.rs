@@ -246,38 +246,10 @@ pub async fn create_user(
         provider: req.provider,
     };
 
-    // Convert DTO to NewUser, then to UserModel
+    // Convert DTO to NewUser and persist
     let new_user: crate::db::models::NewUser = create_dto.into();
-    let user_model = UserModel {
-        id: new_user.id.clone(),
-        email: new_user.email.clone(),
-        normalized_email: new_user.normalized_email.clone(),
-        email_verified: new_user.email_verified,
-        name: new_user.name.clone(),
-        username: new_user.username.clone(),
-        normalized_username: new_user.normalized_username.clone(),
-        avatar_url: new_user.avatar_url.clone(),
-        provider: new_user.provider.clone(),
-        role: new_user.role.clone(),
-        password_hash: None,
-        two_factor_enabled: None,
-        totp_secret: None,
-        preferences: new_user.preferences.clone(),
-        terms_accepted: None,
-        terms_accepted_at: None,
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
-        disabled: new_user.disabled,
-        locked_out: new_user.locked_out,
-        lockout_end: None,
-        access_failed_count: new_user.access_failed_count,
-        password_changed_at: None,
-        last_login_at: None,
-        login_count: new_user.login_count,
-    };
-
     let user = user_repo
-        .create(user_model)
+        .create(new_user)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -318,7 +290,6 @@ pub async fn update_user(
         name: req.name,
         username: req.username,
         avatar_url: req.avatar_url,
-        preferences: None,
     };
 
     let user = user_repo

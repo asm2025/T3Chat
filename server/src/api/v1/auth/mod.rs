@@ -85,36 +85,9 @@ pub async fn callback(
 
             // Convert to NewUser for creation
             let new_user: crate::db::models::NewUser = create_user_dto.into();
-            let user_model = crate::db::models::UserModel {
-                id: new_user.id.clone(),
-                email: new_user.email.clone(),
-                normalized_email: new_user.normalized_email.clone(),
-                email_verified: new_user.email_verified,
-                name: new_user.name.clone(),
-                username: new_user.username.clone(),
-                normalized_username: new_user.normalized_username.clone(),
-                avatar_url: new_user.avatar_url.clone(),
-                provider: new_user.provider.clone(),
-                role: new_user.role.clone(),
-                disabled: new_user.disabled,
-                locked_out: new_user.locked_out,
-                lockout_end: None,
-                access_failed_count: new_user.access_failed_count,
-                password_hash: None,
-                password_changed_at: None,
-                two_factor_enabled: None,
-                totp_secret: None,
-                last_login_at: None,
-                login_count: new_user.login_count,
-                preferences: new_user.preferences.clone(),
-                terms_accepted: None,
-                terms_accepted_at: None,
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-            };
 
             user_repo
-                .create(user_model)
+                .create(new_user)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         }
@@ -195,11 +168,10 @@ pub async fn local_login(
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     // Verify password
-    let password_valid = verify_password(&req.password, password_hash)
-        .map_err(|e| {
-            tracing::error!(error = ?e, user_id = %user.id, "Failed to verify password");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let password_valid = verify_password(&req.password, password_hash).map_err(|e| {
+        tracing::error!(error = ?e, user_id = %user.id, "Failed to verify password");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     if !password_valid {
         // Increment failed login count
@@ -216,27 +188,19 @@ pub async fn local_login(
         tracing::error!(error = ?e, "Failed to get JWT secret");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    
-    let session_manager = SessionManager::new(
-        jwt_secret,
-        crate::env::get_jwt_expiry_seconds(),
-    );
 
-    let session_token = session_manager
-        .generate_token(&user)
-        .map_err(|e| {
-            tracing::error!(error = ?e, user_id = %user.id, "Failed to generate session token");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let session_manager = SessionManager::new(jwt_secret, crate::env::get_jwt_expiry_seconds());
+
+    let session_token = session_manager.generate_token(&user).map_err(|e| {
+        tracing::error!(error = ?e, user_id = %user.id, "Failed to generate session token");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     // Get user roles
-    let roles = user_repo
-        .get_user_roles(&user.id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = ?e, user_id = %user.id, "Failed to get user roles");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let roles = user_repo.get_user_roles(&user.id).await.map_err(|e| {
+        tracing::error!(error = ?e, user_id = %user.id, "Failed to get user roles");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(LocalLoginResponse {
         token: session_token,
