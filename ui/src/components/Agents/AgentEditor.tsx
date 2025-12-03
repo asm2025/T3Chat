@@ -16,7 +16,7 @@ import { ModelSelector } from "@/components/model/ModelSelector";
 import { useAgents } from "@/stores/appStore";
 import { librechatClient } from "@/lib/librechat-client";
 import { toast } from "sonner";
-import type { Agent, Endpoint } from "@/types/librechat";
+import type { Endpoint } from "@/types/librechat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ============================================================================

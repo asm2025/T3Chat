@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/lib/use-auth";
 import { handleCallback, localLogin, isOidcEnabled } from "@/lib/auth";
 import { toast } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
@@ -83,8 +83,8 @@ export function LoginForm() {
                 {!showOidcOption ? (
                     <form onSubmit={handleLocalLoginSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username or Email</Label>
-                            <Input id="username" type="text" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} required disabled={isLoading} autoComplete="username" />
+                            <Label htmlFor="username">Email</Label>
+                            <Input id="username" type="text" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)} required disabled={isLoading} autoComplete="username" />
                         </div>
 
                         <div className="space-y-2">

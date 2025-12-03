@@ -141,7 +141,7 @@ impl TAiProviderRepository for AiProviderRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Provider not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Provider not found".to_string()))?;
 
         diesel::update(ai_providers::table.find(&id))
             .set(&model)

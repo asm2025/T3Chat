@@ -9,7 +9,7 @@ import { t3ChatClient } from '@/lib/t3-chat-client';
 export function ChatList() {
   const { chats, loading, fetchChats } = useChats();
   const navigate = useNavigate();
-  const { chatId } = useParams<{ chatId?: string }>();
+  const { conversationId } = useParams<{ conversationId?: string }>();
   const [query, setQuery] = useState('');
 
   // Fetch chats on mount
@@ -33,7 +33,7 @@ export function ChatList() {
         model_id: 'gpt-3.5-turbo',
       });
       await fetchChats();
-      navigate(`/${newChat.id}`);
+      navigate(`/chat/${newChat.id}`);
     } catch (error) {
       console.error('Failed to create chat', error);
     }
@@ -77,11 +77,11 @@ export function ChatList() {
         ) : (
           <div className="space-y-2">
             {filteredChats.map(chat => {
-              const active = chat.id === chatId;
+                  const active = chat.id === conversationId;
               return (
                 <button
                   key={chat.id}
-                  onClick={() => navigate(`/${chat.id}`)}
+                  onClick={() => navigate(`/chat/${chat.id}`)}
                   className={`w-full rounded-xl border px-3.5 py-2.5 text-left transition ${
                     active
                       ? 'border-foreground/20 bg-foreground text-background shadow-sm'

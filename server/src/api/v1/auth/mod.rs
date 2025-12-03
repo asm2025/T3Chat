@@ -16,8 +16,8 @@ use crate::middleware::auth::AuthenticatedUser;
 use crate::utils::password::verify_password;
 use crate::AppState;
 
-// GET /api/v1/auth/login
-pub async fn login(State(state): State<AppState>) -> Result<Redirect, StatusCode> {
+// GET /api/v1/auth/login (OIDC)
+pub async fn oidc_login(State(state): State<AppState>) -> Result<Redirect, StatusCode> {
     let oidc_client = state.oidc_client.as_ref().ok_or(StatusCode::NOT_FOUND)?;
 
     let (auth_url, _state_token) = oidc_client.get_authorization_url();
@@ -126,7 +126,7 @@ pub struct LocalLoginResponse {
     user: UserResponse,
 }
 
-pub async fn local_login(
+pub async fn login(
     State(state): State<AppState>,
     Json(req): Json<LocalLoginRequest>,
 ) -> Result<Json<LocalLoginResponse>, StatusCode> {
@@ -305,14 +305,14 @@ pub async fn get_auth_config() -> Json<AuthConfigResponse> {
 
 pub fn router() -> Router<AppState> {
     let mut router = Router::new()
-        .route("/local/login", post(local_login))
+        .route("/local/login", post(login))
         .route("/logout", post(logout))
         .route("/config", get(get_auth_config));
 
     // Only register OIDC routes if OIDC is configured
     if env::is_oidc_configured() {
         router = router
-            .route("/login", get(login))
+            .route("/login", get(oidc_login))
             .route("/callback", get(callback))
             .route("/refresh", post(refresh));
     }

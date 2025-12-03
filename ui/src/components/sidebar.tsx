@@ -1,11 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useAuth } from "@/lib/auth-context";
 import { useNavigate } from "react-router-dom";
 import { Search, User, History, Brain, Key, Paperclip, Settings, LogOut, PanelLeft } from "lucide-react";
 import { useState } from "react";
-import { Sidebar as ShadcnSidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarInput, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import {
+    Sidebar as ShadcnSidebar,
+    SidebarHeader,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarMenu,
+    SidebarInput,
+    SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar-context";
+import { useAuth } from "@/lib/use-auth";
 import { useChat } from "@/stores/appStore";
 
 interface AppSidebarProps {
@@ -36,7 +47,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
 
     const handleNewChat = () => {
         clearChat();
-        navigate("/");
+        navigate("/chat");
     };
 
     const menuItems = [
@@ -63,7 +74,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
                             <span className="sr-only">Toggle Sidebar</span>
                         </Button>
                     )}
-                    <button type="button" onClick={() => navigate("/")} className="flex flex-col flex-1 text-center leading-tight">
+                    <button type="button" onClick={() => navigate("/chat")} className="flex flex-col flex-1 text-center leading-tight">
                         <span className="block text-xl font-semibold tracking-tight">T3.chat</span>
                     </button>
                 </div>

@@ -204,7 +204,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
 
         // Convert UpdateChatDto to UpdateConversation
         let update_conversation = UpdateConversation {
@@ -252,7 +252,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
 
         // Soft delete by setting is_archived
         diesel::update(chats::table.filter(chats::id.eq(id)))
@@ -279,7 +279,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
 
         // Query messages from conversation - returns Message (conversation model), which is aliased as MessageModel
         messages::table
@@ -339,7 +339,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Message not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Message not found".to_string()))?;
 
         let update = UpdateMessage {
             text: None,
@@ -385,7 +385,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
 
         // Check if message exists and belongs to the chat
         let _existing = messages::table
@@ -395,7 +395,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Message not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Message not found".to_string()))?;
 
         let update: UpdateMessage = model.into();
 
@@ -426,7 +426,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
 
         // Check if message exists and belongs to the chat
         let _existing = messages::table
@@ -436,7 +436,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Message not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Message not found".to_string()))?;
 
         diesel::delete(messages::table.filter(messages::id.eq(id)))
             .execute(&mut conn)
@@ -466,7 +466,7 @@ impl TChatRepository for ChatRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Chat not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
 
         diesel::delete(messages::table.filter(messages::conversation_id.eq(chat_id)))
             .execute(&mut conn)

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { StoreApi } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { t3ChatClient } from "@/lib/t3-chat-client";
@@ -30,6 +31,7 @@ interface UserProfile {
     updated_at: string;
 }
 
+
 // ============================================================================
 // Auth Slice
 // ============================================================================
@@ -55,7 +57,7 @@ interface AuthSlice {
     forceRefresh: () => void;
 }
 
-const createAuthSlice = (set: any, get: any): AuthSlice => ({
+const createAuthSlice = (set: StoreSet, get: StoreGet): AuthSlice => ({
     // Initial state
     user: null,
     userProfile: null,
@@ -122,7 +124,7 @@ interface ModelsSlice {
     fetchModels: () => Promise<void>;
 }
 
-const createModelsSlice = (set: any, get: any): ModelsSlice => ({
+const createModelsSlice = (set: StoreSet, get: StoreGet): ModelsSlice => ({
     // Initial state
     models: [],
     modelsLoading: false,
@@ -170,7 +172,7 @@ interface ChatsSlice {
     removeChat: (id: string) => void;
 }
 
-const createChatsSlice = (set: any, get: any): ChatsSlice => ({
+const createChatsSlice = (set: StoreSet, get: StoreGet): ChatsSlice => ({
     // Initial state
     chats: [],
     chatsLoading: false,
@@ -244,7 +246,7 @@ interface ChatSlice {
     resetChat: () => void;
 }
 
-const createChatSlice = (set: any, get: any): ChatSlice => ({
+const createChatSlice = (set: StoreSet, get: StoreGet): ChatSlice => ({
     // Initial state
     currentChatId: null,
     currentChat: null,
@@ -264,15 +266,15 @@ const createChatSlice = (set: any, get: any): ChatSlice => ({
         }),
     setMessages: (messages) => set({ messages }),
     addMessage: (message) =>
-        set((state: ChatSlice) => ({
+        set((state) => ({
             messages: [...state.messages, message],
         })),
     updateMessage: (messageId, updates) =>
-        set((state: ChatSlice) => ({
+        set((state) => ({
             messages: state.messages.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg)),
         })),
     removeMessage: (messageId) =>
-        set((state: ChatSlice) => ({
+        set((state) => ({
             messages: state.messages.filter((msg) => msg.id !== messageId),
         })),
     setSelectedModel: (selectedModel) => set({ selectedModel }),
@@ -332,7 +334,7 @@ interface FeaturesSlice {
     isFeatureEnabled: (feature: string) => boolean;
 }
 
-const createFeaturesSlice = (set: any, get: any): FeaturesSlice => ({
+const createFeaturesSlice = (set: StoreSet, get: StoreGet): FeaturesSlice => ({
     // Initial state
     features: {},
     featuresLoading: false,
@@ -341,7 +343,7 @@ const createFeaturesSlice = (set: any, get: any): FeaturesSlice => ({
     // Actions
     setFeatures: (features) => set({ features }),
     setFeature: (feature, enabled) =>
-        set((state: FeaturesSlice) => ({
+        set((state) => ({
             features: { ...state.features, [feature]: enabled },
         })),
     setFeaturesLoading: (featuresLoading) => set({ featuresLoading }),
@@ -401,7 +403,7 @@ interface UserApiKeysSlice {
     deleteApiKey: (id: string) => Promise<void>;
 }
 
-const createUserApiKeysSlice = (set: any, get: any): UserApiKeysSlice => ({
+const createUserApiKeysSlice = (set: StoreSet, get: StoreGet): UserApiKeysSlice => ({
     // Initial state
     apiKeys: [],
     apiKeysLoading: false,
@@ -461,7 +463,7 @@ interface LibreChatConversationsSlice {
     removeConversation: (id: string) => void;
 }
 
-const createLibreChatConversationsSlice = (set: any, get: any): LibreChatConversationsSlice => ({
+const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreChatConversationsSlice => ({
     // Initial state
     conversations: [],
     conversationsLoading: false,
@@ -541,7 +543,7 @@ interface LibreChatCurrentConversationSlice {
     setCurrentConversationError: (error: Error | null) => void;
 }
 
-const createLibreChatCurrentConversationSlice = (set: any, get: any): LibreChatCurrentConversationSlice => ({
+const createLibreChatCurrentConversationSlice = (set: StoreSet, get: StoreGet): LibreChatCurrentConversationSlice => ({
     // Initial state
     currentConversation: null,
     currentMessages: [],
@@ -559,17 +561,17 @@ const createLibreChatCurrentConversationSlice = (set: any, get: any): LibreChatC
     setCurrentMessages: (currentMessages) => set({ currentMessages }),
 
     addCurrentMessage: (message) =>
-        set((state: LibreChatCurrentConversationSlice) => ({
+        set((state) => ({
             currentMessages: [...state.currentMessages, message],
         })),
 
     updateCurrentMessage: (messageId, updates) =>
-        set((state: LibreChatCurrentConversationSlice) => ({
+        set((state) => ({
             currentMessages: state.currentMessages.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg)),
         })),
 
     removeCurrentMessage: (messageId) =>
-        set((state: LibreChatCurrentConversationSlice) => ({
+        set((state) => ({
             currentMessages: state.currentMessages.filter((msg) => msg.id !== messageId),
         })),
 
@@ -621,7 +623,7 @@ interface PresetsSlice {
     removePreset: (id: string) => void;
 }
 
-const createPresetsSlice = (set: any, get: any): PresetsSlice => ({
+const createPresetsSlice = (set: StoreSet, get: StoreGet): PresetsSlice => ({
     // Initial state
     presets: [],
     presetsLoading: false,
@@ -685,7 +687,7 @@ interface AgentsSlice {
     removeAgent: (id: string) => void;
 }
 
-const createAgentsSlice = (set: any, get: any): AgentsSlice => ({
+const createAgentsSlice = (set: StoreSet, get: StoreGet): AgentsSlice => ({
     // Initial state
     agents: [],
     agentsLoading: false,
@@ -762,7 +764,7 @@ interface TagsSlice {
     removeTag: (id: string) => void;
 }
 
-const createTagsSlice = (set: any, get: any): TagsSlice => ({
+const createTagsSlice = (set: StoreSet, get: StoreGet): TagsSlice => ({
     // Initial state
     tags: [],
     tagsLoading: false,
@@ -820,7 +822,7 @@ interface ToolsSlice {
     fetchTools: (params?: { isActive?: boolean; toolType?: string }) => Promise<void>;
 }
 
-const createToolsSlice = (set: any, get: any): ToolsSlice => ({
+const createToolsSlice = (set: StoreSet, get: StoreGet): ToolsSlice => ({
     // Initial state
     tools: [],
     toolsLoading: false,
@@ -862,6 +864,9 @@ type AppStore = AuthSlice &
     AgentsSlice &
     TagsSlice &
     ToolsSlice;
+
+type StoreSet = StoreApi<AppStore>["setState"];
+type StoreGet = StoreApi<AppStore>["getState"];
 
 export const useAppStore = create<AppStore>()(
     devtools(

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { AuthProvider } from "@/lib/auth-context";
+import { useAuth } from "@/lib/use-auth";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminRoute } from "@/components/admin-route";
 import { Settings } from "@/pages/Settings";
@@ -103,7 +104,7 @@ function AuthenticatedLayout() {
                         <Sidebar variant="sidebar" collapsible="offcanvas" />
                         <SidebarInset className="h-screen">
                             <Routes>
-                                <Route path="/:chatId?" element={<Chat />} />
+                                <Route path="/chat/:conversationId?" element={<Chat />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route
@@ -159,7 +160,7 @@ function AuthenticatedLayout() {
                             <SidebarInset className="h-screen overflow-hidden">
                                 <FloatingToolbar />
                                 <Routes>
-                                    <Route path="/:chatId?" element={<Chat />} />
+                                    <Route path="/chat/:conversationId?" element={<Chat />} />
                                     <Route path="/profile" element={<Profile />} />
                                     <Route path="/settings" element={<Settings />} />
                                     <Route

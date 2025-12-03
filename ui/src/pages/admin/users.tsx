@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,11 +34,10 @@ export function AdminUsers() {
   const [total, setTotal] = useState(0);
   const pageSize = 20;
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page, searchQuery]);
+  const getErrorMessage = (err: unknown) =>
+    err instanceof Error ? err.message : 'Unknown error';
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string | number> = {
@@ -58,15 +57,21 @@ export function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, searchQuery]);
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
 
   const handleEnable = async (userId: string) => {
     try {
       await api.post(`/v1/admin/users/${userId}/enable`);
       toast.success('User enabled');
       fetchUsers();
-    } catch (error) {
-      toast.error('Failed to enable user');
+    } catch (err) {
+      toast.error('Failed to enable user', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -75,8 +80,10 @@ export function AdminUsers() {
       await api.post(`/v1/admin/users/${userId}/disable`);
       toast.success('User disabled');
       fetchUsers();
-    } catch (error) {
-      toast.error('Failed to disable user');
+    } catch (err) {
+      toast.error('Failed to disable user', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -85,8 +92,10 @@ export function AdminUsers() {
       await api.post(`/v1/admin/users/${userId}/lock`, { duration_minutes: 60 });
       toast.success('User locked');
       fetchUsers();
-    } catch (error) {
-      toast.error('Failed to lock user');
+    } catch (err) {
+      toast.error('Failed to lock user', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -95,8 +104,10 @@ export function AdminUsers() {
       await api.post(`/v1/admin/users/${userId}/unlock`);
       toast.success('User unlocked');
       fetchUsers();
-    } catch (error) {
-      toast.error('Failed to unlock user');
+    } catch (err) {
+      toast.error('Failed to unlock user', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -106,8 +117,10 @@ export function AdminUsers() {
       await api.delete(`/v1/admin/users/${userId}`);
       toast.success('User deleted');
       fetchUsers();
-    } catch (error) {
-      toast.error('Failed to delete user');
+    } catch (err) {
+      toast.error('Failed to delete user', {
+        description: getErrorMessage(err),
+      });
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,11 +29,10 @@ export function AdminProviders() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchProviders();
-  }, [searchQuery]);
+  const getErrorMessage = (err: unknown) =>
+    err instanceof Error ? err.message : 'Unknown error';
 
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = {};
@@ -49,15 +48,21 @@ export function AdminProviders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    void fetchProviders();
+  }, [fetchProviders]);
 
   const handleEnable = async (providerId: string) => {
     try {
       await api.post(`/v1/admin/providers/${providerId}/enable`);
       toast.success('Provider enabled');
       fetchProviders();
-    } catch (error) {
-      toast.error('Failed to enable provider');
+    } catch (err) {
+      toast.error('Failed to enable provider', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -66,8 +71,10 @@ export function AdminProviders() {
       await api.post(`/v1/admin/providers/${providerId}/disable`);
       toast.success('Provider disabled');
       fetchProviders();
-    } catch (error) {
-      toast.error('Failed to disable provider');
+    } catch (err) {
+      toast.error('Failed to disable provider', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -77,8 +84,10 @@ export function AdminProviders() {
       await api.delete(`/v1/admin/providers/${providerId}`);
       toast.success('Provider deleted');
       fetchProviders();
-    } catch (error) {
-      toast.error('Failed to delete provider');
+    } catch (err) {
+      toast.error('Failed to delete provider', {
+        description: getErrorMessage(err),
+      });
     }
   };
 

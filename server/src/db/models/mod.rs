@@ -140,11 +140,14 @@ impl From<CreateUserDto> for NewUser {
         Self {
             id: dto.id,
             email: dto.email.clone(),
-            normalized_email: dto.email.to_lowercase(),
+            normalized_email: dto.email.trim().to_uppercase(),
             email_verified: dto.email_verified,
             name: dto.name,
             username: dto.username.clone(),
-            normalized_username: dto.username.as_ref().map(|u| u.to_lowercase()),
+            normalized_username: dto
+                .username
+                .as_ref()
+                .map(|u| u.trim().to_uppercase()),
             avatar_url: dto.avatar_url,
             provider: dto.provider.unwrap_or_else(|| "oidc".to_string()),
             disabled: false,

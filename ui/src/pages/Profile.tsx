@@ -1,4 +1,4 @@
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/lib/use-auth";
 import { getCurrentUser } from "@/lib/auth";
 import { api } from "@/lib/api-client";
 import { useEffect, useState } from "react";

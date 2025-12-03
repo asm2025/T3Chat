@@ -40,6 +40,10 @@ impl UserRepository {
         Self { pool }
     }
 
+    fn normalize_lookup(value: &str) -> String {
+        value.trim().to_uppercase()
+    }
+
     async fn resolve_role_id(conn: &mut AsyncPgConnection, role_name: &str) -> Result<Uuid> {
         #[derive(QueryableByName)]
         struct RoleIdRow {
@@ -60,7 +64,7 @@ impl UserRepository {
         .map_err(Error::from_std_error)?;
 
         role.map(|r| r.id)
-            .ok_or_else(|| Error::from_other_error(format!("Role '{}' not found", role_name)))
+            .ok_or_else(|| Error::NotFound(format!("Role '{}' not found", role_name)))
     }
 }
 
@@ -166,7 +170,7 @@ impl TUserRepository for UserRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("User not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("User not found".to_string()))?;
 
         let update_user: UpdateUser = model.into();
 
@@ -228,14 +232,11 @@ impl UserRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        // Case-insensitive lookup using normalized_email
-        // Note: This uses raw SQL since normalized_email may not be in schema.rs yet
-        // For now, fall back to case-insensitive email lookup
-        let normalized_email = email.to_lowercase();
+        let normalized_email = Self::normalize_lookup(email);
 
-        // Try to find by email (case-insensitive)
+        // Look up using normalized_email for deterministic case handling
         let result = users::table
-            .filter(users::email.ilike(&normalized_email))
+            .filter(users::normalized_email.eq(&normalized_email))
             .first::<UserModel>(&mut conn)
             .await
             .optional()
@@ -251,12 +252,11 @@ impl UserRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        // Case-insensitive lookup using normalized_username
-        let normalized_username = username.to_lowercase();
+        let normalized_username = Self::normalize_lookup(username);
 
-        // Try to find by username (case-insensitive)
+        // Look up using normalized_username stored in the database
         let result = users::table
-            .filter(users::username.ilike(&normalized_username))
+            .filter(users::normalized_username.eq(Some(normalized_username)))
             .first::<UserModel>(&mut conn)
             .await
             .optional()
@@ -275,14 +275,14 @@ impl UserRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        let normalized = username_or_email.to_lowercase();
+        let normalized = Self::normalize_lookup(username_or_email);
 
-        // Try to find by username or email (case-insensitive)
+        // Try to find by normalized username or email
         let result = users::table
             .filter(
-                users::username
-                    .ilike(&normalized)
-                    .or(users::email.ilike(&normalized)),
+                users::normalized_username
+                    .eq(Some(normalized.clone()))
+                    .or(users::normalized_email.eq(&normalized)),
             )
             .first::<UserModel>(&mut conn)
             .await

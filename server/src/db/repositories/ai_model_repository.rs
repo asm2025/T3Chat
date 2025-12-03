@@ -129,7 +129,7 @@ impl TAiModelRepository for AiModelRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("Model not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Model not found".to_string()))?;
 
         diesel::update(ai_models::table.find(&id))
             .set(&model)

@@ -231,11 +231,17 @@ export class ApiClient {
             let message = response.statusText || `HTTP ${response.status}`;
             if (contentType.includes("application/json")) {
                 try {
-                    const data = await response.json();
-                    if (typeof data === "object" && data && ("message" in data || "error" in data)) {
-                        message = String((data as any).message ?? (data as any).error);
+                    const data = (await response.json()) as Record<string, unknown>;
+                    if (data && typeof data === "object") {
+                        if ("message" in data && typeof data.message === "string") {
+                            message = data.message;
+                        } else if ("error" in data && typeof data.error === "string") {
+                            message = data.error;
+                        }
                     }
-                } catch {}
+                } catch (parseError) {
+                    console.warn("Failed to parse error response", parseError);
+                }
             }
             const apiError = new Error(message) as ApiClientError;
             apiError.name = "ApiClientError";

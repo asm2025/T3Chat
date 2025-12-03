@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,11 +31,10 @@ export function AdminModels() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchModels();
-  }, [searchQuery]);
+  const getErrorMessage = (err: unknown) =>
+    err instanceof Error ? err.message : 'Unknown error';
 
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = {};
@@ -51,15 +50,21 @@ export function AdminModels() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    void fetchModels();
+  }, [fetchModels]);
 
   const handleEnable = async (modelId: string) => {
     try {
       await api.post(`/v1/admin/models/${modelId}/enable`);
       toast.success('Model enabled');
       fetchModels();
-    } catch (error) {
-      toast.error('Failed to enable model');
+    } catch (err) {
+      toast.error('Failed to enable model', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -68,8 +73,10 @@ export function AdminModels() {
       await api.post(`/v1/admin/models/${modelId}/disable`);
       toast.success('Model disabled');
       fetchModels();
-    } catch (error) {
-      toast.error('Failed to disable model');
+    } catch (err) {
+      toast.error('Failed to disable model', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -79,8 +86,10 @@ export function AdminModels() {
       await api.post(`/v1/admin/models/${modelId}/deprecate`);
       toast.success('Model deprecated');
       fetchModels();
-    } catch (error) {
-      toast.error('Failed to deprecate model');
+    } catch (err) {
+      toast.error('Failed to deprecate model', {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -90,8 +99,10 @@ export function AdminModels() {
       await api.delete(`/v1/admin/models/${modelId}`);
       toast.success('Model deleted');
       fetchModels();
-    } catch (error) {
-      toast.error('Failed to delete model');
+    } catch (err) {
+      toast.error('Failed to delete model', {
+        description: getErrorMessage(err),
+      });
     }
   };
 

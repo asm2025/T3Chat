@@ -17,6 +17,7 @@ interface MessageInputProps {
     onModelChange?: (model: AIModel) => void;
     webSearchEnabled?: boolean;
     onWebSearchToggle?: (enabled: boolean) => void;
+    onFileAttach?: () => void;
 }
 
 export interface MessageInputRef {
@@ -24,7 +25,8 @@ export interface MessageInputRef {
     clearContent: () => void;
 }
 
-export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(({ onSend, disabled, models = [], selectedModel, onModelChange, webSearchEnabled, onWebSearchToggle }, ref) => {
+export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
+    ({ onSend, disabled, models = [], selectedModel, onModelChange, webSearchEnabled, onWebSearchToggle, onFileAttach }, ref) => {
     const [content, setContent] = useState("");
     const [fetchedModels, setFetchedModels] = useState<AIModel[] | null>(null); // active
     const [fetchedAllModels, setFetchedAllModels] = useState<AIModel[] | null>(null); // all
@@ -127,6 +129,11 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(({ on
     };
 
     const handleFileAttach = () => {
+        if (disabled) return;
+        if (onFileAttach) {
+            onFileAttach();
+            return;
+        }
         // TODO: Implement file attachment functionality
         console.log("File attachment clicked");
     };

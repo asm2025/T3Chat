@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
-import { useSidebar } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar-context";
 import { cn } from "@/lib/utils";
 
 interface MasterLayoutProps {

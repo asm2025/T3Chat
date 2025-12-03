@@ -101,7 +101,7 @@ impl TUserApiKeyRepository for UserApiKeyRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("User API key not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("User API key not found".to_string()))?;
 
         let update_key: UpdateUserApiKey = model.into();
 

@@ -107,7 +107,7 @@ impl TUserFeatureRepository for UserFeatureRepository {
             .await
             .optional()
             .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::from_other_error("User feature not found".to_string()))?;
+            .ok_or_else(|| Error::NotFound("User feature not found".to_string()))?;
 
         let update_feature: UpdateUserFeature = model.into();
 
