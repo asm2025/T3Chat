@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Edit2, X } from "lucide-react";
-import { MasterLayout } from "@/components/MasterLayout";
+import { MasterLayout } from "@/components/master-layout";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 
@@ -82,7 +82,7 @@ export function Profile() {
         try {
             setSaving(true);
             // Update user profile via API - use /v1/me endpoint
-            await api.update('/v1/me', { display_name: displayName || null });
+            await api.update("/v1/me", { display_name: displayName || null });
 
             // Refresh the profile
             const updatedData = await getCurrentUser();

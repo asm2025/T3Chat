@@ -19,7 +19,7 @@ export function ChatPlaceholder({ userName, onPromptClick }: ChatPlaceholderProp
 
     return (
         <div className="flex h-[calc(100vh-20rem)] items-start justify-center">
-            <div className="animate-in fade-in-50 zoom-in-95 w-full space-y-6 px-2 pt-[calc(max(15vh,2.5rem))] duration-300 sm:px-8">
+            <div className="animate-in fade-in-50 zoom-in-95 w-full space-y-6 duration-300">
                 <h2 className="text-3xl font-semibold">{greeting}</h2>
 
                 <div className="flex flex-row flex-wrap gap-2.5 text-sm max-sm:justify-evenly">

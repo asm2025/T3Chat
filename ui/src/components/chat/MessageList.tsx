@@ -10,9 +10,17 @@ interface MessageListProps {
   messages: Message[];
   streaming?: boolean;
   showPlaceholder?: boolean;
+  placeholderUserName?: string;
+  onPromptClick?: (prompt: string) => void;
 }
 
-export function MessageList({ messages, streaming, showPlaceholder = true }: MessageListProps) {
+export function MessageList({
+  messages,
+  streaming,
+  showPlaceholder = true,
+  placeholderUserName,
+  onPromptClick,
+}: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +34,7 @@ export function MessageList({ messages, streaming, showPlaceholder = true }: Mes
     return (
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
-          <ChatPlaceholder />
+          <ChatPlaceholder userName={placeholderUserName} onPromptClick={onPromptClick} />
         </div>
       </div>
     );

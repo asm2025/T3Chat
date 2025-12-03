@@ -1,66 +1,43 @@
-import { useState } from "react";
-import { useAuth } from "@/stores/appStore";
+import { useEffect, useRef } from "react";
+import { MasterLayout } from "@/components/master-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { User } from "lucide-react";
-import { MasterLayout } from "@/components/MasterLayout";
+import { EndpointSettings } from "@/components/Endpoints/EndpointSettings";
+import { useLibreChatCurrentConversation } from "@/stores/appStore";
+import { createDefaultEndpointOptions } from "@/constants/endpoint-options";
+import type { EndpointOption } from "@/types/librechat";
 
 export function Settings() {
-    const { user } = useAuth();
-    const [profile, setProfile] = useState({
-        displayName: user?.displayName || "",
-        email: user?.email || "",
-    });
+    const { endpointOptions, setEndpointOptions } = useLibreChatCurrentConversation();
+    const defaultOptionsRef = useRef(createDefaultEndpointOptions());
+    const activeOptions = endpointOptions ?? defaultOptionsRef.current;
 
-    const handleSave = () => {
-        // TODO: Implement save functionality
-        console.log("Saving settings...", { profile });
+    useEffect(() => {
+        if (!endpointOptions) {
+            setEndpointOptions(createDefaultEndpointOptions());
+        }
+    }, [endpointOptions, setEndpointOptions]);
+
+    const handleOptionsChange = (options: EndpointOption) => {
+        setEndpointOptions(options);
     };
 
     return (
         <MasterLayout contentClassName="px-0">
-            <div className="container mx-auto px-6 max-w-4xl">
-                <div className="space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">Settings</h1>
-                        <p className="text-muted-foreground">Manage your account settings and preferences.</p>
-                    </div>
-
-                    <Separator />
-
-                    {/* Profile Settings */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <User className="w-5 h-5" />
-                                Profile
-                            </CardTitle>
-                            <CardDescription>Update your personal information and profile details.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="displayName">Display Name</Label>
-                                    <Input id="displayName" value={profile.displayName} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} placeholder="Enter your display name" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input id="email" type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} placeholder="Enter your email" />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Save Button */}
-                    <div className="flex justify-end">
-                        <Button onClick={handleSave} className="w-full md:w-auto">
-                            Save Changes
-                        </Button>
-                    </div>
+            <div className="container mx-auto px-6 max-w-4xl space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold">Model Settings</h1>
+                    <p className="text-muted-foreground">Configure the default behavior for future AI conversations.</p>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Endpoint Configuration</CardTitle>
+                        <CardDescription>Update your system prompt, sampling parameters, and advanced flags.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <EndpointSettings options={activeOptions} onChange={handleOptionsChange} />
+                    </CardContent>
+                </Card>
             </div>
         </MasterLayout>
     );

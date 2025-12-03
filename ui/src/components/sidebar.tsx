@@ -4,17 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useNavigate } from "react-router-dom";
 import { Search, User, History, Brain, Key, Paperclip, Settings, LogOut, PanelLeft } from "lucide-react";
 import { useState } from "react";
-import {
-    Sidebar as ShadcnSidebar,
-    SidebarHeader,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarMenu,
-    SidebarInput,
-    SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { Sidebar as ShadcnSidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarInput, SidebarTrigger } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar-context";
 import { useAuth } from "@/lib/use-auth";
 import { useChat } from "@/stores/appStore";
@@ -51,7 +41,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
     };
 
     const menuItems = [
-        { icon: User, label: "Account", onClick: () => navigate("/profile") },
+        { icon: User, label: "Profile", onClick: () => navigate("/profile") },
         { icon: History, label: "History & Sync", onClick: () => navigate("/history") },
         { icon: Brain, label: "Models", onClick: () => navigate("/models") },
         { icon: Key, label: "API Keys", onClick: () => navigate("/api-keys") },
@@ -65,11 +55,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
                 <div className="flex items-center gap-2">
                     <SidebarTrigger className="md:hidden" />
                     {!isMobile && open && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                            onClick={toggleSidebar}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/40 hover:text-foreground" onClick={toggleSidebar}>
                             <PanelLeft className="h-4 w-4" />
                             <span className="sr-only">Toggle Sidebar</span>
                         </Button>
@@ -111,13 +97,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" className="w-full justify-start gap-2 px-2 hover:bg-muted">
-                                <Avatar className="h-8 w-8 border border-border bg-muted">
-                                    {user.avatar_url ? (
-                                        <img src={user.avatar_url} alt={displayName} />
-                                    ) : (
-                                        <AvatarFallback className="text-xs font-medium">{userInitials}</AvatarFallback>
-                                    )}
-                                </Avatar>
+                                <Avatar className="h-8 w-8 border border-border bg-muted">{user.avatar_url ? <img src={user.avatar_url} alt={displayName} /> : <AvatarFallback className="text-xs font-medium">{userInitials}</AvatarFallback>}</Avatar>
                                 <span className="flex-1 truncate text-left text-sm">{displayName}</span>
                             </Button>
                         </PopoverTrigger>
