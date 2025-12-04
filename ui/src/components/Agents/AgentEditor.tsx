@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { EndpointSelector } from "@/components/Endpoints/EndpointSelector";
 import { ModelSelector } from "@/components/model/ModelSelector";
-import { useAgents } from "@/stores/appStore";
+import { useAgents, useModels } from "@/stores/appStore";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "sonner";
 import type { Endpoint } from "@/types/librechat";
@@ -35,6 +35,7 @@ export interface AgentEditorProps {
 
 export function AgentEditor({ open, onOpenChange, agentId }: AgentEditorProps) {
     const { agents, addAgent, updateAgent } = useAgents();
+    const { models } = useModels();
     const isEditMode = !!agentId;
     const existingAgent = agents.find((a) => a.id === agentId);
 
@@ -185,7 +186,11 @@ export function AgentEditor({ open, onOpenChange, agentId }: AgentEditorProps) {
                         {/* Model */}
                         <div className="space-y-2">
                             <Label>Model</Label>
-                            <ModelSelector endpoint={provider} value={model} onChange={setModel} />
+                            <ModelSelector
+                                models={models.filter((m) => m.provider === provider)}
+                                selectedModel={models.find((m) => m.id === model) ?? null}
+                                onSelect={(m) => setModel(m.id)}
+                            />
                         </div>
                     </TabsContent>
 

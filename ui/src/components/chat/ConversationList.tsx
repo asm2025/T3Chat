@@ -1,8 +1,3 @@
-// ============================================================================
-// ConversationList Component - Phase 1B
-// ============================================================================
-// Sidebar list of conversations
-
 import { useEffect, useState } from "react";
 import { useLibreChatConversations, useLibreChatCurrentConversation } from "@/stores/appStore";
 import { ConversationItem } from "./ConversationItem";
@@ -14,18 +9,10 @@ import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "sonner";
 import type { Endpoint } from "@/types/librechat";
 
-// ============================================================================
-// Props
-// ============================================================================
-
 export interface ConversationListProps {
     onNewChat?: () => void;
     className?: string;
 }
-
-// ============================================================================
-// Component
-// ============================================================================
 
 export function ConversationList({ onNewChat, className }: ConversationListProps) {
     const { conversations, loading, error, fetchConversations, addConversation, removeConversation } = useLibreChatConversations();
@@ -60,8 +47,6 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
     const handleSelectConversation = async (conversationId: string) => {
         try {
             const conversation = await t3ChatClient.conversations.get(conversationId);
-            // TODO: Load and set messages in store
-            // const messages = await t3ChatClient.messages.list(conversationId);
             setCurrentConversation({ ...conversation });
         } catch (error) {
             console.error("Error loading conversation:", error);
@@ -98,9 +83,7 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
     };
 
     // Filter conversations based on search
-    const filteredConversations = conversations.filter((conv) =>
-        conv.title.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
+    const filteredConversations = conversations.filter((conv) => conv.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (loading && conversations.length === 0) {
         return (
@@ -125,12 +108,7 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
                 {/* Search */}
                 <div className="relative">
                     <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder="Search conversations..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                    />
+                    <Input placeholder="Search conversations..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
                 </div>
             </div>
 
@@ -176,4 +154,3 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
         </div>
     );
 }
-

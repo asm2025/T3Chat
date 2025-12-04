@@ -284,6 +284,7 @@ export interface CreateAgentRequest {
     recursionLimit?: number;
     hideSequentialOutputs?: boolean;
     endAfterTools?: boolean;
+    isCollaborative?: boolean;
 }
 
 // ============================================================================

@@ -7,20 +7,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArchiveIcon, Edit2Icon, MoreVerticalIcon, Trash2Icon } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { ConversationWithTags } from "@/types/librechat";
 import { cn } from "@/lib/utils";
 import { ENDPOINTS } from "@/components/Endpoints";
-
-// ============================================================================
-// Props
-// ============================================================================
 
 export interface ConversationItemProps {
     conversation: ConversationWithTags;
@@ -30,10 +20,6 @@ export interface ConversationItemProps {
     onDelete?: () => void;
     onArchive?: () => void;
 }
-
-// ============================================================================
-// Component
-// ============================================================================
 
 export function ConversationItem({ conversation, isActive = false, onClick, onEdit, onDelete, onArchive }: ConversationItemProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -60,14 +46,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
     };
 
     return (
-        <div
-            className={cn(
-                "group relative rounded-lg p-3 transition-colors cursor-pointer",
-                "hover:bg-accent",
-                isActive && "bg-accent",
-            )}
-            onClick={onClick}
-        >
+        <div className={cn("group relative rounded-lg p-3 transition-colors cursor-pointer", "hover:bg-accent", isActive && "bg-accent")} onClick={onClick}>
             {/* Conversation Title */}
             <div className="mb-1 flex items-start justify-between gap-2">
                 <h4 className="flex-1 truncate text-sm font-medium">{conversation.title}</h4>
@@ -81,8 +60,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
                             className="h-6 w-6 flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                             onClick={(e) => {
                                 e.stopPropagation();
-                            }}
-                        >
+                            }}>
                             <MoreVerticalIcon className="h-3.5 w-3.5" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -92,8 +70,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onEdit();
-                                }}
-                            >
+                                }}>
                                 <Edit2Icon className="mr-2 h-4 w-4" />
                                 Rename
                             </DropdownMenuItem>
@@ -103,8 +80,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onArchive();
-                                }}
-                            >
+                                }}>
                                 <ArchiveIcon className="mr-2 h-4 w-4" />
                                 Archive
                             </DropdownMenuItem>
@@ -117,8 +93,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onDelete();
-                                    }}
-                                >
+                                    }}>
                                     <Trash2Icon className="mr-2 h-4 w-4" />
                                     Delete
                                 </DropdownMenuItem>
@@ -131,9 +106,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
             {/* Metadata */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{endpointConfig?.icon}</span>
-                <span className="truncate">
-                    {conversation.modelLabel || conversation.model}
-                </span>
+                <span className="truncate">{conversation.modelLabel || conversation.model}</span>
                 <span>•</span>
                 <span>{formatDate(conversation.updatedAt)}</span>
             </div>
@@ -149,8 +122,7 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
                             style={{
                                 borderColor: tag.color || undefined,
                                 color: tag.color || undefined,
-                            }}
-                        >
+                            }}>
                             {tag.name}
                         </Badge>
                     ))}
@@ -164,4 +136,3 @@ export function ConversationItem({ conversation, isActive = false, onClick, onEd
         </div>
     );
 }
-

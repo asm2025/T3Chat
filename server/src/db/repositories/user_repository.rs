@@ -88,6 +88,14 @@ impl TUserRepository for UserRepository {
             .await
             .map_err(Error::from_std_error)? as u64;
 
+        if total == 0 {
+            return Ok(ResultSet {
+                data: vec![],
+                total: 0,
+                pagination,
+            });
+        }
+
         // Apply pagination
         let mut query = users::table.into_boxed();
 

@@ -4,14 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
 import { useChats } from "@/hooks/useChats";
-import { useModels } from "@/hooks/useModels";
-import { t3ChatClient } from "@/lib/t3-chat-client";
-import { toast } from "@/lib/toast";
-import { getErrorMessage } from "@/lib/utils";
 
 export function ChatList() {
-    const { chats, loading, refresh } = useChats();
-    const { models } = useModels();
+    const { chats, loading } = useChats();
     const navigate = useNavigate();
     const { conversationId } = useParams<{ conversationId?: string }>();
     const [query, setQuery] = useState("");

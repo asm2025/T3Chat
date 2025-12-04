@@ -95,6 +95,14 @@ impl TChatRepository for ChatRepository {
             .await
             .map_err(Error::from_std_error)? as u64;
 
+        if total == 0 {
+            return Ok(ResultSet {
+                data: vec![],
+                total: 0,
+                pagination,
+            });
+        }
+
         // Build query - returns Conversation, convert to ChatModel
         let mut query = chats::table
             .filter(chats::user_id.eq(user_id))

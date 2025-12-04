@@ -6,7 +6,7 @@ import { t3ChatClient } from "@/lib/t3-chat-client";
 import type { Message, Chat, ChatWithMessages } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
-import type { Conversation, ConversationWithTags, Preset, Agent, AgentWithDetails, Tag, Tool, EndpointOption } from "@/types/librechat";
+import type { Conversation, ConversationWithTags, Preset, Agent, AgentWithDetails, Tag, Tool, EndpointOption, Message as LibreChatMessage, CreateConversationRequest } from "@/types/librechat";
 
 // ============================================================================
 // Types
@@ -446,7 +446,7 @@ interface LibreChatConversationsSlice {
     setConversationsLoading: (loading: boolean) => void;
     setConversationsError: (error: Error | null) => void;
     fetchConversations: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => Promise<void>;
-    createConversation: (data: Partial<Conversation>) => Promise<ConversationWithTags | null>;
+    createConversation: (data: CreateConversationRequest) => Promise<ConversationWithTags | null>;
     addConversation: (conversation: ConversationWithTags) => void;
     updateConversation: (id: string, updates: Partial<Conversation>) => void;
     removeConversation: (id: string) => void;
@@ -477,7 +477,7 @@ const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreC
         }
     },
 
-    createConversation: async (data: Partial<Conversation>) => {
+    createConversation: async (data: CreateConversationRequest) => {
         const state = get();
         try {
             const conversation = await t3ChatClient.conversations.create(data);
@@ -512,16 +512,16 @@ const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreC
 interface LibreChatCurrentConversationSlice {
     // State
     currentConversation: ConversationWithTags | null;
-    currentMessages: Message[];
+    currentMessages: LibreChatMessage[];
     endpointOptions: EndpointOption | null;
     currentConversationLoading: boolean;
     currentConversationError: Error | null;
 
     // Actions
     setCurrentConversation: (conversation: ConversationWithTags | null) => void;
-    setCurrentMessages: (messages: Message[]) => void;
-    addCurrentMessage: (message: Message) => void;
-    updateCurrentMessage: (messageId: string, updates: Partial<Message>) => void;
+    setCurrentMessages: (messages: LibreChatMessage[]) => void;
+    addCurrentMessage: (message: LibreChatMessage) => void;
+    updateCurrentMessage: (messageId: string, updates: Partial<LibreChatMessage>) => void;
     removeCurrentMessage: (messageId: string) => void;
     setEndpointOptions: (options: EndpointOption | null) => void;
     clearCurrentConversation: () => void;

@@ -135,8 +135,17 @@ fn interpolate_env(input: &str) -> Result<String, ConfigError> {
 
     output.push_str(&input[last_index..]);
 
-    if output.contains("${") {
-        warn!("Configuration file still contains unresolved placeholders after interpolation");
+    for (i, line) in output.lines().enumerate() {
+        if let Some(idx) = line.find("${") {
+            let is_commented = line[..idx].trim_start().starts_with('#');
+            if !is_commented {
+                warn!(
+                    "Configuration file line {} contains unresolved placeholder: {}",
+                    i + 1,
+                    line.trim()
+                );
+            }
+        }
     }
 
     Ok(output)

@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom";
 import { ChatView } from "@/components/chat/ChatView";
-import { ChatList } from "@/components/chat/ChatList";
 import { MasterLayout } from "@/components/master-layout";
 
 export function Chat() {

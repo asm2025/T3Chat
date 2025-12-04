@@ -47,6 +47,14 @@ impl TAiProviderRepository for AiProviderRepository {
             .await
             .map_err(Error::from_std_error)? as u64;
 
+        if total == 0 {
+            return Ok(ResultSet {
+                data: vec![],
+                total: 0,
+                pagination,
+            });
+        }
+
         // Apply pagination
         let mut query = ai_providers::table.into_boxed();
 

@@ -18,7 +18,7 @@ interface ChatViewProps {
 export function ChatView({ chatId }: ChatViewProps) {
     const navigate = useNavigate();
     const { chat, loading, error, refresh } = useChat(chatId);
-    const { models, loading: modelsLoading } = useModels();
+    const { models } = useModels();
     const { sendMessage, streaming } = useStreamingChat();
     const [messages, setMessages] = useState<Message[]>([]);
     const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);

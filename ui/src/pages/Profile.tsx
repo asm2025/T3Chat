@@ -207,7 +207,7 @@ export function Profile() {
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-20 w-20">
                                     {userProfile.avatar_url && <AvatarImage src={userProfile.avatar_url} alt={userProfile.name || "User"} />}
-                                    <AvatarFallback className="text-2xl">{getInitials(userProfile.name, userProfile.email)}</AvatarFallback>
+                                    <AvatarFallback className="text-2xl">{getInitials(userProfile.name || null, userProfile.email)}</AvatarFallback>
                                 </Avatar>
                                 <div>
                                     <CardTitle className="text-2xl">{userProfile.name || "User"}</CardTitle>

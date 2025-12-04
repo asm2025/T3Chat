@@ -1,7 +1,3 @@
-// ============================================================================
-// Chat Components - Barrel Export
-// ============================================================================
-
 export { ChatList } from "./ChatList";
 export { ChatPlaceholder } from "./ChatPlaceholder";
 export { ChatView } from "./ChatView";
@@ -15,5 +11,3 @@ export type { ConversationListProps } from "./ConversationList";
 
 export { ConversationItem } from "./ConversationItem";
 export type { ConversationItemProps } from "./ConversationItem";
-
-
