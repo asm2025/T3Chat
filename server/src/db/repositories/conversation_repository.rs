@@ -5,12 +5,12 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{
-        conversation::NewMessage, conversation::UpdateMessage, Conversation, Message,
-        NewConversation, UpdateConversation,
+        Conversation, Message, NewConversation, UpdateConversation, conversation::NewMessage,
+        conversation::UpdateMessage,
     },
     schema::{conversations, messages},
-    DbPool,
 };
 
 pub struct ConversationRepository {

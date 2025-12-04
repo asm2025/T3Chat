@@ -1,8 +1,8 @@
 pub mod messages;
 
 use crate::{
-    db::dto::Pagination, db::prelude::*, db::repositories::chat_repository::TChatRepository,
-    middleware::auth::AuthenticatedUser, AppState,
+    AppState, db::dto::Pagination, db::prelude::*,
+    db::repositories::chat_repository::TChatRepository, middleware::auth::AuthenticatedUser,
 };
 use axum::{
     extract::{Path, Query, State},

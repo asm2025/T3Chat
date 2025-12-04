@@ -6,17 +6,7 @@ import { t3ChatClient } from "@/lib/t3-chat-client";
 import type { Message, Chat, ChatWithMessages } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
-import { librechatClient } from "@/lib/librechat-client";
-import type {
-    Conversation,
-    ConversationWithTags,
-    Preset,
-    Agent,
-    AgentWithDetails,
-    Tag,
-    Tool,
-    EndpointOption,
-} from "@/types/librechat";
+import type { Conversation, ConversationWithTags, Preset, Agent, AgentWithDetails, Tag, Tool, EndpointOption } from "@/types/librechat";
 
 // ============================================================================
 // Types
@@ -30,7 +20,6 @@ interface UserProfile {
     created_at: string;
     updated_at: string;
 }
-
 
 // ============================================================================
 // Auth Slice
@@ -479,7 +468,7 @@ const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreC
         try {
             state.setConversationsLoading(true);
             state.setConversationsError(null);
-            const result = await librechatClient.conversations.list(params);
+            const result = await t3ChatClient.conversations.list(params);
             state.setConversations(result.data);
         } catch (error) {
             state.setConversationsError(error as Error);
@@ -491,11 +480,11 @@ const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreC
     createConversation: async (data: Partial<Conversation>) => {
         const state = get();
         try {
-            const conversation = await librechatClient.conversations.create(data);
+            const conversation = await t3ChatClient.conversations.create(data);
             state.addConversation(conversation);
             return conversation;
         } catch (error) {
-            console.error('Failed to create conversation:', error);
+            console.error("Failed to create conversation:", error);
             return null;
         }
     },
@@ -507,9 +496,7 @@ const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreC
 
     updateConversation: (id, updates) => {
         const state = get();
-        state.setConversations(
-            state.conversations.map((conv: ConversationWithTags) => (conv.id === id ? { ...conv, ...updates } : conv)),
-        );
+        state.setConversations(state.conversations.map((conv: ConversationWithTags) => (conv.id === id ? { ...conv, ...updates } : conv)));
     },
 
     removeConversation: (id) => {
@@ -588,8 +575,8 @@ const createLibreChatCurrentConversationSlice = (set: StoreSet, get: StoreGet): 
         try {
             state.setCurrentConversationLoading(true);
             state.setCurrentConversationError(null);
-            const conversation = await librechatClient.conversations.get(conversationId);
-            const messages = await librechatClient.messages.list(conversationId);
+            const conversation = await t3ChatClient.conversations.get(conversationId);
+            const messages = await t3ChatClient.messages.list(conversationId);
             state.setCurrentConversation(conversation);
             state.setCurrentMessages(messages);
         } catch (error) {
@@ -639,7 +626,7 @@ const createPresetsSlice = (set: StoreSet, get: StoreGet): PresetsSlice => ({
         try {
             state.setPresetsLoading(true);
             state.setPresetsError(null);
-            const presets = await librechatClient.presets.list();
+            const presets = await t3ChatClient.presets.list();
             state.setPresets(presets);
         } catch (error) {
             state.setPresetsError(error as Error);
@@ -705,7 +692,7 @@ const createAgentsSlice = (set: StoreSet, get: StoreGet): AgentsSlice => ({
         try {
             state.setAgentsLoading(true);
             state.setAgentsError(null);
-            const agents = await librechatClient.agents.list(params);
+            const agents = await t3ChatClient.agents.list(params);
             state.setAgents(agents);
         } catch (error) {
             state.setAgentsError(error as Error);
@@ -719,7 +706,7 @@ const createAgentsSlice = (set: StoreSet, get: StoreGet): AgentsSlice => ({
         try {
             state.setAgentsLoading(true);
             state.setAgentsError(null);
-            const agent = await librechatClient.agents.get(id);
+            const agent = await t3ChatClient.agents.get(id);
             state.setCurrentAgent(agent);
         } catch (error) {
             state.setAgentsError(error as Error);
@@ -780,7 +767,7 @@ const createTagsSlice = (set: StoreSet, get: StoreGet): TagsSlice => ({
         try {
             state.setTagsLoading(true);
             state.setTagsError(null);
-            const tags = await librechatClient.tags.list();
+            const tags = await t3ChatClient.tags.list();
             state.setTags(tags);
         } catch (error) {
             state.setTagsError(error as Error);
@@ -838,7 +825,7 @@ const createToolsSlice = (set: StoreSet, get: StoreGet): ToolsSlice => ({
         try {
             state.setToolsLoading(true);
             state.setToolsError(null);
-            const tools = await librechatClient.tools.list(params);
+            const tools = await t3ChatClient.tools.list(params);
             state.setTools(tools);
         } catch (error) {
             state.setToolsError(error as Error);
@@ -852,18 +839,7 @@ const createToolsSlice = (set: StoreSet, get: StoreGet): ToolsSlice => ({
 // Combined Store
 // ============================================================================
 
-type AppStore = AuthSlice &
-    ModelsSlice &
-    ChatsSlice &
-    ChatSlice &
-    UserApiKeysSlice &
-    FeaturesSlice &
-    LibreChatConversationsSlice &
-    LibreChatCurrentConversationSlice &
-    PresetsSlice &
-    AgentsSlice &
-    TagsSlice &
-    ToolsSlice;
+type AppStore = AuthSlice & ModelsSlice & ChatsSlice & ChatSlice & UserApiKeysSlice & FeaturesSlice & LibreChatConversationsSlice & LibreChatCurrentConversationSlice & PresetsSlice & AgentsSlice & TagsSlice & ToolsSlice;
 
 type StoreSet = StoreApi<AppStore>["setState"];
 type StoreGet = StoreApi<AppStore>["getState"];

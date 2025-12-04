@@ -1,8 +1,8 @@
-use axum::{extract::State, http::StatusCode, response::Json, routing::get, Router};
+use axum::{Router, extract::State, http::StatusCode, response::Json, routing::get};
 use serde::Serialize;
 
-use crate::middleware::auth::AuthenticatedUser;
 use crate::AppState;
+use crate::middleware::auth::AuthenticatedUser;
 
 #[derive(Debug, Serialize)]
 pub struct DashboardStatsResponse {

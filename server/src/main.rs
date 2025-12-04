@@ -2,12 +2,12 @@
 
 use anyhow::Result;
 use axum::{
+    Json, Router,
     body::Body,
     extract::Path,
-    http::{header, HeaderValue, StatusCode},
+    http::{HeaderValue, StatusCode, header},
     response::{IntoResponse, Redirect, Response},
     routing::{delete, get, post, put},
-    Json, Router,
 };
 use emix::env::{get_env, get_port_or};
 use std::{net::SocketAddr, sync::Arc};
@@ -19,13 +19,14 @@ use tower_http::{
 };
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{
-    filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+    EnvFilter, filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt,
 };
 use utoipa::OpenApi;
 
 mod ai;
 mod api;
 mod auth;
+mod config;
 mod db;
 mod docs;
 mod env;
@@ -45,6 +46,8 @@ pub struct AppState {
     pub user_feature_repository: Arc<db::repositories::UserFeatureRepository>,
     pub oidc_client: Option<Arc<auth::OidcClient>>,
     pub jwks_cache: Option<Arc<auth::JwksCache>>,
+    pub t3_config: Arc<config::t3chat::T3ChatConfig>,
+    pub model_catalog: Arc<ai::model_catalog::ModelCatalog>,
 }
 
 #[tokio::main]
@@ -72,6 +75,18 @@ async fn main() -> Result<()> {
 async fn run() -> Result<()> {
     // Connect to database
     tracing::info!("Configuring database");
+
+    tracing::info!("Loading T3Chat configuration");
+    let t3_config = Arc::new(
+        config::load_config()
+            .map_err(|err| anyhow::anyhow!("failed to load t3chat.yaml: {}", err))?,
+    );
+    tracing::info!("Building model catalog");
+    let model_catalog = Arc::new(
+        ai::model_catalog::ModelCatalog::build(t3_config.clone())
+            .await
+            .map_err(|err| anyhow::anyhow!("failed to build model catalog: {}", err))?,
+    );
 
     let database_url =
         get_env("DATABASE_URL").ok_or_else(|| anyhow::anyhow!("DATABASE_URL is not set"))?;
@@ -145,6 +160,8 @@ async fn run() -> Result<()> {
         user_feature_repository,
         oidc_client,
         jwks_cache,
+        t3_config,
+        model_catalog,
     };
     tracing::info!("Database configured successfully.");
 
@@ -325,6 +342,13 @@ fn setup_router(state: AppState) -> Result<Router> {
             middleware::auth::auth_middleware,
         ));
 
+    let config_routes = Router::new()
+        .route(
+            "/startup",
+            get(api::v1::config::startup::get_startup_config),
+        )
+        .route("/models", get(api::v1::config::models::list_models));
+
     let chats_routes = Router::new()
         .route(
             "/",
@@ -421,7 +445,8 @@ fn setup_router(state: AppState) -> Result<Router> {
         .nest("/api/v1/keys", user_api_keys_routes)
         .nest("/api/v1/features", features_routes)
         .nest("/api/v1", user_routes)
-        .nest("/api/v1/admin", admin_routes);
+        .nest("/api/v1/admin", admin_routes)
+        .nest("/api/v1/config", config_routes);
 
     let index_html = static_path.join("index.html");
     let static_files_service = ServeDir::new(static_path)
@@ -571,7 +596,7 @@ async fn confirm_shutdown(prompt: &str) -> bool {
     // Use a blocking read in a background thread to avoid stalling the async runtime
     let prompt_owned = prompt.to_owned();
     match spawn_blocking(move || {
-        use std::io::{stdin, stdout, Write};
+        use std::io::{Write, stdin, stdout};
         let prompt = prompt_owned;
         print!("{prompt}");
         let _ = stdout().flush();

@@ -1,6 +1,6 @@
 use crate::{
-    db::prelude::*, db::repositories::TAiModelRepository, middleware::auth::AuthenticatedUser,
-    AppState,
+    AppState, db::prelude::*, db::repositories::TAiModelRepository,
+    middleware::auth::AuthenticatedUser,
 };
 use axum::{
     extract::{Path, State},

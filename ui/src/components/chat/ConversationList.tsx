@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { librechatClient } from "@/lib/librechat-client";
+import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "sonner";
 import type { Endpoint } from "@/types/librechat";
 
@@ -40,7 +40,7 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
     const handleNewChat = async () => {
         setCreating(true);
         try {
-            const newConversation = await librechatClient.conversations.create({
+            const newConversation = await t3ChatClient.conversations.create({
                 title: "New Chat",
                 endpoint: "openai" as Endpoint,
                 model: "gpt-4-turbo",
@@ -59,9 +59,9 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
 
     const handleSelectConversation = async (conversationId: string) => {
         try {
-            const conversation = await librechatClient.conversations.get(conversationId);
+            const conversation = await t3ChatClient.conversations.get(conversationId);
             // TODO: Load and set messages in store
-            // const messages = await librechatClient.messages.list(conversationId);
+            // const messages = await t3ChatClient.messages.list(conversationId);
             setCurrentConversation({ ...conversation });
         } catch (error) {
             console.error("Error loading conversation:", error);
@@ -71,7 +71,7 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
 
     const handleDeleteConversation = async (conversationId: string) => {
         try {
-            await librechatClient.conversations.delete(conversationId);
+            await t3ChatClient.conversations.delete(conversationId);
             removeConversation(conversationId);
             if (currentConversation?.id === conversationId) {
                 setCurrentConversation(null);
@@ -85,7 +85,7 @@ export function ConversationList({ onNewChat, className }: ConversationListProps
 
     const handleArchiveConversation = async (conversationId: string) => {
         try {
-            await librechatClient.conversations.archive(conversationId, true);
+            await t3ChatClient.conversations.archive(conversationId, true);
             removeConversation(conversationId);
             if (currentConversation?.id === conversationId) {
                 setCurrentConversation(null);

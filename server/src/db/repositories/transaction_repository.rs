@@ -4,9 +4,9 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{Balance, NewBalance, NewTransaction, Transaction, UpdateBalance},
     schema::{balances, transactions},
-    DbPool,
 };
 
 pub struct TransactionRepository {

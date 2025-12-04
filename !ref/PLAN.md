@@ -7,9 +7,9 @@ T3 Chat is an AI chat application that enables users to select from multiple AI 
 ## Current Tech Stack
 
 -   **Frontend**: React + TypeScript + Vite, Tailwind CSS, ShadCN components
--   **Backend**: Rust (Axum), PostgreSQL with SeaORM
--   **Authentication**: Firebase Authentication (already implemented)
--   **Database**: PostgreSQL with embedded local development support
+-   **Backend**: Rust (Axum), PostgreSQL with Diesel + `diesel_async`
+-   **Authentication**: Local username/password authentication (primary) plus optional OIDC (OpenID Connect) with JWKS-based token verification
+-   **Database**: PostgreSQL (normalized schema, Diesel migrations embedded in `server/migrations`)
 
 ## Core Requirements (Minimum Viable Product)
 

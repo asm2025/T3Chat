@@ -1,6 +1,6 @@
 use crate::{
-    db::prelude::*, db::repositories::TUserApiKeyRepository, middleware::auth::AuthenticatedUser,
-    AppState,
+    AppState, db::prelude::*, db::repositories::TUserApiKeyRepository,
+    middleware::auth::AuthenticatedUser,
 };
 use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
 use serde::{Deserialize, Serialize};

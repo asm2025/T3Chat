@@ -4,9 +4,9 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{File, NewFile, UpdateFile},
     schema::files,
-    DbPool,
 };
 
 pub struct FileRepository {

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use jsonwebtoken::{encode, EncodingKey, Header};
+use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -49,7 +49,7 @@ impl SessionManager {
     }
 
     pub fn verify_token(&self, token: &str) -> Result<SessionClaims> {
-        use jsonwebtoken::{decode, DecodingKey, Validation};
+        use jsonwebtoken::{DecodingKey, Validation, decode};
 
         let validation = Validation::default();
         let token_data = decode::<SessionClaims>(

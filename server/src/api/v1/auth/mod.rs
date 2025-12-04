@@ -1,20 +1,20 @@
 use axum::{
+    Router,
     extract::{Query, State},
     http::StatusCode,
     response::{Json, Redirect},
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use tracing;
 
+use crate::AppState;
 use crate::auth::SessionManager;
 use crate::db::models::CreateUserDto;
 use crate::db::repositories::{TUserRepository, UserRepository};
 use crate::env;
 use crate::middleware::auth::AuthenticatedUser;
 use crate::utils::password::verify_password;
-use crate::AppState;
 
 // GET /api/v1/auth/login (OIDC)
 pub async fn oidc_login(State(state): State<AppState>) -> Result<Redirect, StatusCode> {

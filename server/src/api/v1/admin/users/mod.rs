@@ -1,17 +1,17 @@
 use axum::{
+    Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
     routing::{delete, get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 
+use crate::AppState;
 use crate::db::dto::Pagination;
 use crate::db::models::{CreateUserDto, UpdateUserDto, UserModel};
 use crate::db::repositories::{TUserRepository, UserRepository};
 use crate::middleware::auth::AuthenticatedUser;
-use crate::AppState;
 
 // DTOs
 #[derive(Debug, Deserialize)]

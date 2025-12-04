@@ -1,313 +1,148 @@
-import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useLibreChatStreaming } from "@/hooks/useLibreChatStreaming";
+import { useEffect, useState } from "react";
 import { MessageList } from "./MessageList";
-import { MessageInput, type MessageInputRef } from "./MessageInput";
-import { FileUpload } from "@/components/Files/FileUpload";
-import { useLibreChatCurrentConversation, useLibreChatConversations } from "@/stores/appStore";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { librechatClient } from "@/lib/librechat-client";
+import { MessageInput } from "./MessageInput";
+import { ModelSelector } from "@/components/model/ModelSelector";
+import { useChat } from "@/hooks/useChat";
+import { useModels } from "@/hooks/useModels";
+import { useStreamingChat } from "@/hooks/useStreamingChat";
+import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
-import type { Endpoint, EndpointOption, Message } from "@/types/librechat";
+import type { Message } from "@/types/chat";
 import type { AIModel } from "@/types/model";
-import { t3ChatClient } from "@/lib/t3-chat-client";
-import { useAuth } from "@/lib/use-auth";
-import { createDefaultEndpointOptions } from "@/constants/endpoint-options";
 
 interface ChatViewProps {
-    conversationId: string | null;
+    chatId: string | null;
 }
 
-export function ChatView({ conversationId }: ChatViewProps) {
-    const navigate = useNavigate();
-    const { user } = useAuth();
-    const messageInputRef = useRef<MessageInputRef>(null);
-    const placeholderUserName = user?.name || user?.email || undefined;
-    const { currentConversation, messages, loading, error, loadConversation, addMessage, updateMessage, removeMessage, clearCurrentConversation, endpointOptions, setEndpointOptions } = useLibreChatCurrentConversation();
-    const { createConversation } = useLibreChatConversations();
-    const { sendMessage, streaming } = useLibreChatStreaming();
-
-    const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-    const [showFileUpload, setShowFileUpload] = useState(false);
-    const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
+export function ChatView({ chatId }: ChatViewProps) {
+    const { chat, loading, error, refresh } = useChat(chatId);
+    const { models, loading: modelsLoading } = useModels();
+    const { sendMessage, streaming } = useStreamingChat();
+    const [messages, setMessages] = useState<Message[]>([]);
     const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-    const [creatingConversation, setCreatingConversation] = useState(false);
-    const defaultEndpointOptionsRef = useRef<EndpointOption>(createDefaultEndpointOptions());
-    const activeEndpointOptions = endpointOptions ?? defaultEndpointOptionsRef.current;
-    const resolveEndpointOptions = (): EndpointOption => {
-        const resolvedEndpoint = (selectedModel?.provider as Endpoint) || activeEndpointOptions.endpoint;
-        const resolvedModel = selectedModel?.model_id || activeEndpointOptions.model;
-        return {
-            ...activeEndpointOptions,
-            endpoint: resolvedEndpoint,
-            model: resolvedModel,
-        };
-    };
 
     useEffect(() => {
-        if (conversationId) {
-            loadConversation(conversationId);
-        } else {
-            clearCurrentConversation();
-        }
-    }, [conversationId, loadConversation, clearCurrentConversation]);
+        setMessages(chat?.messages ?? []);
+    }, [chat]);
 
     useEffect(() => {
-        let mounted = true;
-        t3ChatClient
-            .listModels()
-            .then((models) => {
-                if (mounted) setAvailableModels(models);
-            })
-            .catch((err) => {
-                console.error("Failed to load models:", err);
-                if (mounted) setAvailableModels([]);
-            });
-        return () => {
-            mounted = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!endpointOptions) {
-            setEndpointOptions(createDefaultEndpointOptions());
-        }
-    }, [endpointOptions, setEndpointOptions]);
-
-    useEffect(() => {
-        if (currentConversation) {
-            setEndpointOptions({
-                endpoint: currentConversation.endpoint,
-                model: currentConversation.model || "gpt-4-turbo",
-                modelLabel: currentConversation.modelLabel,
-                parameters: currentConversation.modelParameters || {},
-                featureFlags: currentConversation.featureFlags,
-                systemMessage: currentConversation.systemMessage,
-            });
-
-            const model = availableModels.find((m) => m.model_id === currentConversation.model);
-            setSelectedModel(model ?? null);
-        } else {
-            setSelectedModel(null);
-        }
-    }, [currentConversation, availableModels, setEndpointOptions]);
-
-    useEffect(() => {
-        if (error && conversationId) {
-            toast.error("Failed to load conversation", {
-                description: error.message,
-            });
-        }
-    }, [error, conversationId]);
-
-    const resetComposerState = () => {
-        setUploadedFiles([]);
-        setShowFileUpload(false);
-    };
-
-    const ensureConversationId = async (initialMessage?: string) => {
-        if (conversationId) return conversationId;
-
-        if (creatingConversation) throw new Error("Conversation creation already in progress");
-        setCreatingConversation(true);
-        try {
-            const resolvedOptions = resolveEndpointOptions();
-            const newConversation = await createConversation({
-                title: initialMessage?.slice(0, 60) || "New Chat",
-                endpoint: resolvedOptions.endpoint,
-                model: resolvedOptions.model,
-                modelParameters: resolvedOptions.parameters,
-                featureFlags: resolvedOptions.featureFlags,
-                systemMessage: resolvedOptions.systemMessage,
-            });
-
-            if (!newConversation) {
-                throw new Error("Unable to create conversation");
-            }
-
-            navigate(`/chat/${newConversation.id}`, { replace: true });
-            return newConversation.id;
-        } finally {
-            setCreatingConversation(false);
-        }
-    };
-
-    const handleNewConversation = () => {
-        clearCurrentConversation();
-        setSelectedModel(null);
-        resetComposerState();
-        navigate("/chat");
-    };
-
-    const handleSendMessage = async (content: string) => {
-        if (!content.trim()) return;
-
-        let targetConversationId: string;
-        try {
-            targetConversationId = await ensureConversationId(content);
-        } catch (err) {
-            const errorMessage = getErrorMessage(err);
-            toast.error("Failed to start conversation", {
-                description: errorMessage,
-            });
+        if (!models.length) {
             return;
         }
 
+        if (chat) {
+            const activeModel = models.find((model) => model.provider === chat.model_provider && model.model_id === chat.model_id);
+            setSelectedModel(activeModel ?? models[0]);
+        } else if (!selectedModel) {
+            setSelectedModel(models[0]);
+        }
+    }, [chat, models, selectedModel]);
+
+    const handleSendMessage = async (content: string) => {
+        if (!chatId) {
+            toast.error("Select or create a chat to start messaging.");
+            return;
+        }
+
+        if (!selectedModel) {
+            toast.error("Select a model before sending a message.");
+            return;
+        }
+
+        const timestamp = new Date().toISOString();
+        const nextSequence = (messages[messages.length - 1]?.sequence_number ?? 0) + 1;
+        const userTempId = `temp-user-${Date.now()}`;
+        const assistantTempId = `temp-assistant-${Date.now()}`;
+
+        const optimisticUser: Message = {
+            id: userTempId,
+            chat_id: chatId,
+            role: "user",
+            content,
+            sequence_number: nextSequence,
+            created_at: timestamp,
+        };
+
+        setMessages((prev) => [...prev, optimisticUser]);
+
         try {
-            const userMessage: Message = {
-                id: `temp-user-${Date.now()}`,
-                messageId: `temp-user-${Date.now()}`,
-                conversationId: targetConversationId,
-                role: "user",
-                text: content,
-                isCreatedByUser: true,
-                createdAt: new Date().toISOString(),
-            };
-            addMessage(userMessage);
-
-            let fileIds: string[] = [];
-            if (uploadedFiles.length > 0) {
-                try {
-                    const uploads = await Promise.all(uploadedFiles.map((file) => librechatClient.files.upload(targetConversationId, file)));
-                    fileIds = uploads.map((file) => file.id);
-                } catch (err) {
-                    console.error("Failed to upload files:", err);
-                    toast.error("Failed to upload files", {
-                        description: getErrorMessage(err),
-                    });
-                }
-            }
-
-            const assistantMessageId = `temp-assistant-${Date.now()}`;
-            let assistantText = "";
-            const assistantMessage: Message = {
-                id: assistantMessageId,
-                messageId: assistantMessageId,
-                conversationId: targetConversationId,
-                role: "assistant",
-                text: "",
-                isCreatedByUser: false,
-                createdAt: new Date().toISOString(),
-            };
-            addMessage(assistantMessage);
-
-            const resolvedOptions = resolveEndpointOptions();
-            const chatRequest = {
-                conversationId: targetConversationId,
-                message: content,
-                fileIds,
-                endpointOptions: resolvedOptions,
-            };
-
-            await sendMessage(
-                chatRequest,
-                (chunk) => {
-                    assistantText += chunk.delta;
-                    updateMessage(assistantMessageId, { text: assistantText });
-                },
-                async () => {
-                    await loadConversation(targetConversationId);
-                    resetComposerState();
-                },
-                (err) => {
-                    console.error("Streaming error:", err);
-                    removeMessage(userMessage.id);
-                    removeMessage(assistantMessageId);
-                },
-            );
+            await t3ChatClient.createMessage(chatId, { content, role: "user" });
         } catch (err) {
-            const errorMessage = getErrorMessage(err);
-            toast.error("Failed to send message", {
-                description: errorMessage,
-            });
-            console.error("Failed to send message:", err);
-        }
-    };
-
-    const handleModelChange = (model: AIModel) => {
-        setSelectedModel(model);
-        setEndpointOptions({
-            ...activeEndpointOptions,
-            endpoint: model.provider as Endpoint,
-            model: model.model_id,
-            modelLabel: model.display_name,
-        });
-    };
-
-    const handleRemoveFile = (index: number) => {
-        setUploadedFiles((files) => files.filter((_, i) => i !== index));
-    };
-
-    const handlePromptPrefill = (prompt: string) => {
-        messageInputRef.current?.setContent(prompt);
-        if (typeof document === "undefined") return;
-        const textarea = document.getElementById("chat-input");
-        if (textarea instanceof HTMLTextAreaElement) {
-            textarea.focus();
-        }
-    };
-
-    const renderEmptyState = (message: string) => <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card text-sm text-muted-foreground">{message}</div>;
-
-    const renderContent = () => {
-        if (loading && conversationId) {
-            return renderEmptyState("Loading conversation…");
+            setMessages((prev) => prev.filter((message) => message.id !== userTempId));
+            toast.error("Failed to send message", { description: getErrorMessage(err) });
+            return;
         }
 
-        if (error && conversationId) {
-            return renderEmptyState("Unable to load conversation. Please try again.");
-        }
+        let assistantContent = "";
+        const optimisticAssistant: Message = {
+            id: assistantTempId,
+            chat_id: chatId,
+            role: "assistant",
+            content: "",
+            sequence_number: nextSequence + 1,
+            created_at: new Date().toISOString(),
+        };
 
-        if (!currentConversation && conversationId) {
-            return renderEmptyState("Conversation not found");
-        }
+        setMessages((prev) => [...prev, optimisticAssistant]);
 
-        return (
-            <div className="flex flex-col gap-5">
-                <div className="relative flex-1 overflow-hidden rounded-xl bg-card">
-                    <MessageList messages={messages} streaming={streaming} showPlaceholder={!conversationId || messages.length === 0} placeholderUserName={placeholderUserName} onPromptClick={handlePromptPrefill} />
-                </div>
-
-                {showFileUpload && (
-                    <div className="rounded-xl border border-border bg-card p-4">
-                        <div className="mb-2 flex items-center justify-between">
-                            <p className="text-sm font-medium">Attach Files</p>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setShowFileUpload(false);
-                                    resetComposerState();
-                                }}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <FileUpload onFilesSelected={setUploadedFiles} maxFiles={5} maxSizeMB={10} />
-                        {uploadedFiles.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                {uploadedFiles.map((file, index) => (
-                                    <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-xs">
-                                        <span className="truncate max-w-[200px]">{file.name}</span>
-                                        <Button variant="ghost" size="sm" className="h-4 w-4 p-0" onClick={() => handleRemoveFile(index)}>
-                                            <X className="h-3 w-3" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+        await sendMessage(
+            {
+                chat_id: chatId,
+                message: content,
+                model_provider: selectedModel.provider,
+                model_id: selectedModel.model_id,
+                stream: true,
+            },
+            (chunk) => {
+                assistantContent += chunk;
+                setMessages((prev) => prev.map((message) => (message.id === assistantTempId ? { ...message, content: assistantContent } : message)));
+            },
+            async () => {
+                try {
+                    await t3ChatClient.createMessage(chatId, { content: assistantContent, role: "assistant" });
+                    await refresh();
+                } catch (err) {
+                    toast.error("Failed to save assistant response", { description: getErrorMessage(err) });
+                }
+            },
         );
     };
 
-    return (
-        <div className="flex h-full flex-col">
-            <div className="mb-4 flex-1 overflow-hidden rounded-xl bg-card p-4">{renderContent()}</div>
+    if (!chatId) {
+        return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">Select a chat from the list to get started.</div>;
+    }
 
-            <MessageInput ref={messageInputRef} onSend={handleSendMessage} disabled={streaming || creatingConversation} models={availableModels} selectedModel={selectedModel} onModelChange={handleModelChange} onFileAttach={() => setShowFileUpload(true)} />
+    if (loading) {
+        return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Loading chat…</div>;
+    }
+
+    if (error) {
+        return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border bg-card p-8 text-center text-red-500">Unable to load chat. {error.message}</div>;
+    }
+
+    if (!chat) {
+        return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Chat not found.</div>;
+    }
+
+    return (
+        <div className="flex h-full flex-col rounded-xl border border-border bg-card">
+            <div className="border-b border-border p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
+                        <h2 className="text-lg font-semibold">{chat.title}</h2>
+                    </div>
+                    <div className="w-full lg:max-w-xs">
+                        <ModelSelector models={models} selectedModel={selectedModel} onSelect={setSelectedModel} />
+                        {modelsLoading && <p className="mt-1 text-xs text-muted-foreground">Loading models…</p>}
+                    </div>
+                </div>
+            </div>
+            <div className="flex-1 min-h-0 bg-background">
+                <MessageList messages={messages} streaming={streaming} />
+            </div>
+            <MessageInput onSend={handleSendMessage} disabled={streaming || !selectedModel} />
         </div>
     );
 }

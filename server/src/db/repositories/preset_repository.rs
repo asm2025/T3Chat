@@ -4,9 +4,9 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{NewPreset, Preset, UpdatePreset},
     schema::presets,
-    DbPool,
 };
 
 pub struct PresetRepository {

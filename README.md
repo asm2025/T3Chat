@@ -58,21 +58,41 @@ Start with everything running locally on your machine, then progressively connec
 
 ## 🗂 Environment Configuration
 
-Environment variables are configured per environment for both backend and frontend. See [`variables.md`](variables.md) for a complete reference of all environment variables.
+Environment is configured via a mix of **`.env` files** and a **YAML application config**. See [`variables.md`](variables.md) for a complete reference.
 
-**Quick Setup:**
--   Create per-environment files for both the backend and frontend:
+### Backend `.env` files
+
+-   **Location**: create per-environment files in `server/`:
     -   `server/.env.development`, `server/.env.staging`, `server/.env.release`
-    -   `ui/.env.development`, `ui/.env.staging`, `ui/.env.release`
--   The backend resolves configuration in this order: `.env.<APP_ENV>.local`, `.env.<APP_ENV>`, `.env.local`, `.env` (default `APP_ENV=development`)
--   `pnpm run dev -- --env staging` launches the stack with staging configuration and exposes Swagger UI
--   For manual runs: `APP_ENV=staging cargo run` or `APP_ENV=release cargo run --release`
--   Vite automatically loads `ui/.env.<mode>`; the dev script forwards the selected environment via `--mode` so the frontend and backend stay aligned
+-   **Load order (inside `server/`)**:
+    -   `.env.<APP_ENV>.local`, `.env.<APP_ENV>`, `.env.local`, `.env` (default `APP_ENV=development`)
+-   **Key variables (summary)**:
+    -   **Required**: `DATABASE_URL`, `CORS_ORIGINS`, `JWT_SECRET`
+    -   **OIDC (optional)**: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI`
+    -   **Frontend redirect (recommended for OIDC)**: `FRONTEND_URL` (e.g. `http://localhost:3010`)
+    -   **Config path (optional)**: `T3CHAT_CONFIG` to point at a non-default `t3chat.yaml`
 
-**Required Variables:**
--   Backend: `DATABASE_URL`, `CORS_ORIGINS`, `JWT_SECRET`
--   Backend (Optional - for OIDC): `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI` (only needed if you want to enable OIDC authentication)
--   Frontend: `VITE_API_URL` (optional, defaults to `http://localhost:3000`)
+### Application config (`t3chat.yaml`)
+
+-   **Location**: project root (same folder as this `README.md`)
+-   **Usage**:
+    -   Copy `t3chat.example.yaml` → `t3chat.yaml`
+    -   Replace `${OPENAI_API_KEY}`, `${ANTHROPIC_API_KEY}`, `${GOOGLE_API_KEY}`, `${OPENROUTER_API_KEY}`, etc. with real environment variables in your shell or `.env` files
+    -   Optionally point to a custom path with `T3CHAT_CONFIG=/absolute/or/relative/path/to/t3chat.yaml`
+-   This file controls:
+    -   Which providers are enabled
+    -   Default and fetched models for each provider
+    -   High-level model presets (`model_specs`) shown in the UI
+
+### Frontend API base URL
+
+-   The frontend uses `import.meta.env.VITE_API_URL` as its API base URL, but in this repo it is **set via Vite CLI flags**, not `.env` files.
+-   **Local development** (recommended):
+    -   `cd ui && pnpm dev -- --api-url http://localhost:3000`
+-   **Production builds** (e.g. Cloudflare Pages):
+    -   `cd ui && pnpm run build -- --api-url https://api.yourdomain.com`
+
+📖 **For complete environment variable documentation**, see [`variables.md`](variables.md). For a step‑by‑step walkthrough, see [`QUICKSTART.md`](QUICKSTART.md).
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 
@@ -351,33 +371,37 @@ pg_config --version
 
 ## 🛠️ **Development**
 
-Start both frontend and backend:
+Run the backend and frontend in separate terminals.
+
+### Backend (Rust server)
 
 ```bash
-pnpm run dev
+cd server
+cargo run
 ```
 
-This automatically assigns available ports and displays them on startup:
+By default the backend listens on `http://localhost:3000`. You can override the port:
 
--   **Frontend**: Usually `http://localhost:3010` (or next available)
+```bash
+cd server
+cargo run -- --port 8788
+```
 
--   **Backend API**: Usually `http://localhost:3000` (or next available)
+### Frontend (React UI)
 
--   The system handles port conflicts automatically. For multiple projects, use separate folders.
+```bash
+cd ui
+pnpm dev          # defaults to http://localhost:3010, API http://localhost:3000
 
-> **📋 Port Management**: See `[docs/PORT_HANDLING.md](docs/PORT_HANDLING.md)` for details on running multiple instances and port conflict resolution.
+# Or override ports / API URL explicitly
+pnpm dev -- --port 3010 --api-url http://localhost:3000
+```
 
-### Individual Commands
+### Other useful commands
 
 ```bash
 # Frontend only
 cd ui && pnpm dev
-
-# Backend only (Rust server)
-cd server && cargo run
-
-# Backend with custom port
-cd server && cargo run -- --port 8788
 
 # Build frontend
 cd ui && pnpm build
@@ -386,78 +410,30 @@ cd ui && pnpm build
 cd server && cargo build --release
 ```
 
-## 🔗 **Connecting Production Services**
-
-Your app defaults to everything running locally. Connect to production services when you're ready:
-
-### Connect Production Database
-
-```bash
-# Choose from available providers
-pnpm connect:database
-
-# Or connect to specific provider
-pnpm connect:database:supabase  # Supabase PostgreSQL (recommended)
-pnpm connect:database:custom    # Custom PostgreSQL
-
-# Note: Neon Database is not supported with Rust backend (use Supabase or standard PostgreSQL)
-```
-
-### Connect Production Authentication
-
-```bash
-# Set up production OIDC Authentication
-pnpm connect:auth
-```
-
-### Connect Production Deployment
-
-```bash
-# Set up Cloudflare Pages deployment (frontend only)
-pnpm connect:deploy
-
-# Note: Rust backend requires standalone deployment (not Cloudflare Workers)
-```
-
-### Check Connection Status
-
-```bash
-# See what's connected to production vs local
-pnpm connection:status
-```
-
-**What happens when you connect services:**
-
--   Your `.env` files are automatically updated
-
--   A backup of your current config is created
-
--   You can always revert to local development by restoring the backup
-
 ## 🤖 **AI Provider System**
 
 T3Chat uses a trait-based abstraction system for AI providers, similar to LibreChat's BaseClient pattern.
 
 ### Supported Providers
 
-- **OpenAI** - GPT-4, GPT-3.5, and other OpenAI models
-- **Anthropic** - Claude models (Claude 3 Opus, Sonnet, Haiku)
-- **Google** - Gemini models
-- **Custom** - Support for OpenAI-compatible endpoints
+- **OpenAI** - GPT‑4o, GPT‑4 Turbo, and other OpenAI models
+- **Anthropic** - Claude 3.5, Claude 3
+- **Google** - Gemini 1.5
+- **OpenRouter** - Aggregated models via OpenRouter
+- **RouteLLM** - Routing profiles defined in config
+- **Custom** - Additional OpenAI‑compatible providers via `custom` entries in `t3chat.yaml`
 
 ### Architecture
 
 **Backend (Rust):**
-- `AIProvider` trait defines the common interface
-- Each provider implements the trait with provider-specific logic
-- Factory pattern for creating provider instances
-- Streaming support via Server-Sent Events (SSE)
+- `ai/providers/mod.rs` defines the `AIProvider` trait and concrete providers (OpenAI, Anthropic, Google, OpenRouter, RouteLLM)
+- `ai/model_catalog.rs` builds a provider/model catalog from `t3chat.yaml`
+- Streaming support via Server-Sent Events (SSE) and typed chat request/response types in `ai/types.rs`
 
 **Frontend (React):**
-- Endpoint selector component for switching providers
-- Model selector that updates based on selected provider
-- Settings panel for provider-specific parameters (temperature, tokens, etc.)
-- Streaming message display
+- Endpoint/model selectors for switching between providers and models
+- Settings panel for provider-specific parameters (temperature, max tokens, etc.)
+- Streaming message display driven by `/api/v1/chat/stream`
 
 ### Adding a New Provider
 
@@ -471,51 +447,42 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 ## 📁 **Project Structure**
 
 ```
-├── ui/    # React frontend
+├── ui/                 # React frontend
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── Chat/          # Chat UI components
-│   │   │   ├── Endpoints/     # Provider/model selectors
-│   │   │   ├── Presets/       # Preset management
-│   │   │   ├── Agents/        # Agent management
-│   │   │   ├── Files/         # File upload/management
-│   │   │   └── ui/            # ShadCN components
-│   │   ├── lib/               # Utilities & authentication
-│   │   ├── stores/            # State management (Zustand)
-│   │   ├── types/             # TypeScript type definitions
-│   │   └── pages/             # Route-level components
+│   │   ├── components/ # Chat UI, endpoints, presets, agents, files, ShadCN components
+│   │   ├── lib/        # API client, auth helpers, utilities
+│   │   ├── stores/     # State management (Zustand)
+│   │   ├── types/      # TypeScript type definitions
+│   │   └── pages/      # Route-level components
 │   └── package.json
-├── server/    # Rust API backend (Axum + Diesel)
+├── server/             # Rust API backend (Axum + Diesel)
 │   ├── src/
-│   │   ├── main.rs            # Application entry point & router
-│   │   ├── api/               # Versioned HTTP handlers
+│   │   ├── main.rs     # Application entry point & router
+│   │   ├── api/        # Versioned HTTP handlers
 │   │   │   └── v1/
-│   │   │       ├── conversations.rs
-│   │   │       ├── messages.rs
-│   │   │       ├── chat.rs    # Chat completion endpoints
-│   │   │       ├── presets.rs
-│   │   │       └── agents.rs
-│   │   ├── ai/                # AI provider integrations
-│   │   │   ├── mod.rs         # AIProvider trait
-│   │   │   ├── factory.rs     # Provider factory
-│   │   │   └── providers/
-│   │   │       ├── openai.rs
-│   │   │       ├── anthropic.rs
-│   │   │       └── google.rs
-│   │   ├── db/                # Diesel models, repositories, schema
-│   │   │   ├── models/        # Domain models
-│   │   │   ├── repositories/  # Data access layer
-│   │   │   └── schema.rs      # Generated schema
-│   │   └── middleware/        # Auth and request middleware
-│   ├── migrations/            # Diesel SQL migrations (embedded)
-│   ├── wwwroot/               # Static files served by the backend
-│   ├── Cargo.toml             # Rust dependencies
-│   └── .env                   # Backend environment variables (local only)
-├── data/                      # Local development data
-├── scripts/                   # Workspace automation
-│   ├── run-dev.js             # Development server runner
-│   └── post-setup.js          # Setup automation
-├── plan.md                    # Development plan and architecture
+│   │   │       ├── auth/       # Local + OIDC auth
+│   │   │       ├── chat/       # Chat completion endpoints
+│   │   │       ├── chats/      # Chat + message CRUD
+│   │   │       ├── config/     # Startup/model config based on t3chat.yaml
+│   │   │       ├── models/     # AI model catalog
+│   │   │       ├── user/       # Profile endpoints
+│   │   │       ├── user_api_keys/
+│   │   │       └── admin/      # Admin APIs (users/providers/models/dashboard)
+│   │   ├── ai/         # AI provider integrations
+│   │   │   ├── model_catalog.rs
+│   │   │   ├── manager.rs
+│   │   │   └── providers/      # OpenAI, Anthropic, Google, OpenRouter, RouteLLM
+│   │   ├── db/         # Diesel models, repositories, schema
+│   │   │   ├── models/         # Domain models
+│   │   │   ├── repositories/   # Data access layer
+│   │   │   └── schema.rs       # Generated schema
+│   │   └── middleware/ # Auth, admin, rate limiting
+│   ├── migrations/     # Diesel SQL migrations (embedded)
+│   ├── wwwroot/        # Static files served by the backend
+│   ├── Cargo.toml      # Rust dependencies
+│   └── .env            # Backend environment variables (local only)
+├── t3chat.example.yaml # Example multi-provider/model configuration
+├── plan.md             # Development plan and architecture
 └── SCHEMA_CHANGES_SUMMARY.md  # Database schema documentation
 ```
 
@@ -635,10 +602,12 @@ cargo build --release
 -   `CORS_ORIGINS` - Comma-separated list of allowed CORS origins (required)
 -   `PORT` - Server port (optional, defaults to 3000)
 -   `APP_ENV` - Application environment: `development`, `staging`, or `release` (optional, defaults to `development`)
+-   `FRONTEND_URL` - Frontend base URL used for OIDC redirects (e.g., `https://app.example.com`)
 
-**Pages Environment Variables (Frontend):**
+**Frontend build / API URL:**
 
--   `VITE_API_URL` - Your deployed backend server URL (e.g., `https://api.yourdomain.com`) (optional, defaults to `http://localhost:3000`)
+-   Build with the correct API base URL:
+    -   `cd ui && pnpm run build -- --api-url https://api.example.com`
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 

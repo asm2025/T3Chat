@@ -1,14 +1,14 @@
 use async_trait::async_trait;
-use diesel::prelude::*;
 use diesel::OptionalExtension;
 use diesel::QueryableByName;
+use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
 use crate::db::dto::{Pagination, ResultSet};
 use crate::db::models::{CreateUserDto, NewUser, UpdateUser, UpdateUserDto, UserModel};
-use crate::db::{schema::users, DbPool};
+use crate::db::{DbPool, schema::users};
 
 // Placeholder trait for FilterCondition - not currently used
 pub trait FilterCondition<T>: Send + Sync {}

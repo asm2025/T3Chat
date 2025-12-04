@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { librechatClient } from '@/lib/librechat-client';
+import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from '@/lib/toast';
 import { getErrorMessage } from '@/lib/utils';
 import type { ChatCompletionRequest, StreamChunk } from '@/types/librechat';
@@ -35,7 +35,7 @@ export function useLibreChatStreaming() {
       abortControllerRef.current = new AbortController();
 
       // Start streaming
-      const response = await librechatClient.chat.streamMessage(request);
+      const response = await t3ChatClient.chat.streamMessage(request);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

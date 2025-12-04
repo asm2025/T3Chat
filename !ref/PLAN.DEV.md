@@ -6,30 +6,34 @@ This document provides a developer-focused implementation plan with specific fil
 
 ### Existing Infrastructure (Leverage These)
 
--   **Backend**: Rust (Axum) with SeaORM, PostgreSQL
+-   **Backend**: Rust (Axum) with Diesel + `diesel_async`, PostgreSQL
 -   **Frontend**: React + TypeScript + Vite, Tailwind CSS, ShadCN
--   **Authentication**: Firebase Auth (already implemented)
--   **Database**: PostgreSQL with embedded local development
--   **Patterns**: Repository pattern, migration system, auth middleware
+-   **Authentication**: Local username/password auth + optional OIDC (JWKS-based) implemented in the Rust backend
+-   **Database**: PostgreSQL with embedded Diesel migrations (`server/migrations`)
+-   **Patterns**: Repository pattern, migration system, auth middleware, AI provider abstraction
 
 ### Key Directories
 
-```
+```text
 server/src/
-├── api.rs                    # API route handlers
+├── main.rs            # Application entry point & router
+├── api/
+│   └── v1/            # Versioned HTTP handlers (auth, chats, models, config, admin, etc.)
 ├── db/
-│   ├── schema/              # Database models (SeaORM entities)
-│   └── repositories/        # Repository implementations
+│   ├── models/        # Diesel models
+│   ├── repositories/  # Repository implementations
+│   └── schema.rs      # Diesel-generated schema
 ├── middleware/
-│   └── auth.rs              # Firebase JWT authentication
-└── main.rs                  # Application entry point
+│   ├── auth.rs        # Local + OIDC auth middleware
+│   └── admin.rs       # Admin-only middleware
+├── ai/                # AI provider system (trait + providers + model catalog)
+└── config/            # T3Chat YAML loader and helpers
 
 ui/src/
-├── components/              # React components
-├── lib/
-│   ├── serverComm.ts       # API client utilities
-│   └── auth-context.tsx    # Authentication context
-└── pages/                  # Page components
+├── components/        # Chat UI, endpoints, presets, agents, files, shared UI
+├── lib/               # API client (`t3-chat-client.ts`), auth helpers, utilities
+├── stores/            # Global state (Zustand)
+└── pages/             # Route-level components (Chat, Login, Settings, Admin, etc.)
 ```
 
 ---
@@ -152,83 +156,20 @@ impl MigratorTrait for Migrator {
 }
 ```
 
-### 1.2 Database Models (SeaORM Entities)
+### 1.2 Database Models (Diesel)
 
-#### Files to Create:
+The database schema and models are already implemented using Diesel and `diesel_async`:
 
--   `server/src/db/schema/ai_model.rs`
--   `server/src/db/schema/user_api_key.rs`
--   `server/src/db/schema/chat.rs`
--   `server/src/db/schema/message.rs`
+-   Tables and relationships are defined in the SQL migrations under `server/migrations`.
+-   Diesel models live in `server/src/db/models/` (for example, `ai_model.rs`, `user_api_key.rs`, `chat.rs`, `message.rs`).
+-   The auto-generated Diesel schema is in `server/src/db/schema.rs`.
 
-#### Model: AI Model
+If you need to extend the schema:
 
-```rust
-// server/src/db/schema/ai_model.rs
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "ai_models")]
-pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: Uuid,
-    pub provider: AiProvider,  // Custom enum
-    #[sea_orm(column_type = "String")]
-    pub model_id: String,
-    pub display_name: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub description: Option<String>,
-    pub context_window: i32,
-    pub supports_streaming: bool,
-    pub supports_images: bool,
-    pub supports_functions: bool,
-    #[sea_orm(column_type = "Decimal", nullable)]
-    pub cost_per_token: Option<Decimal>,
-    pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "String(None)")]
-pub enum AiProvider {
-    #[sea_orm(string_value = "openai")]
-    OpenAI,
-    #[sea_orm(string_value = "anthropic")]
-    Anthropic,
-    #[sea_orm(string_value = "google")]
-    Google,
-    #[sea_orm(string_value = "deepseek")]
-    DeepSeek,
-    #[sea_orm(string_value = "ollama")]
-    Ollama,
-}
-```
-
-#### Model: User API Key
-
-```rust
-// server/src/db/schema/user_api_key.rs
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "user_api_keys")]
-pub struct Model {
-    #[sea_orm(primary_key)]
-    pub id: Uuid,
-    pub user_id: String,  // FK to users.id
-    pub provider: AiProvider,
-    #[sea_orm(column_type = "Text")]
-    pub encrypted_key: String,
-    pub is_default: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-```
-
-#### Model: Chat
-
-```rust
-// server/src/db/schema/chat.rs
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "chats")]
-pub struct Model {
+1. Add a new SQL migration in `server/migrations` (see `server/README.md` for Diesel CLI usage).
+2. Update or add models in `server/src/db/models/`.
+3. Extend repositories in `server/src/db/repositories/`.
+4. Regenerate or manually adjust `server/src/db/schema.rs` to match the new tables/columns.
     #[sea_orm(primary_key)]
     pub id: Uuid,
     pub user_id: String,  // FK to users.id
@@ -1571,38 +1512,12 @@ pub enum SharedChats {
 
 ## Key Implementation Notes
 
-1. **Authentication**: Use existing `AuthenticatedUser` extractor from `middleware::auth`
-2. **Database**: Follow existing SeaORM patterns from `user.rs` schema
-3. **Repositories**: Follow existing `UserRepository` pattern
-4. **API Routes**: Use existing `api.rs` structure and route organization
-5. **Frontend API**: Extend existing `serverComm.ts` pattern
-6. **Components**: Use existing ShadCN components from `ui/src/components/ui/`
-
----
-
-## Environment Variables
-
-### Backend (.env)
-
-```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/t3chat
-FIREBASE_PROJECT_ID=your-project-id
-CORS_ORIGINS=http://localhost:3000,http://localhost:3000,http://localhost:3010,http://localhost:3010
-# API keys for default providers (optional)
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=...
-```
-
-### Frontend (.env)
-
-```bash
-VITE_API_URL=http://localhost:3010
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_ALLOW_ANONYMOUS_USERS=true
-```
+1. **Authentication**: Use `AuthenticatedUser` from `middleware::auth` for protected routes; local auth + OIDC are both already wired through this middleware.
+2. **Database**: Follow existing Diesel models and repositories in `server/src/db/models` and `server/src/db/repositories` rather than introducing new ORM layers.
+3. **Repositories**: Mirror patterns from `UserRepository`, `ChatRepository`, `AiModelRepository`, etc.
+4. **API Routes**: Follow the `server/src/api/v1` module structure and register routes in `main.rs`.
+5. **Frontend API**: Extend the typed client in `ui/src/lib/t3-chat-client.ts` (and underlying `api-client.ts`) instead of the older `serverComm.ts` pattern.
+6. **Components**: Use existing ShadCN components from `ui/src/components/ui/`.
 
 ---
 

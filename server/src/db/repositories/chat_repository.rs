@@ -6,8 +6,6 @@ use uuid::Uuid;
 
 use crate::db::dto::{Pagination, ResultSet};
 use crate::db::models::{
-    conversation::NewMessage, // Explicitly use conversation types
-    conversation::UpdateMessage,
     ChatModel,
     // Use conversation models from the actual schema
     Conversation,
@@ -18,13 +16,15 @@ use crate::db::models::{
     UpdateChatDto,
     UpdateConversation,
     UpdateMessageDto,
+    conversation::NewMessage, // Explicitly use conversation types
+    conversation::UpdateMessage,
 };
 
 // Aliases for legacy API compatibility
 type UpdateChat = UpdateConversation;
 use crate::db::{
-    schema::{conversations as chats, messages}, // Map conversations to chats for legacy compatibility
     DbPool,
+    schema::{conversations as chats, messages}, // Map conversations to chats for legacy compatibility
 };
 
 // Type alias for API compatibility - the repository now returns conversation Message model

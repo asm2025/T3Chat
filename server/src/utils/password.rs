@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use bcrypt::{hash, verify, DEFAULT_COST};
+use bcrypt::{DEFAULT_COST, hash, verify};
 
 /// Hash a password using bcrypt
 pub fn hash_password(password: &str) -> Result<String> {

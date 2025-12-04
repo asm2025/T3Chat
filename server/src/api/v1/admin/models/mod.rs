@@ -1,17 +1,17 @@
 use axum::{
+    Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::db::models::ai_model::AiModel;
 use crate::db::repositories::TAiModelRepository;
 use crate::middleware::auth::AuthenticatedUser;
-use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ListModelsQuery {

@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { EndpointSelector } from "@/components/Endpoints/EndpointSelector";
 import { ModelSelector } from "@/components/model/ModelSelector";
 import { useAgents } from "@/stores/appStore";
-import { librechatClient } from "@/lib/librechat-client";
+import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "sonner";
 import type { Endpoint } from "@/types/librechat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -89,7 +89,7 @@ export function AgentEditor({ open, onOpenChange, agentId }: AgentEditorProps) {
         try {
             if (isEditMode && agentId) {
                 // Update existing agent
-                const updated = await librechatClient.agents.update(agentId, {
+                const updated = await t3ChatClient.agents.update(agentId, {
                     name,
                     description,
                     instructions,
@@ -105,7 +105,7 @@ export function AgentEditor({ open, onOpenChange, agentId }: AgentEditorProps) {
                 toast.success("Agent updated successfully");
             } else {
                 // Create new agent
-                const created = await librechatClient.agents.create({
+                const created = await t3ChatClient.agents.create({
                     name,
                     description,
                     instructions,

@@ -1,6 +1,6 @@
 use crate::db::models::UpdateUserDto;
 use crate::db::repositories::TUserRepository;
-use crate::{api::UserResponse, middleware::auth::AuthenticatedUser, AppState};
+use crate::{AppState, api::UserResponse, middleware::auth::AuthenticatedUser};
 use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
 use utoipa::ToSchema;

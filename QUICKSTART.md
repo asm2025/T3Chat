@@ -53,7 +53,41 @@ If you want to enable OIDC authentication, follow these steps. Google OAuth is t
     - `http://localhost:3010`
 9. Copy the "Client ID" and "Client secret"
 
-## Step 3: Configure Environment Variables
+## Step 3: Configure AI Providers & Models (`t3chat.yaml`)
+
+The Rust backend reads provider and model configuration from a YAML file.
+
+1. From the project root, copy the example config:
+
+    ```bash
+    cp t3chat.example.yaml t3chat.yaml
+    ```
+
+2. Set provider API key environment variables in your shell or OS (only the providers you care about are required):
+
+    ```bash
+    # OpenAI (for GPT-4o, GPT-4 Turbo, etc.)
+    export OPENAI_API_KEY=your-openai-key
+
+    # Anthropic (for Claude 3.5 / Claude 3)
+    export ANTHROPIC_API_KEY=your-anthropic-key
+
+    # Google Gemini
+    export GOOGLE_API_KEY=your-gemini-key
+
+    # OpenRouter (optional)
+    export OPENROUTER_API_KEY=your-openrouter-key
+    ```
+
+3. If you want to keep the config file elsewhere, set `T3CHAT_CONFIG` to point to it:
+
+    ```bash
+    export T3CHAT_CONFIG=/absolute/path/to/t3chat.yaml
+    ```
+
+> 💡 You can comment out or remove providers from `t3chat.yaml` if you don't have keys for them yet.
+
+## Step 4: Configure Environment Variables
 
 Create a `.env` file in the `server/` directory:
 
@@ -65,6 +99,9 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 
 # CORS (must include your frontend URL)
 CORS_ORIGINS=http://localhost:3010
+
+# Frontend URL used for OIDC redirect
+FRONTEND_URL=http://localhost:3010
 
 # JWT Session Token Secret (generate with: openssl rand -base64 32)
 JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
@@ -97,7 +134,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 Copy the generated secret and replace `your-super-secure-random-jwt-secret-key-min-32-chars` in the `.env` file.
 
-## Step 4: Install Dependencies
+## Step 5: Install Dependencies
 
 ### Backend
 
@@ -113,7 +150,7 @@ cd ui
 pnpm install
 ```
 
-## Step 5: Run the Application
+## Step 6: Run the Application
 
 ### Start Backend (from project root)
 
@@ -132,12 +169,12 @@ The server will:
 
 ```bash
 cd ui
-pnpm dev
+pnpm dev -- --api-url http://localhost:3000
 ```
 
-The UI will start on `http://localhost:3010`
+The UI will start on `http://localhost:3010` and talk to the backend at `http://localhost:3000/api`.
 
-## Step 6: Log In
+## Step 7: Log In
 
 ### Local Login (Default - Username & Password)
 
@@ -205,7 +242,7 @@ T3Chat supports two authentication methods:
 2. **OIDC Authentication** (Optional):
     - Supports Google OAuth, Firebase, Auth0, Keycloak, and other OIDC providers
     - Only appears in the login form if configured
-    - Enable by setting OIDC environment variables (see Step 3)
+    - Enable by setting OIDC environment variables (see Step 4)
     - See configuration examples below
 
 ## Alternative OIDC Providers

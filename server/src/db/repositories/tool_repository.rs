@@ -4,9 +4,9 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{Action, NewAction, NewTool, Tool, UpdateAction, UpdateTool},
     schema::{actions, tools},
-    DbPool,
 };
 
 pub struct ToolRepository {

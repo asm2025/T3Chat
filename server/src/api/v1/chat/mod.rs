@@ -1,4 +1,5 @@
 use crate::{
+    AppState,
     ai::types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
     db::prelude::*,
     db::repositories::{
@@ -6,14 +7,13 @@ use crate::{
     },
     middleware::auth::AuthenticatedUser,
     utils::encryption,
-    AppState,
 };
 use axum::{
     extract::State,
     http::StatusCode,
     response::{
-        sse::{Event, KeepAlive, Sse},
         Json,
+        sse::{Event, KeepAlive, Sse},
     },
 };
 use futures::StreamExt;
@@ -88,6 +88,14 @@ pub async fn chat(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
+
+    if state
+        .model_catalog
+        .find(&payload.model_provider, &payload.model_id)
+        .is_none()
+    {
+        return Err(StatusCode::BAD_REQUEST);
+    }
 
     // Get user's API key for the provider
     let provider = match payload.model_provider.as_str() {
@@ -267,6 +275,14 @@ pub async fn stream_chat(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
+
+    if state
+        .model_catalog
+        .find(&payload.model_provider, &payload.model_id)
+        .is_none()
+    {
+        return Err(StatusCode::BAD_REQUEST);
+    }
 
     // Get user's API key for the provider
     let provider = match payload.model_provider.as_str() {

@@ -48,4 +48,7 @@ tower_governor = "0"  # Pin to 0.4.x for axum 0.7 compatibility
 rand = "0"
 governor = "0"
 bcrypt = "0"
+serde_yaml = "0.9"
+regex = "1"
+thiserror = "1"
 

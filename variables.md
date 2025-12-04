@@ -135,7 +135,59 @@ This document provides a comprehensive reference for all environment variables u
 -   **Example**: `3600`
 -   **Required**: ❌ No
 -   **Default**: `3600` (1 hour)
--   **Notes**: Controls how long session tokens remain valid after OIDC authentication.
+-   **Notes**: Controls how long session tokens remain valid after authentication (local or OIDC).
+
+#### `FRONTEND_URL`
+
+-   **Description**: Base URL of the frontend application used for OIDC redirects
+-   **Format**: URL
+-   **Example**: `http://localhost:3010`
+-   **Required**: ❌ No
+-   **Default**: `http://localhost:5173`
+-   **Notes**:
+    -   Used by the `/api/v1/auth/callback` handler to redirect back to the UI
+    -   For local development, set this to match your Vite dev server URL (e.g. `http://localhost:3010`)
+
+#### `T3CHAT_CONFIG`
+
+-   **Description**: Optional path to the T3Chat YAML configuration file
+-   **Format**: File system path (absolute or relative)
+-   **Example**: `/etc/t3chat/t3chat.yaml` or `config/t3chat.yaml`
+-   **Required**: ❌ No
+-   **Default**: `t3chat.yaml` in the current working directory
+-   **Notes**:
+    -   Controls providers, models, and model presets loaded at startup
+    -   If not set, the server expects `t3chat.yaml` alongside the binary / in the working directory
+
+### Provider API Key Variables for `t3chat.yaml`
+
+These variables are used by `t3chat.yaml` via `${VAR_NAME}` placeholders. Only set the ones for providers you actually enable.
+
+#### `OPENAI_API_KEY`
+
+-   **Description**: API key for OpenAI models (e.g., GPT‑4o, GPT‑4 Turbo)
+-   **Format**: String (secure)
+-   **Required**: ❌ No (but required if OpenAI provider is enabled)
+
+#### `ANTHROPIC_API_KEY`
+
+-   **Description**: API key for Anthropic Claude models
+-   **Format**: String (secure)
+-   **Required**: ❌ No (but required if Anthropic provider is enabled)
+
+#### `GOOGLE_API_KEY`
+
+-   **Description**: API key for Google Gemini models
+-   **Format**: String (secure)
+-   **Required**: ❌ No (but required if Google provider is enabled)
+
+#### `OPENROUTER_API_KEY`
+
+-   **Description**: API key for OpenRouter
+-   **Format**: String (secure)
+-   **Required**: ❌ No (but required if OpenRouter provider is enabled)
+
+> 💡 For additional custom providers defined under `custom:` in `t3chat.yaml`, choose appropriate env var names and reference them in the YAML file.
 
 ### Future Variables (From Development Plan)
 
@@ -205,6 +257,7 @@ These variables are planned for future implementation and are documented here fo
     -   Must be prefixed with `VITE_` for Vite to expose it
     -   Used by API client for all backend requests
     -   Should match backend server URL
+    -   In this repo, `ui/vite.config.ts` sets `VITE_API_URL` from the `--api-url` CLI flag (for example, `pnpm dev -- --api-url http://localhost:3000` or `pnpm run build -- --api-url https://api.example.com`). The `.env` examples below are only needed if you remove that override and rely on Vite’s standard `.env` loading.
 
 ---
 
@@ -258,6 +311,9 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 # CORS (must include your frontend URL)
 CORS_ORIGINS=http://localhost:3010
 
+# Frontend URL used for OIDC redirects
+FRONTEND_URL=http://localhost:3010
+
 # JWT Session Token Secret (generate with: openssl rand -base64 32)
 JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 
@@ -293,6 +349,7 @@ JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 #### Frontend (`ui/.env.development`)
 
 ```bash
+# Optional if you remove the CLI --api-url override in ui/vite.config.ts
 VITE_API_URL=http://localhost:3000
 ```
 
@@ -358,6 +415,7 @@ JWT_EXPIRY_SECONDS=3600
 #### Frontend (`ui/.env.staging`)
 
 ```bash
+# Optional if you remove the CLI --api-url override in ui/vite.config.ts
 VITE_API_URL=https://api-staging.example.com
 ```
 
@@ -390,6 +448,7 @@ JWT_EXPIRY_SECONDS=3600
 #### Frontend (`ui/.env.release`)
 
 ```bash
+# Optional if you remove the CLI --api-url override in ui/vite.config.ts
 VITE_API_URL=https://api.example.com
 ```
 

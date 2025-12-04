@@ -4,9 +4,9 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{NewConversationTag, NewTag, Tag, UpdateTag},
     schema::{conversation_tags_map, tags},
-    DbPool,
 };
 
 pub struct TagRepository {

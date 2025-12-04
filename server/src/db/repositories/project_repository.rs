@@ -4,9 +4,9 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::db::{
+    DbPool,
     models::{NewProject, NewPrompt, NewPromptGroup, Project, Prompt, PromptGroup, UpdateProject},
     schema::{projects, prompt_groups, prompts},
-    DbPool,
 };
 
 pub struct ProjectRepository {

@@ -1,18 +1,18 @@
 use axum::{
+    Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
     routing::{get, post},
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::AppState;
 use crate::db::dto::Pagination;
 use crate::db::models::ai_provider::{AiProvider, NewAiProvider, UpdateAiProvider};
 use crate::db::repositories::{AiProviderRepository, TAiProviderRepository};
 use crate::middleware::auth::AuthenticatedUser;
-use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ListProvidersQuery {

@@ -1,0 +1,105 @@
+# Example configuration for T3Chat.
+# Copy this file to `t3chat.yaml` and customize the values as needed.
+# Secrets such as API keys should be provided via environment variables
+# referenced with ${VAR_NAME} placeholders.
+
+app_title: "T3Chat (Development)"
+
+interface:
+  model_select_enabled: true
+  default_model_spec: "gpt4o-default"
+  default_provider: "openai"
+  default_model: "gpt-4o"
+
+providers:
+  openai:
+    display_name: "OpenAI"
+    api_key: "${OPENAI_API_KEY}" # Add OPENAI_API_KEY to your .env
+    models:
+      fetch: false
+      default:
+        - id: gpt-4o
+          label: "GPT-4o"
+          context_window: 128000
+          supports_streaming: true
+          supports_images: true
+          supports_functions: true
+          supports_vision: true
+          cost_per_input_token: 0.000005
+          cost_per_output_token: 0.000015
+        - id: gpt-4-turbo
+          label: "GPT-4 Turbo"
+          context_window: 128000
+          supports_streaming: true
+  anthropic:
+    display_name: "Anthropic"
+    api_key: "${ANTHROPIC_API_KEY}"
+    models:
+      fetch: false
+      default:
+        - id: claude-3-5-sonnet
+          label: "Claude 3.5 Sonnet"
+          context_window: 200000
+          supports_streaming: true
+          supports_images: true
+          supports_vision: true
+        - id: claude-3-haiku
+          label: "Claude 3 Haiku"
+          context_window: 200000
+          supports_streaming: true
+  google:
+    display_name: "Google Gemini"
+    api_key: "${GOOGLE_API_KEY}"
+    models:
+      fetch: false
+      default:
+        - id: gemini-1.5-flash
+          label: "Gemini 1.5 Flash"
+          context_window: 1000000
+          supports_streaming: true
+          supports_images: true
+          supports_vision: true
+  openrouter:
+    display_name: "OpenRouter"
+    api_key: "${OPENROUTER_API_KEY}"
+    base_url: "https://openrouter.ai/api/v1"
+    models:
+      fetch: true
+      default: []
+  routellm:
+    display_name: "RouteLLM"
+    routes:
+      fetch: false
+      default:
+        - id: route/general
+          label: "General Routing"
+        - id: route/coding
+          label: "Coding Optimized"
+  custom:
+    - key: "bedrock"
+      display_name: "AWS Bedrock"
+      base_url: "https://bedrock-runtime.amazonaws.com"
+      models:
+        fetch: false
+        default:
+          - id: anthropic.claude-3-haiku-20240307-v1:0
+            label: "Claude 3 Haiku (Bedrock)"
+
+model_specs:
+  - name: gpt4o-default
+    label: "GPT-4o Default"
+    provider: "openai"
+    model: "gpt-4o"
+    description: "Balanced, multimodal capable model suitable for most chats."
+    default: true
+  - name: claude-sonnet
+    label: "Claude 3.5 Sonnet"
+    provider: "anthropic"
+    model: "claude-3-5-sonnet"
+    description: "Anthropic's recommended balanced model."
+  - name: gemini-flash
+    label: "Gemini 1.5 Flash"
+    provider: "google"
+    model: "gemini-1.5-flash"
+    description: "Fast, lower cost multimodal generations."
+

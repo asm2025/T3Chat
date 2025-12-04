@@ -3,6 +3,7 @@ pub mod admin;
 pub mod auth;
 pub mod chat;
 pub mod chats;
+pub mod config;
 pub mod features;
 pub mod health;
 pub mod models;

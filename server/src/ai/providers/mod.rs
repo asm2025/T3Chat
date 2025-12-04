@@ -35,3 +35,5 @@ pub trait AIProvider: Send + Sync {
 pub mod anthropic;
 pub mod google;
 pub mod openai;
+pub mod openrouter;
+pub mod routellm;

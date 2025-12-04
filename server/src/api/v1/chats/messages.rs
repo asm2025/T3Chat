@@ -1,7 +1,7 @@
 use super::MessageResponse;
 use crate::{
-    db::prelude::*, db::repositories::chat_repository::TChatRepository,
-    middleware::auth::AuthenticatedUser, AppState,
+    AppState, db::prelude::*, db::repositories::chat_repository::TChatRepository,
+    middleware::auth::AuthenticatedUser,
 };
 use axum::{
     extract::{Path, State},

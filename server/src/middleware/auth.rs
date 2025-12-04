@@ -5,14 +5,14 @@ use crate::{
 use axum::{
     body::Body,
     extract::{FromRequestParts, State},
-    http::{request::Parts, Method, Request, StatusCode},
+    http::{Method, Request, StatusCode, request::Parts},
     middleware::Next,
     response::Response,
 };
 use std::{future::Future, sync::Arc};
 
-use crate::auth::SessionManager;
 use crate::AppState;
+use crate::auth::SessionManager;
 
 #[derive(Clone)]
 pub struct AuthenticatedUser(pub UserModel);

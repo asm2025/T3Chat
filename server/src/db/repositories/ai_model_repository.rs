@@ -5,7 +5,7 @@ use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
 use crate::db::models::{AiModelModel, AiProvider, NewAiModel, UpdateAiModel};
-use crate::db::{schema::ai_models, DbPool};
+use crate::db::{DbPool, schema::ai_models};
 
 #[async_trait]
 pub trait TAiModelRepository: Send + Sync {

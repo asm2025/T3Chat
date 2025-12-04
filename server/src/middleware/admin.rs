@@ -2,8 +2,8 @@ use axum::extract::Request;
 use axum::{extract::State, http::StatusCode, middleware::Next, response::Response};
 use tracing::warn;
 
-use crate::middleware::auth::AuthenticatedUser;
 use crate::AppState;
+use crate::middleware::auth::AuthenticatedUser;
 
 pub async fn admin_middleware(
     State(state): State<AppState>,

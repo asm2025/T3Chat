@@ -1,38 +1,33 @@
-import { useState, useCallback } from 'react';
-import { t3ChatClient } from '@/lib/t3-chat-client';
-import { toast } from '@/lib/toast';
-import { getErrorMessage } from '@/lib/utils';
-import type { ChatRequest } from '@/types/api';
+import { useState, useCallback } from "react";
+import { t3ChatClient } from "@/lib/t3-chat-client";
+import { toast } from "@/lib/toast";
+import { getErrorMessage } from "@/lib/utils";
+import type { ChatRequest } from "@/types/api";
 
 export function useStreamingChat() {
-  const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+    const [streaming, setStreaming] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
 
-  const sendMessage = useCallback(async (
-    request: ChatRequest,
-    onChunk: (chunk: string) => void,
-    onComplete: () => void
-  ) => {
-    try {
-      setStreaming(true);
-      setError(null);
+    const sendMessage = useCallback(async (request: ChatRequest, onChunk: (chunk: string) => void, onComplete: () => void) => {
+        try {
+            setStreaming(true);
+            setError(null);
 
-      for await (const chunk of t3ChatClient.streamChat(request)) {
-        onChunk(chunk);
-      }
+            for await (const chunk of t3ChatClient.streamChat(request)) {
+                onChunk(chunk);
+            }
 
-      onComplete();
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(getErrorMessage(err));
-      setError(error);
-      toast.error("Failed to send message", {
-        description: getErrorMessage(err),
-      });
-    } finally {
-      setStreaming(false);
-    }
-  }, []);
+            onComplete();
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error(getErrorMessage(err));
+            setError(error);
+            toast.error("Failed to send message", {
+                description: getErrorMessage(err),
+            });
+        } finally {
+            setStreaming(false);
+        }
+    }, []);
 
-  return { sendMessage, streaming, error };
+    return { sendMessage, streaming, error };
 }
-

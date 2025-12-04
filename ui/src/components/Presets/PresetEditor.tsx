@@ -13,7 +13,7 @@ import { EndpointSelector } from "@/components/Endpoints/EndpointSelector";
 import { EndpointSettings } from "@/components/Endpoints/EndpointSettings";
 import { ModelSelector } from "@/components/model/ModelSelector";
 import { usePresets, useModels } from "@/stores/appStore";
-import { librechatClient } from "@/lib/librechat-client";
+import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "sonner";
 import type { EndpointOption, Endpoint } from "@/types/librechat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -96,7 +96,7 @@ export function PresetEditor({ open, onOpenChange, presetId }: PresetEditorProps
         try {
             if (isEditMode && presetId) {
                 // Update existing preset
-                const updated = await librechatClient.presets.update(presetId, {
+                const updated = await t3ChatClient.presets.update(presetId, {
                     title,
                     isDefault,
                     endpoint: endpointOptions.endpoint,
@@ -110,7 +110,7 @@ export function PresetEditor({ open, onOpenChange, presetId }: PresetEditorProps
                 toast.success("Preset updated successfully");
             } else {
                 // Create new preset
-                const created = await librechatClient.presets.create({
+                const created = await t3ChatClient.presets.create({
                     title,
                     isDefault,
                     endpoint: endpointOptions.endpoint,

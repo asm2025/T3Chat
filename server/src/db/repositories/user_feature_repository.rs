@@ -7,7 +7,7 @@ use crate::db::models::{
     CreateUserFeatureDto, Feature, NewUserFeature, UpdateUserFeature, UpdateUserFeatureDto,
     UserFeatureModel,
 };
-use crate::db::{schema::user_features, DbPool};
+use crate::db::{DbPool, schema::user_features};
 
 #[async_trait]
 pub trait TUserFeatureRepository: Send + Sync {

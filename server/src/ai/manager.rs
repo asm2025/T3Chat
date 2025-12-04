@@ -1,5 +1,5 @@
 use crate::ai::providers::{
-    anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider, AIProvider,
+    AIProvider, anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider,
 };
 use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 use crate::db::models::AiProvider;

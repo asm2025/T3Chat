@@ -1,40 +1,37 @@
 # React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the T3Chat frontend, built with React, TypeScript, Vite, Tailwind CSS, and ShadCN components.
 
 ## Authentication
 
-This app uses OIDC (OpenID Connect) for authentication. Authentication is handled by the backend server, which verifies OIDC tokens via JWKS.
+The UI supports two authentication flows, both handled by the Rust backend:
 
-## Environment Variables
+-   **Local authentication (primary)** – username/email + password login against the T3Chat database.
+-   **OIDC (OpenID Connect, optional)** – “Sign in with Microsoft/identity provider” when OIDC is configured.
 
-The frontend reads environment variables from `.env` files. See [`variables.md`](../variables.md) for a complete reference of all environment variables.
+The backend verifies local credentials using bcrypt and verifies OIDC tokens via JWKS. The login screen will only show the OIDC option if the server reports that OIDC is enabled.
 
-### Available Variables
+## API Base URL
 
--   `VITE_API_URL` – Backend API base URL (optional, defaults to `http://localhost:3000`)
+The frontend talks to the backend through a single base URL exposed as `import.meta.env.VITE_API_URL`. In this project, that value is set via **Vite CLI flags** rather than `.env` files.
 
-**Note**: Only variables prefixed with `VITE_` are exposed to the frontend code.
+-   **Local development (recommended)**:
 
-### Environment Modes
+    ```bash
+    cd ui
+    pnpm dev -- --api-url http://localhost:3000
+    ```
 
--   Place frontend configuration in `.env.development`, `.env.staging`, and `.env.release`
--   Vite automatically loads `.env.<mode>`; the dev script passes `--mode <APP_ENV>` so the selected backend environment stays in sync
--   For manual runs use `pnpm run dev -- --mode staging` or `pnpm run build -- --mode release`
+    This starts the UI on `http://localhost:3010` (by default) and points all API calls at `http://localhost:3000/api`.
 
-### Example Configuration
+-   **Production build**:
 
-**Development (`ui/.env.development`):**
-```bash
-VITE_API_URL=http://localhost:3000
-```
+    ```bash
+    cd ui
+    pnpm run build -- --api-url https://api.example.com
+    ```
 
-**Production (`ui/.env.release`):**
-```bash
-VITE_API_URL=https://api.example.com
-```
-
-📖 **For complete environment variable documentation**, see [`variables.md`](../variables.md)
+See [`variables.md`](../variables.md) and the root `README.md` for more details about backend environment variables and deployment.
 
 ## Expanding the ESLint configuration
 

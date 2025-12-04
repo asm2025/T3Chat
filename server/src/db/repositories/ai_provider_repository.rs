@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::db::dto::{Pagination, ResultSet};
 use crate::db::models::ai_provider::{AiProvider, NewAiProvider, UpdateAiProvider};
-use crate::db::{schema::ai_providers, DbPool};
+use crate::db::{DbPool, schema::ai_providers};
 
 #[async_trait]
 pub trait TAiProviderRepository: Send + Sync {
