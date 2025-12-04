@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -9,6 +10,15 @@ use crate::db::{
     schema::files,
 };
 
+#[async_trait]
+pub trait TFileRepository: Send + Sync {
+    async fn create(&self, new_file: NewFile) -> Result<File>;
+    async fn get(&self, id: Uuid) -> Result<Option<File>>;
+    async fn list(&self, user_id: &str) -> Result<Vec<File>>;
+    async fn update(&self, id: Uuid, update: UpdateFile) -> Result<File>;
+    async fn delete(&self, id: Uuid) -> Result<bool>;
+}
+
 pub struct FileRepository {
     pool: DbPool,
 }
@@ -17,9 +27,12 @@ impl FileRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+}
 
+#[async_trait]
+impl TFileRepository for FileRepository {
     /// Create a new file
-    pub async fn create(&self, new_file: NewFile) -> Result<File> {
+    async fn create(&self, new_file: NewFile) -> Result<File> {
         let mut conn = self
             .pool
             .get()
@@ -34,7 +47,7 @@ impl FileRepository {
     }
 
     /// Get file by ID
-    pub async fn get_by_id(&self, id: Uuid) -> Result<Option<File>> {
+    async fn get(&self, id: Uuid) -> Result<Option<File>> {
         let mut conn = self
             .pool
             .get()
@@ -50,7 +63,7 @@ impl FileRepository {
     }
 
     /// List files by user
-    pub async fn list_by_user(&self, user_id: &str) -> Result<Vec<File>> {
+    async fn list(&self, user_id: &str) -> Result<Vec<File>> {
         let mut conn = self
             .pool
             .get()
@@ -66,7 +79,7 @@ impl FileRepository {
     }
 
     /// Update file
-    pub async fn update(&self, id: Uuid, update: UpdateFile) -> Result<File> {
+    async fn update(&self, id: Uuid, update: UpdateFile) -> Result<File> {
         let mut conn = self
             .pool
             .get()
@@ -82,7 +95,7 @@ impl FileRepository {
     }
 
     /// Delete file
-    pub async fn delete(&self, id: Uuid) -> Result<bool> {
+    async fn delete(&self, id: Uuid) -> Result<bool> {
         let mut conn = self
             .pool
             .get()

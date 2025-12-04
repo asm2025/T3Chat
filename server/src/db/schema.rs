@@ -85,7 +85,7 @@ diesel::table! {
 diesel::table! {
     ai_models (id) {
         id -> Uuid,
-        provider -> Text,
+        // provider -> Text, // REMOVED
         model_id -> Text,
         display_name -> Text,
         description -> Nullable<Text>,

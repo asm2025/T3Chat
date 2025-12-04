@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -9,6 +10,15 @@ use crate::db::{
     schema::presets,
 };
 
+#[async_trait]
+pub trait TPresetRepository: Send + Sync {
+    async fn create(&self, new_preset: NewPreset) -> Result<Preset>;
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Preset>>;
+    async fn list(&self, user_id: &str) -> Result<Vec<Preset>>;
+    async fn update(&self, id: Uuid, user_id: &str, update: UpdatePreset) -> Result<Preset>;
+    async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool>;
+}
+
 pub struct PresetRepository {
     pool: DbPool,
 }
@@ -17,9 +27,12 @@ impl PresetRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+}
 
+#[async_trait]
+impl TPresetRepository for PresetRepository {
     /// Create a new preset
-    pub async fn create(&self, new_preset: NewPreset) -> Result<Preset> {
+    async fn create(&self, new_preset: NewPreset) -> Result<Preset> {
         let mut conn = self
             .pool
             .get()
@@ -34,7 +47,7 @@ impl PresetRepository {
     }
 
     /// Get preset by ID
-    pub async fn get_by_id(&self, id: Uuid, user_id: &str) -> Result<Option<Preset>> {
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Preset>> {
         let mut conn = self
             .pool
             .get()
@@ -51,7 +64,7 @@ impl PresetRepository {
     }
 
     /// List presets for a user
-    pub async fn list_by_user(&self, user_id: &str) -> Result<Vec<Preset>> {
+    async fn list(&self, user_id: &str) -> Result<Vec<Preset>> {
         let mut conn = self
             .pool
             .get()
@@ -67,7 +80,7 @@ impl PresetRepository {
     }
 
     /// Update preset
-    pub async fn update(&self, id: Uuid, user_id: &str, update: UpdatePreset) -> Result<Preset> {
+    async fn update(&self, id: Uuid, user_id: &str, update: UpdatePreset) -> Result<Preset> {
         let mut conn = self
             .pool
             .get()
@@ -84,7 +97,7 @@ impl PresetRepository {
     }
 
     /// Delete preset
-    pub async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
+    async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
         let mut conn = self
             .pool
             .get()

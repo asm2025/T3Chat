@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -9,6 +10,23 @@ use crate::db::{
     schema::{actions, tools},
 };
 
+#[async_trait]
+pub trait TToolRepository: Send + Sync {
+    // Tool methods
+    async fn create(&self, new_tool: NewTool) -> Result<Tool>;
+    async fn get(&self, id: Uuid) -> Result<Option<Tool>>;
+    async fn list_active(&self) -> Result<Vec<Tool>>;
+    async fn update(&self, id: Uuid, update: UpdateTool) -> Result<Tool>;
+    async fn delete(&self, id: Uuid) -> Result<bool>;
+
+    // Action methods
+    async fn create_action(&self, new_action: NewAction) -> Result<Action>;
+    async fn get_action(&self, id: Uuid) -> Result<Option<Action>>;
+    async fn list_actions(&self, user_id: &str) -> Result<Vec<Action>>;
+    async fn update_action(&self, id: Uuid, update: UpdateAction) -> Result<Action>;
+    async fn delete_action(&self, id: Uuid) -> Result<bool>;
+}
+
 pub struct ToolRepository {
     pool: DbPool,
 }
@@ -17,13 +35,16 @@ impl ToolRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+}
 
+#[async_trait]
+impl TToolRepository for ToolRepository {
     // ==========================================
     // TOOL OPERATIONS
     // ==========================================
 
     /// Create a new tool
-    pub async fn create_tool(&self, new_tool: NewTool) -> Result<Tool> {
+    async fn create(&self, new_tool: NewTool) -> Result<Tool> {
         let mut conn = self
             .pool
             .get()
@@ -38,7 +59,7 @@ impl ToolRepository {
     }
 
     /// Get tool by ID
-    pub async fn get_tool_by_id(&self, id: Uuid) -> Result<Option<Tool>> {
+    async fn get(&self, id: Uuid) -> Result<Option<Tool>> {
         let mut conn = self
             .pool
             .get()
@@ -54,7 +75,7 @@ impl ToolRepository {
     }
 
     /// List all active tools
-    pub async fn list_active_tools(&self) -> Result<Vec<Tool>> {
+    async fn list_active(&self) -> Result<Vec<Tool>> {
         let mut conn = self
             .pool
             .get()
@@ -70,7 +91,7 @@ impl ToolRepository {
     }
 
     /// Update tool
-    pub async fn update_tool(&self, id: Uuid, update: UpdateTool) -> Result<Tool> {
+    async fn update(&self, id: Uuid, update: UpdateTool) -> Result<Tool> {
         let mut conn = self
             .pool
             .get()
@@ -86,7 +107,7 @@ impl ToolRepository {
     }
 
     /// Delete tool
-    pub async fn delete_tool(&self, id: Uuid) -> Result<bool> {
+    async fn delete(&self, id: Uuid) -> Result<bool> {
         let mut conn = self
             .pool
             .get()
@@ -108,7 +129,7 @@ impl ToolRepository {
     // ==========================================
 
     /// Create a new action
-    pub async fn create_action(&self, new_action: NewAction) -> Result<Action> {
+    async fn create_action(&self, new_action: NewAction) -> Result<Action> {
         let mut conn = self
             .pool
             .get()
@@ -123,7 +144,7 @@ impl ToolRepository {
     }
 
     /// Get action by ID
-    pub async fn get_action_by_id(&self, id: Uuid) -> Result<Option<Action>> {
+    async fn get_action(&self, id: Uuid) -> Result<Option<Action>> {
         let mut conn = self
             .pool
             .get()
@@ -139,7 +160,7 @@ impl ToolRepository {
     }
 
     /// List actions by user
-    pub async fn list_actions_by_user(&self, user_id: &str) -> Result<Vec<Action>> {
+    async fn list_actions(&self, user_id: &str) -> Result<Vec<Action>> {
         let mut conn = self
             .pool
             .get()
@@ -155,7 +176,7 @@ impl ToolRepository {
     }
 
     /// Update action
-    pub async fn update_action(&self, id: Uuid, update: UpdateAction) -> Result<Action> {
+    async fn update_action(&self, id: Uuid, update: UpdateAction) -> Result<Action> {
         let mut conn = self
             .pool
             .get()
@@ -171,7 +192,7 @@ impl ToolRepository {
     }
 
     /// Delete action
-    pub async fn delete_action(&self, id: Uuid) -> Result<bool> {
+    async fn delete_action(&self, id: Uuid) -> Result<bool> {
         let mut conn = self
             .pool
             .get()

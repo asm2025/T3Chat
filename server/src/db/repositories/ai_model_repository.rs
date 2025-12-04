@@ -5,26 +5,29 @@ use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
 use crate::db::models::{AiModelModel, AiProvider, NewAiModel, UpdateAiModel};
-use crate::db::{DbPool, schema::ai_models};
+use crate::db::{
+    DbPool,
+    schema::{ai_models, ai_providers},
+};
 
 #[async_trait]
 pub trait TAiModelRepository: Send + Sync {
-    async fn list_active(&self) -> Result<Vec<AiModelModel>>;
-    async fn list(&self) -> Result<Vec<AiModelModel>>;
+    async fn list_active(&self) -> Result<Vec<(AiModelModel, String)>>;
+    async fn list(&self) -> Result<Vec<(AiModelModel, String)>>;
     async fn get_by_provider_and_model_id(
         &self,
         provider: &AiProvider,
         model_id: &str,
-    ) -> Result<Option<AiModelModel>>;
-    async fn get(&self, id: Uuid) -> Result<Option<AiModelModel>>;
-    async fn create(&self, model: NewAiModel) -> Result<AiModelModel>;
-    async fn update(&self, id: Uuid, model: UpdateAiModel) -> Result<AiModelModel>;
+    ) -> Result<Option<(AiModelModel, String)>>;
+    async fn get(&self, id: Uuid) -> Result<Option<(AiModelModel, String)>>;
+    async fn create(&self, model: NewAiModel) -> Result<(AiModelModel, String)>;
+    async fn update(&self, id: Uuid, model: UpdateAiModel) -> Result<(AiModelModel, String)>;
     async fn delete(&self, id: Uuid) -> Result<()>;
     async fn enable(&self, id: Uuid) -> Result<()>;
     async fn disable(&self, id: Uuid) -> Result<()>;
     async fn enable_for_user(&self, user_id: &str, model_id: Uuid) -> Result<()>;
     async fn disable_for_user(&self, user_id: &str, model_id: Uuid) -> Result<()>;
-    async fn list_for_user(&self, user_id: &str) -> Result<Vec<AiModelModel>>;
+    async fn list_for_user(&self, user_id: &str) -> Result<Vec<(AiModelModel, String)>>;
 }
 
 pub struct AiModelRepository {
@@ -39,7 +42,7 @@ impl AiModelRepository {
 
 #[async_trait]
 impl TAiModelRepository for AiModelRepository {
-    async fn list_active(&self) -> Result<Vec<AiModelModel>> {
+    async fn list_active(&self) -> Result<Vec<(AiModelModel, String)>> {
         let mut conn = self
             .pool
             .get()
@@ -47,13 +50,15 @@ impl TAiModelRepository for AiModelRepository {
             .map_err(|e| Error::from_std_error(e))?;
 
         ai_models::table
+            .inner_join(ai_providers::table)
             .filter(ai_models::is_active.eq(true))
-            .load::<AiModelModel>(&mut conn)
+            .select((AiModelModel::as_select(), ai_providers::provider_id))
+            .load::<(AiModelModel, String)>(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
 
-    async fn list(&self) -> Result<Vec<AiModelModel>> {
+    async fn list(&self) -> Result<Vec<(AiModelModel, String)>> {
         let mut conn = self
             .pool
             .get()
@@ -61,7 +66,9 @@ impl TAiModelRepository for AiModelRepository {
             .map_err(|e| Error::from_std_error(e))?;
 
         ai_models::table
-            .load::<AiModelModel>(&mut conn)
+            .inner_join(ai_providers::table)
+            .select((AiModelModel::as_select(), ai_providers::provider_id))
+            .load::<(AiModelModel, String)>(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }
@@ -70,7 +77,7 @@ impl TAiModelRepository for AiModelRepository {
         &self,
         provider: &AiProvider,
         model_id: &str,
-    ) -> Result<Option<AiModelModel>> {
+    ) -> Result<Option<(AiModelModel, String)>> {
         let mut conn = self
             .pool
             .get()
@@ -78,15 +85,17 @@ impl TAiModelRepository for AiModelRepository {
             .map_err(|e| Error::from_std_error(e))?;
 
         ai_models::table
-            .filter(ai_models::provider.eq(provider))
+            .inner_join(ai_providers::table)
+            .filter(ai_providers::provider_id.eq(provider.as_str()))
             .filter(ai_models::model_id.eq(model_id))
-            .first::<AiModelModel>(&mut conn)
+            .select((AiModelModel::as_select(), ai_providers::provider_id))
+            .first::<(AiModelModel, String)>(&mut conn)
             .await
             .optional()
             .map_err(Error::from_std_error)
     }
 
-    async fn get(&self, id: Uuid) -> Result<Option<AiModelModel>> {
+    async fn get(&self, id: Uuid) -> Result<Option<(AiModelModel, String)>> {
         let mut conn = self
             .pool
             .get()
@@ -95,27 +104,43 @@ impl TAiModelRepository for AiModelRepository {
 
         ai_models::table
             .find(id)
-            .first::<AiModelModel>(&mut conn)
+            .inner_join(ai_providers::table)
+            .select((AiModelModel::as_select(), ai_providers::provider_id))
+            .first::<(AiModelModel, String)>(&mut conn)
             .await
             .optional()
             .map_err(Error::from_std_error)
     }
 
-    async fn create(&self, model: NewAiModel) -> Result<AiModelModel> {
+    async fn create(&self, model: NewAiModel) -> Result<(AiModelModel, String)> {
         let mut conn = self
             .pool
             .get()
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        diesel::insert_into(ai_models::table)
+        let created: AiModelModel = diesel::insert_into(ai_models::table)
             .values(&model)
+            .returning(AiModelModel::as_select())
             .get_result(&mut conn)
             .await
-            .map_err(Error::from_std_error)
+            .map_err(Error::from_std_error)?;
+
+        let provider_name = ai_providers::table
+            .find(
+                created
+                    .provider_id
+                    .ok_or_else(|| Error::Missing("Provider ID required".into()))?,
+            )
+            .select(ai_providers::provider_id)
+            .first::<String>(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok((created, provider_name))
     }
 
-    async fn update(&self, id: Uuid, model: UpdateAiModel) -> Result<AiModelModel> {
+    async fn update(&self, id: Uuid, model: UpdateAiModel) -> Result<(AiModelModel, String)> {
         let mut conn = self
             .pool
             .get()
@@ -131,11 +156,25 @@ impl TAiModelRepository for AiModelRepository {
             .map_err(Error::from_std_error)?
             .ok_or_else(|| Error::NotFound("Model not found".to_string()))?;
 
-        diesel::update(ai_models::table.find(&id))
+        let updated: AiModelModel = diesel::update(ai_models::table.find(&id))
             .set(&model)
+            .returning(AiModelModel::as_select())
             .get_result(&mut conn)
             .await
-            .map_err(Error::from_std_error)
+            .map_err(Error::from_std_error)?;
+
+        let provider_name = ai_providers::table
+            .find(
+                updated
+                    .provider_id
+                    .ok_or_else(|| Error::Missing("Provider ID required".into()))?,
+            )
+            .select(ai_providers::provider_id)
+            .first::<String>(&mut conn)
+            .await
+            .map_err(Error::from_std_error)?;
+
+        Ok((updated, provider_name))
     }
 
     async fn delete(&self, id: Uuid) -> Result<()> {
@@ -230,7 +269,7 @@ impl TAiModelRepository for AiModelRepository {
         Ok(())
     }
 
-    async fn list_for_user(&self, _user_id: &str) -> Result<Vec<AiModelModel>> {
+    async fn list_for_user(&self, _user_id: &str) -> Result<Vec<(AiModelModel, String)>> {
         let mut conn = self
             .pool
             .get()
@@ -241,8 +280,10 @@ impl TAiModelRepository for AiModelRepository {
         // For now, return all active models
         // This will be updated when the user_models migration is created
         ai_models::table
+            .inner_join(ai_providers::table)
             .filter(ai_models::is_active.eq(true))
-            .load::<AiModelModel>(&mut conn)
+            .select((AiModelModel::as_select(), ai_providers::provider_id))
+            .load::<(AiModelModel, String)>(&mut conn)
             .await
             .map_err(Error::from_std_error)
     }

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
@@ -13,6 +14,27 @@ use crate::db::{
     schema::{conversations, messages},
 };
 
+#[async_trait]
+pub trait TConversationRepository: Send + Sync {
+    // Conversation methods
+    async fn create(&self, new_conversation: NewConversation) -> Result<Conversation>;
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Conversation>>;
+    async fn get_by_conversation_id(&self, conversation_id: &str, user_id: &str) -> Result<Option<Conversation>>;
+    async fn list(&self, user_id: &str, include_archived: bool) -> Result<Vec<Conversation>>;
+    async fn update(&self, id: Uuid, user_id: &str, update: UpdateConversation) -> Result<Conversation>;
+    async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool>;
+    async fn archive(&self, id: Uuid, user_id: &str) -> Result<Conversation>;
+    async fn unarchive(&self, id: Uuid, user_id: &str) -> Result<Conversation>;
+
+    // Message methods
+    async fn create_message(&self, new_message: NewMessage) -> Result<Message>;
+    async fn get_message(&self, id: Uuid) -> Result<Option<Message>>;
+    async fn list_messages(&self, conversation_id: Uuid) -> Result<Vec<Message>>;
+    async fn update_message(&self, id: Uuid, update: UpdateMessage) -> Result<Message>;
+    async fn delete_message(&self, id: Uuid) -> Result<bool>;
+    async fn delete_all_messages(&self, conversation_id: Uuid) -> Result<usize>;
+}
+
 pub struct ConversationRepository {
     pool: DbPool,
 }
@@ -21,9 +43,12 @@ impl ConversationRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+}
 
+#[async_trait]
+impl TConversationRepository for ConversationRepository {
     /// Create a new conversation
-    pub async fn create(&self, new_conversation: NewConversation) -> Result<Conversation> {
+    async fn create(&self, new_conversation: NewConversation) -> Result<Conversation> {
         let mut conn = self
             .pool
             .get()
@@ -38,7 +63,7 @@ impl ConversationRepository {
     }
 
     /// Get conversation by ID
-    pub async fn get_by_id(&self, id: Uuid, user_id: &str) -> Result<Option<Conversation>> {
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Conversation>> {
         let mut conn = self
             .pool
             .get()
@@ -55,7 +80,7 @@ impl ConversationRepository {
     }
 
     /// Get conversation by conversation_id
-    pub async fn get_by_conversation_id(
+    async fn get_by_conversation_id(
         &self,
         conversation_id: &str,
         user_id: &str,
@@ -76,7 +101,7 @@ impl ConversationRepository {
     }
 
     /// List conversations for a user
-    pub async fn list_by_user(
+    async fn list(
         &self,
         user_id: &str,
         include_archived: bool,
@@ -107,7 +132,7 @@ impl ConversationRepository {
     }
 
     /// Update conversation
-    pub async fn update(
+    async fn update(
         &self,
         id: Uuid,
         user_id: &str,
@@ -129,7 +154,7 @@ impl ConversationRepository {
     }
 
     /// Delete conversation
-    pub async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
+    async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
         let mut conn = self
             .pool
             .get()
@@ -147,7 +172,7 @@ impl ConversationRepository {
     }
 
     /// Archive conversation
-    pub async fn archive(&self, id: Uuid, user_id: &str) -> Result<Conversation> {
+    async fn archive(&self, id: Uuid, user_id: &str) -> Result<Conversation> {
         let update = UpdateConversation {
             is_archived: Some(true),
             updated_at: Utc::now(),
@@ -157,7 +182,7 @@ impl ConversationRepository {
     }
 
     /// Unarchive conversation
-    pub async fn unarchive(&self, id: Uuid, user_id: &str) -> Result<Conversation> {
+    async fn unarchive(&self, id: Uuid, user_id: &str) -> Result<Conversation> {
         let update = UpdateConversation {
             is_archived: Some(false),
             updated_at: Utc::now(),
@@ -171,7 +196,7 @@ impl ConversationRepository {
     // ==========================================
 
     /// Create a new message
-    pub async fn create_message(&self, new_message: NewMessage) -> Result<Message> {
+    async fn create_message(&self, new_message: NewMessage) -> Result<Message> {
         let mut conn = self
             .pool
             .get()
@@ -186,7 +211,7 @@ impl ConversationRepository {
     }
 
     /// Get message by ID
-    pub async fn get_message_by_id(&self, id: Uuid) -> Result<Option<Message>> {
+    async fn get_message(&self, id: Uuid) -> Result<Option<Message>> {
         let mut conn = self
             .pool
             .get()
@@ -202,7 +227,7 @@ impl ConversationRepository {
     }
 
     /// List messages for a conversation
-    pub async fn list_messages(&self, conversation_id: Uuid) -> Result<Vec<Message>> {
+    async fn list_messages(&self, conversation_id: Uuid) -> Result<Vec<Message>> {
         let mut conn = self
             .pool
             .get()
@@ -218,7 +243,7 @@ impl ConversationRepository {
     }
 
     /// Update message
-    pub async fn update_message(&self, id: Uuid, update: UpdateMessage) -> Result<Message> {
+    async fn update_message(&self, id: Uuid, update: UpdateMessage) -> Result<Message> {
         let mut conn = self
             .pool
             .get()
@@ -234,7 +259,7 @@ impl ConversationRepository {
     }
 
     /// Delete message
-    pub async fn delete_message(&self, id: Uuid) -> Result<bool> {
+    async fn delete_message(&self, id: Uuid) -> Result<bool> {
         let mut conn = self
             .pool
             .get()
@@ -251,7 +276,7 @@ impl ConversationRepository {
     }
 
     /// Delete all messages in a conversation
-    pub async fn delete_all_messages(&self, conversation_id: Uuid) -> Result<usize> {
+    async fn delete_all_messages(&self, conversation_id: Uuid) -> Result<usize> {
         let mut conn = self
             .pool
             .get()

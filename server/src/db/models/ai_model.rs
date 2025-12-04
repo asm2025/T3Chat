@@ -13,7 +13,7 @@ use crate::db::schema::ai_models;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct AiModel {
     pub id: Uuid,
-    pub provider: String, // openai, anthropic, google, custom
+    // pub provider: String, // REMOVED: Normalized into ai_providers table
     pub model_id: String, // gpt-4-turbo, claude-3-opus, gemini-pro, etc.
     pub display_name: String,
     pub description: Option<String>,
@@ -52,7 +52,7 @@ pub struct AiModel {
 pub struct NewAiModel {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<Uuid>,
-    pub provider: String,
+    // pub provider: String, // REMOVED
     pub model_id: String,
     pub display_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,7 +133,7 @@ impl AiModel {
     }
 
     /// Get full model identifier
-    pub fn full_identifier(&self) -> String {
-        format!("{}:{}", self.provider, self.model_id)
+    pub fn full_identifier(&self, provider_name: &str) -> String {
+        format!("{}:{}", provider_name, self.model_id)
     }
 }

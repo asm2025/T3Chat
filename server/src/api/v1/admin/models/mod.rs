@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::AppState;
 use crate::db::models::ai_model::AiModel;
-use crate::db::repositories::TAiModelRepository;
+use crate::db::repositories::{TAiModelRepository, TAiProviderRepository};
 use crate::middleware::auth::AuthenticatedUser;
 
 #[derive(Debug, Deserialize)]
@@ -55,11 +55,11 @@ pub struct ModelResponse {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-impl From<AiModel> for ModelResponse {
-    fn from(model: AiModel) -> Self {
+impl From<(AiModel, String)> for ModelResponse {
+    fn from((model, provider_name): (AiModel, String)) -> Self {
         Self {
             id: model.id,
-            provider: model.provider,
+            provider: provider_name,
             model_id: model.model_id,
             display_name: model.display_name,
             description: model.description,
@@ -176,9 +176,21 @@ pub async fn create_model(
 ) -> Result<Json<ModelResponse>, StatusCode> {
     use crate::db::models::ai_model::NewAiModel;
 
+    let provider_id = if let Some(id) = req.provider_id {
+        id
+    } else {
+        let provider = state
+            .ai_provider_repository
+            .get_by_provider_id(&req.provider)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::BAD_REQUEST)?;
+        provider.id
+    };
+
     let new_model = NewAiModel {
         id: None,
-        provider: req.provider,
+        // provider: req.provider, // REMOVED
         model_id: req.model_id,
         display_name: req.display_name,
         description: req.description,
@@ -190,7 +202,7 @@ pub async fn create_model(
         supports_vision: req.supports_vision,
         cost_per_input_token: req.cost_per_input_token,
         cost_per_output_token: req.cost_per_output_token,
-        provider_id: req.provider_id,
+        provider_id: Some(provider_id),
         disabled: req.disabled.unwrap_or(false),
         is_paid: req.is_paid.unwrap_or(true),
     };

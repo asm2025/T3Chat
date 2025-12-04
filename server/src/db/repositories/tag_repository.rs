@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -9,6 +10,17 @@ use crate::db::{
     schema::{conversation_tags_map, tags},
 };
 
+#[async_trait]
+pub trait TTagRepository: Send + Sync {
+    async fn create(&self, new_tag: NewTag) -> Result<Tag>;
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Tag>>;
+    async fn list(&self, user_id: &str) -> Result<Vec<Tag>>;
+    async fn update(&self, id: Uuid, user_id: &str, update: UpdateTag) -> Result<Tag>;
+    async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool>;
+    async fn add_to_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<()>;
+    async fn remove_from_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<bool>;
+}
+
 pub struct TagRepository {
     pool: DbPool,
 }
@@ -17,9 +29,12 @@ impl TagRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+}
 
+#[async_trait]
+impl TTagRepository for TagRepository {
     /// Create a new tag
-    pub async fn create(&self, new_tag: NewTag) -> Result<Tag> {
+    async fn create(&self, new_tag: NewTag) -> Result<Tag> {
         let mut conn = self
             .pool
             .get()
@@ -34,7 +49,7 @@ impl TagRepository {
     }
 
     /// Get tag by ID
-    pub async fn get_by_id(&self, id: Uuid, user_id: &str) -> Result<Option<Tag>> {
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Tag>> {
         let mut conn = self
             .pool
             .get()
@@ -51,7 +66,7 @@ impl TagRepository {
     }
 
     /// List tags for a user
-    pub async fn list_by_user(&self, user_id: &str) -> Result<Vec<Tag>> {
+    async fn list(&self, user_id: &str) -> Result<Vec<Tag>> {
         let mut conn = self
             .pool
             .get()
@@ -67,7 +82,7 @@ impl TagRepository {
     }
 
     /// Update tag
-    pub async fn update(&self, id: Uuid, user_id: &str, update: UpdateTag) -> Result<Tag> {
+    async fn update(&self, id: Uuid, user_id: &str, update: UpdateTag) -> Result<Tag> {
         let mut conn = self
             .pool
             .get()
@@ -84,7 +99,7 @@ impl TagRepository {
     }
 
     /// Delete tag
-    pub async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
+    async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool> {
         let mut conn = self
             .pool
             .get()
@@ -102,7 +117,7 @@ impl TagRepository {
     }
 
     /// Add tag to conversation
-    pub async fn add_to_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<()> {
+    async fn add_to_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<()> {
         let mut conn = self
             .pool
             .get()
@@ -124,7 +139,7 @@ impl TagRepository {
     }
 
     /// Remove tag from conversation
-    pub async fn remove_from_conversation(
+    async fn remove_from_conversation(
         &self,
         conversation_id: Uuid,
         tag_id: Uuid,

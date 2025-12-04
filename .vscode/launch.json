@@ -18,7 +18,10 @@
                 "RUST_BACKTRACE": "1",
                 "RUST_MIN_STACK": "8388608"
             },
-            "sourceLanguages": ["rust"]
+            "sourceLanguages": ["rust"],
+            "sourceMap": {
+                "/rustc/*": null
+            }
         },
         {
             "type": "lldb",
@@ -30,7 +33,10 @@
             "env": {
                 "RUST_BACKTRACE": "1"
             },
-            "stopOnEntry": false
+            "stopOnEntry": false,
+            "sourceMap": {
+                "/rustc/*": null
+            }
         }
     ]
 }

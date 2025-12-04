@@ -28,11 +28,11 @@ pub struct ModelResponse {
     pub updated_at: String,
 }
 
-impl From<AiModelModel> for ModelResponse {
-    fn from(model: AiModelModel) -> Self {
+impl From<(AiModelModel, String)> for ModelResponse {
+    fn from((model, provider_name): (AiModelModel, String)) -> Self {
         Self {
             id: model.id,
-            provider: model.provider,
+            provider: provider_name,
             model_id: model.model_id,
             display_name: model.display_name,
             description: model.description,

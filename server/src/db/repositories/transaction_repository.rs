@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use async_trait::async_trait;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -9,6 +10,19 @@ use crate::db::{
     schema::{balances, transactions},
 };
 
+#[async_trait]
+pub trait TTransactionRepository: Send + Sync {
+    // Transaction methods
+    async fn create(&self, new_transaction: NewTransaction) -> Result<Transaction>;
+    async fn get(&self, id: Uuid) -> Result<Option<Transaction>>;
+    async fn list(&self, user_id: &str, limit: i64) -> Result<Vec<Transaction>>;
+
+    // Balance methods
+    async fn create_balance(&self, new_balance: NewBalance) -> Result<Balance>;
+    async fn get_balance(&self, user_id: &str) -> Result<Option<Balance>>;
+    async fn update_balance(&self, user_id: &str, update: UpdateBalance) -> Result<Balance>;
+}
+
 pub struct TransactionRepository {
     pool: DbPool,
 }
@@ -17,13 +31,16 @@ impl TransactionRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+}
 
+#[async_trait]
+impl TTransactionRepository for TransactionRepository {
     // ==========================================
     // TRANSACTION OPERATIONS
     // ==========================================
 
     /// Create a new transaction
-    pub async fn create_transaction(&self, new_transaction: NewTransaction) -> Result<Transaction> {
+    async fn create(&self, new_transaction: NewTransaction) -> Result<Transaction> {
         let mut conn = self
             .pool
             .get()
@@ -38,7 +55,7 @@ impl TransactionRepository {
     }
 
     /// Get transaction by ID
-    pub async fn get_transaction_by_id(&self, id: Uuid) -> Result<Option<Transaction>> {
+    async fn get(&self, id: Uuid) -> Result<Option<Transaction>> {
         let mut conn = self
             .pool
             .get()
@@ -54,7 +71,7 @@ impl TransactionRepository {
     }
 
     /// List transactions by user
-    pub async fn list_transactions_by_user(
+    async fn list(
         &self,
         user_id: &str,
         limit: i64,
@@ -79,7 +96,7 @@ impl TransactionRepository {
     // ==========================================
 
     /// Create a new balance
-    pub async fn create_balance(&self, new_balance: NewBalance) -> Result<Balance> {
+    async fn create_balance(&self, new_balance: NewBalance) -> Result<Balance> {
         let mut conn = self
             .pool
             .get()
@@ -94,7 +111,7 @@ impl TransactionRepository {
     }
 
     /// Get balance by user ID
-    pub async fn get_balance_by_user(&self, user_id: &str) -> Result<Option<Balance>> {
+    async fn get_balance(&self, user_id: &str) -> Result<Option<Balance>> {
         let mut conn = self
             .pool
             .get()
@@ -110,7 +127,7 @@ impl TransactionRepository {
     }
 
     /// Update balance
-    pub async fn update_balance(&self, user_id: &str, update: UpdateBalance) -> Result<Balance> {
+    async fn update_balance(&self, user_id: &str, update: UpdateBalance) -> Result<Balance> {
         let mut conn = self
             .pool
             .get()
