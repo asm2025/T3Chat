@@ -150,20 +150,10 @@ export function ChatView({ chatId }: ChatViewProps) {
                     </div>
                 </div>
             )}
-            <div className="flex-1 min-h-0 bg-background">
-                <MessageList 
-                    messages={messages} 
-                    streaming={streaming} 
-                    onPromptClick={handleSendMessage}
-                />
+            <div className="flex-1 min-h-0">
+                <MessageList messages={messages} streaming={streaming} onPromptClick={handleSendMessage} />
             </div>
-            <MessageInput
-                onSend={handleSendMessage}
-                disabled={streaming || !selectedModel}
-                models={models}
-                selectedModel={selectedModel}
-                onModelSelect={setSelectedModel}
-            />
+            <MessageInput onSend={handleSendMessage} disabled={streaming || !selectedModel} models={models} selectedModel={selectedModel} onModelSelect={setSelectedModel} />
         </div>
     );
 }
