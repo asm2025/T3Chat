@@ -1219,9 +1219,9 @@ INSERT INTO users (
     'ADMIN@LOCALHOST',
     'ADMIN',
     -- Bcrypt hash for: P@$$w0rd
-    -- Generated with cost factor 10
+    -- Generated with cost factor 12
     -- To change password, generate new bcrypt hash and update this field
-    '$2b$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa',
+    '$2b$12$DsM/lf1mhgWuvmZvBVNJz.C/Kg9FpizEJ7hzi3mYN81YJfOYH9rEC',
     true,  -- is_system = true (cannot be deleted or disabled)
     true,
     NOW(),
