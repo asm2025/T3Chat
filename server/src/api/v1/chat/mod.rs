@@ -1,6 +1,10 @@
 use crate::{
     AppState,
-    ai::types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
+    ai::{
+        manager::ProviderWrapper,
+        providers::routellm::RouteLLMProvider,
+        types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
+    },
     db::prelude::*,
     db::repositories::{
         chat_repository::TChatRepository, user_api_key_repository::TUserApiKeyRepository,
@@ -19,7 +23,7 @@ use axum::{
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::convert::Infallible;
+use std::{convert::Infallible, sync::Arc};
 use utoipa::ToSchema;
 
 /// Chat completion request with full LibreChat support
@@ -97,28 +101,62 @@ pub async fn chat(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // Get user's API key for the provider
-    let provider = match payload.model_provider.as_str() {
-        "openai" => AiProvider::OpenAI,
-        "anthropic" => AiProvider::Anthropic,
-        "google" => AiProvider::Google,
-        "deepseek" => AiProvider::DeepSeek,
-        "ollama" => AiProvider::Ollama,
-        _ => return Err(StatusCode::BAD_REQUEST),
+    // Resolve provider implementation
+    let provider_name = payload.model_provider.as_str();
+
+    // Special handling for RouteLLM: uses a backend-managed key from t3chat.yaml
+    let ai_provider: Arc<ProviderWrapper> = if provider_name == "routellm" {
+        let routellm_cfg = state
+            .t3_config
+            .providers
+            .routellm
+            .as_ref()
+            .ok_or(StatusCode::BAD_REQUEST)?;
+
+        let api_key = routellm_cfg
+            .provider
+            .api_key
+            .clone()
+            .ok_or(StatusCode::BAD_REQUEST)?;
+
+        let base_url = routellm_cfg.provider.base_url.clone();
+
+        Arc::new(ProviderWrapper::RouteLLM(RouteLLMProvider::new(
+            api_key, base_url,
+        )))
+    } else {
+        // Get user's API key for the provider
+        let provider = match provider_name {
+            "openai" => AiProvider::OpenAI,
+            "anthropic" => AiProvider::Anthropic,
+            "google" => AiProvider::Google,
+            "deepseek" => AiProvider::DeepSeek,
+            "ollama" => AiProvider::Ollama,
+            _ => return Err(StatusCode::BAD_REQUEST),
+        };
+
+        let api_key = state
+            .user_api_key_repository
+            .get_default_for_provider(&user.0.id, &provider)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::BAD_REQUEST)?;
+
+        // Decrypt API key
+        let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
+            tracing::error!("Failed to decrypt API key: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        let mut api_keys = std::collections::HashMap::new();
+        api_keys.insert(provider.clone(), decrypted_key);
+        let provider_manager = crate::ai::manager::ProviderManager::new(api_keys)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        provider_manager
+            .get_provider(&provider)
+            .ok_or(StatusCode::BAD_REQUEST)?
     };
-
-    let api_key = state
-        .user_api_key_repository
-        .get_default_for_provider(&user.0.id, &provider)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::BAD_REQUEST)?;
-
-    // Decrypt API key
-    let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
-        tracing::error!("Failed to decrypt API key: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
 
     // Get messages for context
     let messages = state
@@ -146,16 +184,6 @@ pub async fn chat(
         content: payload.message.clone(),
         name: None,
     });
-
-    // Create provider instance
-    let mut api_keys = std::collections::HashMap::new();
-    api_keys.insert(provider.clone(), decrypted_key);
-    let provider_manager = crate::ai::manager::ProviderManager::new(api_keys)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let ai_provider = provider_manager
-        .get_provider(&provider)
-        .ok_or(StatusCode::BAD_REQUEST)?;
 
     // Parse model parameters from request or use defaults
     let parameters: ModelParameters = payload
@@ -284,28 +312,62 @@ pub async fn stream_chat(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // Get user's API key for the provider
-    let provider = match payload.model_provider.as_str() {
-        "openai" => AiProvider::OpenAI,
-        "anthropic" => AiProvider::Anthropic,
-        "google" => AiProvider::Google,
-        "deepseek" => AiProvider::DeepSeek,
-        "ollama" => AiProvider::Ollama,
-        _ => return Err(StatusCode::BAD_REQUEST),
+    // Resolve provider implementation
+    let provider_name = payload.model_provider.as_str();
+
+    // Special handling for RouteLLM: uses a backend-managed key from t3chat.yaml
+    let ai_provider: Arc<ProviderWrapper> = if provider_name == "routellm" {
+        let routellm_cfg = state
+            .t3_config
+            .providers
+            .routellm
+            .as_ref()
+            .ok_or(StatusCode::BAD_REQUEST)?;
+
+        let api_key = routellm_cfg
+            .provider
+            .api_key
+            .clone()
+            .ok_or(StatusCode::BAD_REQUEST)?;
+
+        let base_url = routellm_cfg.provider.base_url.clone();
+
+        Arc::new(ProviderWrapper::RouteLLM(RouteLLMProvider::new(
+            api_key, base_url,
+        )))
+    } else {
+        // Get user's API key for the provider
+        let provider = match provider_name {
+            "openai" => AiProvider::OpenAI,
+            "anthropic" => AiProvider::Anthropic,
+            "google" => AiProvider::Google,
+            "deepseek" => AiProvider::DeepSeek,
+            "ollama" => AiProvider::Ollama,
+            _ => return Err(StatusCode::BAD_REQUEST),
+        };
+
+        let api_key = state
+            .user_api_key_repository
+            .get_default_for_provider(&user.0.id, &provider)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            .ok_or(StatusCode::BAD_REQUEST)?;
+
+        // Decrypt API key
+        let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
+            tracing::error!("Failed to decrypt API key: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        let mut api_keys = std::collections::HashMap::new();
+        api_keys.insert(provider.clone(), decrypted_key);
+        let provider_manager = crate::ai::manager::ProviderManager::new(api_keys)
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+        provider_manager
+            .get_provider(&provider)
+            .ok_or(StatusCode::BAD_REQUEST)?
     };
-
-    let api_key = state
-        .user_api_key_repository
-        .get_default_for_provider(&user.0.id, &provider)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::BAD_REQUEST)?;
-
-    // Decrypt API key
-    let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
-        tracing::error!("Failed to decrypt API key: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
 
     // Get messages for context
     let messages = state
@@ -333,16 +395,6 @@ pub async fn stream_chat(
         content: payload.message.clone(),
         name: None,
     });
-
-    // Create provider instance
-    let mut api_keys = std::collections::HashMap::new();
-    api_keys.insert(provider.clone(), decrypted_key);
-    let provider_manager = crate::ai::manager::ProviderManager::new(api_keys)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let ai_provider = provider_manager
-        .get_provider(&provider)
-        .ok_or(StatusCode::BAD_REQUEST)?;
 
     // Parse model parameters
     let parameters: ModelParameters = payload

@@ -24,24 +24,10 @@ export function ChatList() {
     }, [chats, query]);
 
     const handleNewChat = async () => {
-        const defaultModel = models[0];
-        try {
-            const newChat = await t3ChatClient.createChat(
-                defaultModel
-                    ? {
-                          model_provider: defaultModel.provider,
-                          model_id: defaultModel.model_id,
-                      }
-                    : {
-                          model_provider: "openai",
-                          model_id: "gpt-3.5-turbo",
-                      },
-            );
-            await refresh();
-            navigate(`/chat/${newChat.id}`);
-        } catch (err) {
-            toast.error("Failed to create chat", { description: getErrorMessage(err) });
-        }
+        // Logic to simply navigate to the root chat page which shows "New Chat" view
+        // The actual creation happens when sending a message.
+        // Or if we want to force a blank state:
+        navigate("/chat");
     };
 
     if (loading) {
@@ -49,49 +35,49 @@ export function ChatList() {
     }
 
     return (
-        <aside className="flex h-full flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="space-y-3 rounded-xl border border-border bg-background p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace</p>
-                        <p className="text-sm font-medium text-foreground">Your Chats</p>
-                    </div>
-                    <Button size="icon" variant="outline" onClick={handleNewChat} className="h-9 w-9 rounded-full border-border">
-                        <Plus className="h-4 w-4" />
-                        <span className="sr-only">Start a new chat</span>
-                    </Button>
-                </div>
+        <div className="flex h-full flex-col gap-2 py-2">
+            <div className="px-3">
+                <Button onClick={handleNewChat} className="w-full justify-start gap-2" size="default">
+                    <Plus className="h-4 w-4" />
+                    <span>New Chat</span>
+                </Button>
+            </div>
+
+            <div className="px-3">
                 <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search conversations" className="h-10 rounded-full border border-border bg-background pl-10 text-sm shadow-sm" />
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        placeholder="Search threads..."
+                        className="h-9 rounded-md bg-muted/50 pl-9 text-sm shadow-none focus-visible:ring-1"
+                    />
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto rounded-xl border border-border bg-background p-2.5 shadow-sm">
+
+            <div className="flex-1 overflow-y-auto px-2">
                 {filteredChats.length === 0 ? (
-                    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
-                        {query ? "No conversations match your search." : "Start a new chat to begin your first conversation."}
+                    <div className="px-2 py-8 text-center text-xs text-muted-foreground">
+                        {query ? "No conversations match your search." : "No chats yet."}
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                         {filteredChats.map((chat) => {
                             const active = chat.id === conversationId;
                             return (
                                 <button
                                     key={chat.id}
                                     onClick={() => navigate(`/chat/${chat.id}`)}
-                                    className={`w-full rounded-xl border px-3.5 py-2.5 text-left transition ${
-                                        active ? "border-foreground/20 bg-foreground text-background shadow-sm" : "border-transparent bg-card text-foreground hover:border-border hover:bg-background"
+                                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                                        active ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     }`}>
-                                    <div className="flex items-center justify-between text-sm font-medium">
-                                        <span className="truncate">{chat.title}</span>
-                                        <span className={`text-xs ${active ? "text-background/70" : "text-muted-foreground"}`}>{new Date(chat.updated_at).toLocaleDateString()}</span>
-                                    </div>
+                                    <div className="flex-1 truncate">{chat.title || "Untitled Chat"}</div>
                                 </button>
                             );
                         })}
                     </div>
                 )}
             </div>
-        </aside>
+        </div>
     );
 }

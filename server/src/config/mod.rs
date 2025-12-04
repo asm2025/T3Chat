@@ -11,6 +11,19 @@ use tracing::warn;
 
 use t3chat::T3ChatConfig;
 
+#[derive(Debug, Clone, Default)]
+pub struct ConfigMetadata {
+    pub missing_file: bool,
+    pub missing_path: Option<PathBuf>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadedConfig {
+    pub config: T3ChatConfig,
+    pub metadata: ConfigMetadata,
+}
+
 static ENV_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\$\{([A-Z0-9_]+)\}").expect("failed to compile env regex"));
 
@@ -28,13 +41,24 @@ pub enum ConfigError {
     Validation(String),
 }
 
-pub fn load_config() -> Result<T3ChatConfig, ConfigError> {
+pub fn load_config() -> Result<LoadedConfig, ConfigError> {
     let path = resolve_config_path();
     let file_content = match fs::read_to_string(&path) {
         Ok(content) => content,
         Err(err) => {
             if err.kind() == std::io::ErrorKind::NotFound {
-                return Err(ConfigError::MissingFile(path));
+                warn!(
+                    path = %path.display(),
+                    "t3chat.yaml not found; continuing with default configuration"
+                );
+                return Ok(LoadedConfig {
+                    config: T3ChatConfig::default(),
+                    metadata: ConfigMetadata {
+                        missing_file: true,
+                        missing_path: Some(path),
+                        warnings: Vec::new(),
+                    },
+                });
             }
             return Err(ConfigError::Io(err));
         }
@@ -47,7 +71,10 @@ pub fn load_config() -> Result<T3ChatConfig, ConfigError> {
         return Err(ConfigError::Validation(errors.join("; ")));
     }
 
-    Ok(config)
+    Ok(LoadedConfig {
+        config,
+        metadata: ConfigMetadata::default(),
+    })
 }
 
 fn resolve_config_path() -> PathBuf {
@@ -63,7 +90,11 @@ fn resolve_config_path() -> PathBuf {
         }
     }
 
-    Path::new("t3chat.yaml").to_path_buf()
+    // Fallback: t3chat.yaml in the current working directory.
+    // Use an absolute path so logs and UI notices can show the full expected location.
+    let cwd = env::current_dir().unwrap_or_default();
+    let candidate = cwd.join("t3chat.yaml");
+    fs::canonicalize(&candidate).unwrap_or(candidate)
 }
 
 fn interpolate_env(input: &str) -> Result<String, ConfigError> {
@@ -72,12 +103,32 @@ fn interpolate_env(input: &str) -> Result<String, ConfigError> {
 
     for captures in ENV_PATTERN.captures_iter(input) {
         if let Some(m) = captures.get(0) {
+            // Push everything from the previous match up to the start of this one
             output.push_str(&input[last_index..m.start()]);
-            let var_name = captures.get(1).map(|c| c.as_str()).unwrap_or_default();
-            match env::var(var_name) {
-                Ok(value) => output.push_str(&value),
-                Err(_) => return Err(ConfigError::MissingEnvVar(var_name.to_string())),
+
+            // Determine if this placeholder is inside a YAML comment.
+            //
+            // YAML comments start with `#` and run to the end of the line. If there is a `#`
+            // between the start of the current line and the start of the placeholder, we treat
+            // the placeholder as part of the comment and leave it untouched.
+            let line_start = input[..m.start()]
+                .rfind('\n')
+                .map(|idx| idx + 1)
+                .unwrap_or(0);
+            let is_commented = input[line_start..m.start()].contains('#');
+
+            if is_commented {
+                // Inside a comment: keep the literal text as‑is.
+                output.push_str(m.as_str());
+            } else {
+                // Real placeholder: perform environment interpolation.
+                let var_name = captures.get(1).map(|c| c.as_str()).unwrap_or_default();
+                match env::var(var_name) {
+                    Ok(value) => output.push_str(&value),
+                    Err(_) => return Err(ConfigError::MissingEnvVar(var_name.to_string())),
+                }
             }
+
             last_index = m.end();
         }
     }

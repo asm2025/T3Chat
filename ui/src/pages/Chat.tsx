@@ -7,14 +7,9 @@ export function Chat() {
     const { conversationId } = useParams<{ conversationId?: string }>();
 
     return (
-        <MasterLayout>
-            <div className="flex flex-col gap-4 lg:flex-row">
-                <div className="lg:w-80">
-                    <ChatList />
-                </div>
-                <div className="flex-1 min-h-[60vh]">
-                    <ChatView chatId={conversationId ?? null} />
-                </div>
+        <MasterLayout contentClassName="h-full">
+            <div className="h-full">
+                <ChatView chatId={conversationId ?? null} />
             </div>
         </MasterLayout>
     );

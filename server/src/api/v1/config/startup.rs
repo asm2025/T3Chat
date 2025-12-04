@@ -9,6 +9,8 @@ pub struct StartupConfigResponse {
     pub interface: InterfaceConfigResponse,
     pub providers: Vec<ProviderSummaryResponse>,
     pub model_specs: Vec<ModelSpecResponse>,
+    #[serde(default)]
+    pub notices: Vec<StartupNotice>,
 }
 
 #[derive(Debug, Serialize)]
@@ -39,8 +41,22 @@ pub struct ModelSpecResponse {
     pub parameters: Option<serde_json::Value>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct StartupNotice {
+    pub kind: StartupNoticeKind,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StartupNoticeKind {
+    Info,
+    Warning,
+}
+
 pub async fn get_startup_config(state: State<AppState>) -> Json<StartupConfigResponse> {
     let config = state.t3_config.clone();
+    let metadata = state.config_metadata.clone();
     let providers = config
         .providers
         .resolved_entries()
@@ -62,6 +78,24 @@ pub async fn get_startup_config(state: State<AppState>) -> Json<StartupConfigRes
         .map(ModelSpecResponse::from)
         .collect();
 
+    let mut notices = Vec::new();
+
+    if metadata.missing_file {
+        notices.push(StartupNotice {
+            kind: StartupNoticeKind::Warning,
+            message: format!(
+                "Configuration file t3chat.yaml was not found. Using built-in defaults with no managed providers. Check server logs for the expected config path."
+            ),
+        });
+    }
+
+    for warning in metadata.warnings.iter() {
+        notices.push(StartupNotice {
+            kind: StartupNoticeKind::Warning,
+            message: warning.clone(),
+        });
+    }
+
     Json(StartupConfigResponse {
         app_title: config.app_title.clone(),
         interface: InterfaceConfigResponse {
@@ -72,6 +106,7 @@ pub async fn get_startup_config(state: State<AppState>) -> Json<StartupConfigRes
         },
         providers,
         model_specs: specs,
+        notices,
     })
 }
 

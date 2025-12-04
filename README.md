@@ -420,7 +420,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 - **Anthropic** - Claude 3.5, Claude 3
 - **Google** - Gemini 1.5
 - **OpenRouter** - Aggregated models via OpenRouter
-- **RouteLLM** - Routing profiles defined in config
+- **RouteLLM** - Routing profiles defined in config, backed by a single backend-managed key from `t3chat.yaml` (e.g. `ABACUS_API_KEY`)
 - **Custom** - Additional OpenAI‑compatible providers via `custom` entries in `t3chat.yaml`
 
 ### Architecture

@@ -1,5 +1,6 @@
 use crate::ai::providers::{
     AIProvider, anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider,
+    routellm::RouteLLMProvider,
 };
 use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 use crate::db::models::AiProvider;
@@ -14,6 +15,7 @@ pub enum ProviderWrapper {
     OpenAI(OpenAIProvider),
     Anthropic(AnthropicProvider),
     Google(GoogleProvider),
+    RouteLLM(RouteLLMProvider),
 }
 
 impl ProviderWrapper {
@@ -22,6 +24,7 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.name(),
             ProviderWrapper::Anthropic(p) => p.name(),
             ProviderWrapper::Google(p) => p.name(),
+            ProviderWrapper::RouteLLM(p) => p.name(),
         }
     }
 
@@ -30,6 +33,7 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.chat(request).await,
             ProviderWrapper::Anthropic(p) => p.chat(request).await,
             ProviderWrapper::Google(p) => p.chat(request).await,
+            ProviderWrapper::RouteLLM(p) => p.chat(request).await,
         }
     }
 
@@ -41,6 +45,7 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.stream_chat(request).await,
             ProviderWrapper::Anthropic(p) => p.stream_chat(request).await,
             ProviderWrapper::Google(p) => p.stream_chat(request).await,
+            ProviderWrapper::RouteLLM(p) => p.stream_chat(request).await,
         }
     }
 
@@ -49,6 +54,7 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.get_model_info(model_id),
             ProviderWrapper::Anthropic(p) => p.get_model_info(model_id),
             ProviderWrapper::Google(p) => p.get_model_info(model_id),
+            ProviderWrapper::RouteLLM(p) => p.get_model_info(model_id),
         }
     }
 
@@ -57,6 +63,7 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.list_models(),
             ProviderWrapper::Anthropic(p) => p.list_models(),
             ProviderWrapper::Google(p) => p.list_models(),
+            ProviderWrapper::RouteLLM(p) => p.list_models(),
         }
     }
 
@@ -65,6 +72,7 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::Anthropic(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::Google(p) => p.validate_api_key(api_key).await,
+            ProviderWrapper::RouteLLM(p) => p.validate_api_key(api_key).await,
         }
     }
 }

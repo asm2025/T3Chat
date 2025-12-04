@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
-import { ModelSelector } from "@/components/model/ModelSelector";
 import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
@@ -16,6 +16,7 @@ interface ChatViewProps {
 }
 
 export function ChatView({ chatId }: ChatViewProps) {
+    const navigate = useNavigate();
     const { chat, loading, error, refresh } = useChat(chatId);
     const { models, loading: modelsLoading } = useModels();
     const { sendMessage, streaming } = useStreamingChat();
@@ -40,14 +41,27 @@ export function ChatView({ chatId }: ChatViewProps) {
     }, [chat, models, selectedModel]);
 
     const handleSendMessage = async (content: string) => {
-        if (!chatId) {
-            toast.error("Select or create a chat to start messaging.");
-            return;
-        }
-
         if (!selectedModel) {
             toast.error("Select a model before sending a message.");
             return;
+        }
+
+        let currentChatId = chatId;
+
+        // Create new chat if one doesn't exist
+        if (!currentChatId) {
+            try {
+                const newChat = await t3ChatClient.createChat({
+                    title: content.slice(0, 30) + (content.length > 30 ? "..." : ""),
+                    model_provider: selectedModel.provider,
+                    model_id: selectedModel.model_id,
+                });
+                currentChatId = newChat.id;
+                navigate(`/chat/${currentChatId}`, { replace: true });
+            } catch (err) {
+                toast.error("Failed to create new chat", { description: getErrorMessage(err) });
+                return;
+            }
         }
 
         const timestamp = new Date().toISOString();
@@ -57,7 +71,7 @@ export function ChatView({ chatId }: ChatViewProps) {
 
         const optimisticUser: Message = {
             id: userTempId,
-            chat_id: chatId,
+            chat_id: currentChatId,
             role: "user",
             content,
             sequence_number: nextSequence,
@@ -67,7 +81,7 @@ export function ChatView({ chatId }: ChatViewProps) {
         setMessages((prev) => [...prev, optimisticUser]);
 
         try {
-            await t3ChatClient.createMessage(chatId, { content, role: "user" });
+            await t3ChatClient.createMessage(currentChatId, { content, role: "user" });
         } catch (err) {
             setMessages((prev) => prev.filter((message) => message.id !== userTempId));
             toast.error("Failed to send message", { description: getErrorMessage(err) });
@@ -77,7 +91,7 @@ export function ChatView({ chatId }: ChatViewProps) {
         let assistantContent = "";
         const optimisticAssistant: Message = {
             id: assistantTempId,
-            chat_id: chatId,
+            chat_id: currentChatId,
             role: "assistant",
             content: "",
             sequence_number: nextSequence + 1,
@@ -88,7 +102,7 @@ export function ChatView({ chatId }: ChatViewProps) {
 
         await sendMessage(
             {
-                chat_id: chatId,
+                chat_id: currentChatId,
                 message: content,
                 model_provider: selectedModel.provider,
                 model_id: selectedModel.model_id,
@@ -100,18 +114,17 @@ export function ChatView({ chatId }: ChatViewProps) {
             },
             async () => {
                 try {
-                    await t3ChatClient.createMessage(chatId, { content: assistantContent, role: "assistant" });
-                    await refresh();
+                    await t3ChatClient.createMessage(currentChatId, { content: assistantContent, role: "assistant" });
+                    // Only refresh if we didn't just create the chat (since we navigated)
+                    if (chatId === currentChatId) {
+                        await refresh();
+                    }
                 } catch (err) {
                     toast.error("Failed to save assistant response", { description: getErrorMessage(err) });
                 }
             },
         );
     };
-
-    if (!chatId) {
-        return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">Select a chat from the list to get started.</div>;
-    }
 
     if (loading) {
         return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Loading chat…</div>;
@@ -121,28 +134,36 @@ export function ChatView({ chatId }: ChatViewProps) {
         return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border bg-card p-8 text-center text-red-500">Unable to load chat. {error.message}</div>;
     }
 
-    if (!chat) {
+    if (chatId && !chat) {
         return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Chat not found.</div>;
     }
 
     return (
         <div className="flex h-full flex-col rounded-xl border border-border bg-card">
-            <div className="border-b border-border p-4">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
-                        <h2 className="text-lg font-semibold">{chat.title}</h2>
-                    </div>
-                    <div className="w-full lg:max-w-xs">
-                        <ModelSelector models={models} selectedModel={selectedModel} onSelect={setSelectedModel} />
-                        {modelsLoading && <p className="mt-1 text-xs text-muted-foreground">Loading models…</p>}
+            {chat && (
+                <div className="border-b border-border p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
+                            <h2 className="text-lg font-semibold">{chat.title}</h2>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
             <div className="flex-1 min-h-0 bg-background">
-                <MessageList messages={messages} streaming={streaming} />
+                <MessageList 
+                    messages={messages} 
+                    streaming={streaming} 
+                    onPromptClick={handleSendMessage}
+                />
             </div>
-            <MessageInput onSend={handleSendMessage} disabled={streaming || !selectedModel} />
+            <MessageInput
+                onSend={handleSendMessage}
+                disabled={streaming || !selectedModel}
+                models={models}
+                selectedModel={selectedModel}
+                onModelSelect={setSelectedModel}
+            />
         </div>
     );
 }

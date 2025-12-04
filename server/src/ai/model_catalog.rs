@@ -16,11 +16,18 @@ pub struct ModelCatalog {
 }
 
 impl ModelCatalog {
-    pub async fn build(config: Arc<T3ChatConfig>) -> Result<Self, ModelCatalogError> {
+    pub async fn build(
+        config: Arc<T3ChatConfig>,
+        allow_empty: bool,
+    ) -> Result<Self, ModelCatalogError> {
         let mut provider_models: HashMap<String, Vec<ModelInfo>> = HashMap::new();
         let entries = config.providers.resolved_entries();
 
         if entries.is_empty() {
+            if allow_empty {
+                warn!("No providers configured; model catalog will be empty");
+                return Ok(Self { provider_models });
+            }
             return Err(ModelCatalogError::NoProvidersConfigured);
         }
 
@@ -44,6 +51,10 @@ impl ModelCatalog {
         }
 
         if provider_models.is_empty() {
+            if allow_empty {
+                warn!("No providers exposed models; continuing with empty model catalog");
+                return Ok(Self { provider_models });
+            }
             return Err(ModelCatalogError::NoActiveModels);
         }
 

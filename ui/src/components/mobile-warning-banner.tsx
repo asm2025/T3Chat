@@ -37,9 +37,13 @@ export function MobileWarningBanner() {
     }
 
     return (
-        <div 
-            className="fixed top-0 right-0 left-0 z-[10000] bg-yellow-500/20 p-3 text-center text-sm backdrop-blur-sm border-b border-yellow-500/30 md:hidden" 
-            style={{ top: "env(safe-area-inset-top, 0px)" }}>
+        <div
+            className="fixed top-0 right-0 left-0 z-[10000] bg-yellow-500/20 p-3 text-center text-sm backdrop-blur-sm border-b border-yellow-500/30 md:hidden"
+            style={{
+                top: "calc(env(safe-area-inset-top, 0px) + var(--t3chat-top-banner-offset, 0px))",
+            }}
+            role="status"
+            aria-live="polite">
             <div className="flex items-center justify-center gap-2 relative">
                 <span className="mx-8 px-6">We do NOT support mobile yet. Use with caution.</span>
                 <Button
@@ -54,4 +58,3 @@ export function MobileWarningBanner() {
         </div>
     );
 }
-

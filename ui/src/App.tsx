@@ -25,6 +25,7 @@ import { MobileWarningBanner } from "@/components/mobile-warning-banner";
 import { FloatingToolbar } from "@/components/floating-toolbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfigWarningBanner } from "@/components/config-warning-banner";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "t3chat-sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 20; // 20% of viewport width
@@ -204,6 +205,7 @@ function App() {
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="t3chat-theme">
             <Router>
+                <ConfigWarningBanner />
                 {loading ? (
                     <div className="flex items-center justify-center min-h-screen">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

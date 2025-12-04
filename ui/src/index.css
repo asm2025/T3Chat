@@ -197,6 +197,13 @@ button {
 
 #chat-input-form {
     outline-color: color-mix(in oklch, var(--chat-input-gradient) 50%, transparent);
+    box-shadow:
+        rgba(0, 0, 0, 0.1) 0px 80px 50px 0px,
+        rgba(0, 0, 0, 0.07) 0px 50px 30px 0px,
+        rgba(0, 0, 0, 0.06) 0px 30px 15px 0px,
+        rgba(0, 0, 0, 0.04) 0px 15px 8px,
+        rgba(0, 0, 0, 0.04) 0px 6px 4px,
+        rgba(0, 0, 0, 0.02) 0px 2px 2px;
 }
 
 /* Gradient border reflect effect */

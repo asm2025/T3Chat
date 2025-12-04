@@ -23,6 +23,7 @@ import type {
     ChatCompletionRequest,
     ChatCompletionResponse,
 } from "@/types/librechat";
+import type { StartupConfigResponse } from "@/types/config";
 
 // Re-export error type
 export type { ApiClientError };
@@ -89,6 +90,11 @@ export class T3ChatClient extends ApiClient {
 
     async deleteChat(id: string): Promise<void> {
         return this.delete(`/v1/chats/${id}`);
+    }
+
+    // Config endpoints
+    async getStartupConfig(): Promise<StartupConfigResponse> {
+        return this.get<StartupConfigResponse>("/v1/config/startup");
     }
 
     // Messages endpoints

@@ -7,6 +7,8 @@ import {
 } from '@/components/ui/select';
 import type { AIModel } from '@/types/model';
 
+export const MODEL_SELECTOR_TRIGGER_ID = 'chat-model-selector-trigger';
+
 export function ModelSelector({
   models,
   selectedModel,
@@ -24,7 +26,7 @@ export function ModelSelector({
         if (model) onSelect(model);
       }}
     >
-      <SelectTrigger className="w-full">
+      <SelectTrigger id={MODEL_SELECTOR_TRIGGER_ID} className="w-full">
         <SelectValue placeholder="Select a model" />
       </SelectTrigger>
       <SelectContent>
