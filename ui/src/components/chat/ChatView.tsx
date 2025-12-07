@@ -139,7 +139,7 @@ export function ChatView({ chatId }: ChatViewProps) {
     }
 
     return (
-        <div className="flex h-full flex-col rounded-xl border border-border bg-card">
+        <div className="flex h-full flex-col">
             {chat && (
                 <div className="border-b border-border p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

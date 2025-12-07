@@ -115,7 +115,7 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
                         </div>
                     </div>
 
-                    <div role="log" aria-live="polite" className="pt-safe-offset-10 mx-auto flex h-full w-full max-w-3xl flex-col space-y-12 px-4 pb-10 print:space-y-0 print:pt-0">
+                    <div role="log" aria-live="polite" className="pt-safe-offset-10 mx-auto flex h-full w-full max-w-3xl flex-col space-y-12 print:space-y-0 print:pt-0">
                         <div className={cn("h-full", contentClassName)}>{children}</div>
                     </div>
                 </div>

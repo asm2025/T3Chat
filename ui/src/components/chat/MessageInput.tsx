@@ -93,7 +93,7 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
     const isSubmitDisabled = disabled || !content.trim();
 
     return (
-        <div className="pointer-events-none w-full px-2 pb-4 pt-2 sm:px-4">
+        <div className="pointer-events-none w-full sm:px-2">
             <div className="mx-auto flex w-full max-w-3xl flex-col text-center">
                 {!hasAcceptedPolicies && (
                     <div className="pointer-events-auto mx-auto mb-2 w-full sm:w-auto">
