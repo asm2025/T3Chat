@@ -88,9 +88,9 @@ Environment is configured via a mix of **`.env` files** and a **YAML application
 
 -   The frontend uses `import.meta.env.VITE_API_URL` as its API base URL, but in this repo it is **set via Vite CLI flags**, not `.env` files.
 -   **Local development** (recommended):
-    -   `cd ui && pnpm dev -- --api-url http://localhost:3000`
+    -   `cd client && pnpm dev -- --api-url http://localhost:3000`
 -   **Production builds** (e.g. Cloudflare Pages):
-    -   `cd ui && pnpm run build -- --api-url https://api.yourdomain.com`
+    -   `cd client && pnpm run build -- --api-url https://api.yourdomain.com`
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md). For a step‑by‑step walkthrough, see [`QUICKSTART.md`](QUICKSTART.md).
 
@@ -390,7 +390,7 @@ cargo run -- --port 8788
 ### Frontend (React UI)
 
 ```bash
-cd ui
+cd client
 pnpm dev          # defaults to http://localhost:3010, API http://localhost:3000
 
 # Or override ports / API URL explicitly
@@ -401,10 +401,10 @@ pnpm dev -- --port 3010 --api-url http://localhost:3000
 
 ```bash
 # Frontend only
-cd ui && pnpm dev
+cd client && pnpm dev
 
 # Build frontend
-cd ui && pnpm build
+cd client && pnpm build
 
 # Build Rust server for production
 cd server && cargo build --release
@@ -447,7 +447,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 ## 📁 **Project Structure**
 
 ```
-├── ui/                 # React frontend
+├── client/             # React frontend
 │   ├── src/
 │   │   ├── components/ # Chat UI, endpoints, presets, agents, files, ShadCN components
 │   │   ├── lib/        # API client, auth helpers, utilities
@@ -506,7 +506,7 @@ To add a new AI provider:
 
 3. Add provider to the factory in `server/src/ai/factory.rs`
 
-4. Update frontend endpoint selector in `ui/src/components/Endpoints/EndpointSelector.tsx`
+4. Update frontend endpoint selector in `client/src/components/Endpoints/EndpointSelector.tsx`
 
 📖 **For detailed implementation guide**, see [`plan.md`](plan.md) Phase 2A
 
@@ -535,17 +535,17 @@ See `[server/README.md](server/README.md)` for detailed guidance.
 
 ### UI Components
 
--   Add components in `ui/src/components/`
+-   Add components in `client/src/components/`
 
 -   Use ShadCN/UI: Browse components at [ui.shadcn.com](https://ui.shadcn.com)
 
--   Install new components: `cd ui && npx shadcn-ui@latest add [component]`
+-   Install new components: `cd client && npx shadcn-ui@latest add [component]`
 
 ### Styling
 
--   Modify `ui/tailwind.config.js` for custom themes
+-   Modify `client/tailwind.config.js` for custom themes
 
--   Global styles in `ui/src/index.css`
+-   Global styles in `client/src/index.css`
 
 -   Use Tailwind utility classes throughout
 
@@ -590,7 +590,7 @@ cargo build --release
 
 -   Build command: `pnpm run build`
 
--   Build output: `ui/dist`
+-   Build output: `client/dist`
 
 1. **Deploy**: Automatic on every git push
 
@@ -607,7 +607,7 @@ cargo build --release
 **Frontend build / API URL:**
 
 -   Build with the correct API base URL:
-    -   `cd ui && pnpm run build -- --api-url https://api.example.com`
+    -   `cd client && pnpm run build -- --api-url https://api.example.com`
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 
@@ -808,7 +808,7 @@ diesel migration run
 **Frontend build errors:**
 
 ```bash
-cd ui
+cd client
 # Clear cache and reinstall
 rm -rf node_modules .vite dist
 pnpm install
@@ -834,7 +834,7 @@ pnpm install
 
 1. **Verify build succeeds locally**
 
--   Frontend: `cd ui && pnpm build`
+-   Frontend: `cd client && pnpm build`
 
 -   Backend: `cd server && cargo build --release`
 
@@ -872,7 +872,7 @@ T3Chat follows a phased development approach to transform into a full LibreChat-
 
 2. **Set up the database**: Run migrations to create the normalized schema
 
-3. **Explore the code**: Start with `ui/src/App.tsx` and `server/src/main.rs`
+3. **Explore the code**: Start with `client/src/App.tsx` and `server/src/main.rs`
 
 4. **Implement AI providers**: Follow Phase 2A in the development plan
 
@@ -911,4 +911,4 @@ See `[server/README.md](server/README.md)` for comprehensive documentation.
 
 **Happy coding!** 🚀
 
-Need help? Check the detailed documentation in each workspace (`server/README.md`, `ui/README.md`) or visit the [community discussions](https://github.com/VoloBuilds/create-volo-app/discussions).
+Need help? Check the detailed documentation in each workspace (`server/README.md`, `client/README.md`) or visit the [community discussions](https://github.com/VoloBuilds/create-volo-app/discussions).

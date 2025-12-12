@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
+use anyhow::Context;
 
 pub struct OpenAIProvider {
     api_key: String,
@@ -150,6 +151,15 @@ impl AIProvider for OpenAIProvider {
             ..
         } = parameters;
 
+        // O1 (Reasoning) models do not support temperature, top_p, presence_penalty, frequency_penalty
+        let is_reasoning_model = model.starts_with("o1");
+        
+        let (temperature, top_p, presence_penalty, frequency_penalty) = if is_reasoning_model {
+            (None, None, None, None)
+        } else {
+            (temperature, top_p, presence_penalty, frequency_penalty)
+        };
+
         let req = OpenAIRequest {
             model,
             messages,
@@ -169,11 +179,17 @@ impl AIProvider for OpenAIProvider {
             .header("Content-Type", "application/json")
             .json(&req)
             .send()
-            .await?;
+            .await
+            .with_context(|| format!("OpenAI request failed: POST {}", url))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
+            tracing::error!(
+                status = %status,
+                body = %truncate_for_log(&error_text, 4_096),
+                "OpenAI API error (chat)"
+            );
             anyhow::bail!("OpenAI API error ({}): {}", status, error_text);
         }
 
@@ -260,6 +276,15 @@ impl AIProvider for OpenAIProvider {
             ..
         } = parameters;
 
+        // O1 (Reasoning) models do not support temperature, top_p, presence_penalty, frequency_penalty
+        let is_reasoning_model = model.starts_with("o1");
+        
+        let (temperature, top_p, presence_penalty, frequency_penalty) = if is_reasoning_model {
+            (None, None, None, None)
+        } else {
+            (temperature, top_p, presence_penalty, frequency_penalty)
+        };
+
         let req = OpenAIRequest {
             model: model.clone(),
             messages,
@@ -282,11 +307,17 @@ impl AIProvider for OpenAIProvider {
             .header("Content-Type", "application/json")
             .json(&req)
             .send()
-            .await?;
+            .await
+            .with_context(|| format!("OpenAI request failed: POST {}", url))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
+            tracing::error!(
+                status = %status,
+                body = %truncate_for_log(&error_text, 4_096),
+                "OpenAI API error (stream_chat)"
+            );
             anyhow::bail!("OpenAI API error ({}): {}", status, error_text);
         }
 
@@ -425,4 +456,11 @@ impl AIProvider for OpenAIProvider {
 
         Ok(response.status().is_success())
     }
+}
+
+fn truncate_for_log(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        return s.to_string();
+    }
+    format!("{}...[truncated]", &s[..max])
 }

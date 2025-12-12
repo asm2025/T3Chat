@@ -16,7 +16,7 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::{
-        Json,
+        IntoResponse, Json, Response,
         sse::{Event, KeepAlive, Sse},
     },
 };
@@ -84,25 +84,30 @@ pub async fn chat(
     user: AuthenticatedUser,
     state: State<AppState>,
     Json(payload): Json<ChatRequest>,
-) -> Result<Json<ChatCompletionResponse>, StatusCode> {
+) -> Result<Json<ChatCompletionResponse>, Response> {
     // Verify chat belongs to user
     let _chat = state
         .chat_repository
         .get(payload.chat_id, &user.0.id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+        .ok_or(StatusCode::NOT_FOUND.into_response())?;
 
     if state
         .model_catalog
         .find(&payload.model_provider, &payload.model_id)
         .is_none()
     {
-        return Err(StatusCode::BAD_REQUEST);
+        tracing::error!("Model not found in catalog: provider={}, model={}", payload.model_provider, payload.model_id);
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": format!("Model not found: {}/{}", payload.model_provider, payload.model_id) }))
+        ).into_response());
     }
 
     // Resolve provider implementation
     let provider_name = payload.model_provider.as_str();
+    tracing::info!("Resolving provider: {}", provider_name);
 
     // Special handling for RouteLLM: uses a backend-managed key from t3chat.yaml
     let ai_provider: Arc<ProviderWrapper> = if provider_name == "routellm" {
@@ -111,13 +116,25 @@ pub async fn chat(
             .providers
             .routellm
             .as_ref()
-            .ok_or(StatusCode::BAD_REQUEST)?;
+            .ok_or_else(|| {
+                tracing::error!("RouteLLM config missing in t3chat.yaml");
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "RouteLLM not configured on server" }))
+                ).into_response()
+            })?;
 
         let api_key = routellm_cfg
             .provider
             .api_key
             .clone()
-            .ok_or(StatusCode::BAD_REQUEST)?;
+            .ok_or_else(|| {
+                tracing::error!("RouteLLM API key missing in config");
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "RouteLLM API key missing on server" }))
+                ).into_response()
+            })?;
 
         let base_url = routellm_cfg.provider.base_url.clone();
 
@@ -132,30 +149,55 @@ pub async fn chat(
             "google" => AiProvider::Google,
             "deepseek" => AiProvider::DeepSeek,
             "ollama" => AiProvider::Ollama,
-            _ => return Err(StatusCode::BAD_REQUEST),
+            _ => {
+                tracing::error!("Invalid provider name: {}", provider_name);
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": format!("Invalid provider: {}", provider_name) }))
+                ).into_response());
+            }
         };
 
         let api_key = state
             .user_api_key_repository
             .get_default_for_provider(&user.0.id, &provider)
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .ok_or(StatusCode::BAD_REQUEST)?;
+            .map_err(|e| {
+                tracing::error!("Database error fetching API key: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            })?
+            .ok_or_else(|| {
+                tracing::warn!("No API key found for provider: {:?}", provider);
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ 
+                        "error": format!("Missing API key for provider '{}'. Please add one in Settings > API Keys.", provider.as_str()),
+                        "code": "missing_api_key",
+                        "provider": provider.as_str()
+                    }))
+                ).into_response()
+            })?;
 
         // Decrypt API key
         let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
             tracing::error!("Failed to decrypt API key: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         })?;
 
         let mut api_keys = std::collections::HashMap::new();
         api_keys.insert(provider.clone(), decrypted_key);
+
+        // Add ABACUS_API_KEY from env if available for ChatLLM
+        if let Some(abacus_key) = crate::env::get_abacus_api_key() {
+            api_keys.insert(AiProvider::ChatLLM, abacus_key);
+        }
+
         let provider_manager = crate::ai::manager::ProviderManager::new(api_keys)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
         provider_manager
             .get_provider(&provider)
-            .ok_or(StatusCode::BAD_REQUEST)?
+            .ok_or((StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "Failed to initialize provider" }))).into_response())?
     };
 
     // Get messages for context
@@ -163,7 +205,7 @@ pub async fn chat(
         .chat_repository
         .list_messages(payload.chat_id, &user.0.id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     // Convert to AI provider format
     let ai_messages: Vec<ChatMessage> = messages
@@ -208,7 +250,7 @@ pub async fn chat(
 
     let ai_response = ai_provider.chat(ai_request).await.map_err(|e| {
         tracing::error!("AI provider error: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
     })?;
 
     // Save user message
@@ -216,7 +258,7 @@ pub async fn chat(
         .chat_repository
         .get_next_sequence_number(payload.chat_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     state
         .chat_repository
@@ -229,14 +271,14 @@ pub async fn chat(
             sequence_number: user_seq,
         })
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     // Save assistant response
     let assistant_seq = state
         .chat_repository
         .get_next_sequence_number(payload.chat_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     let assistant_message = state
         .chat_repository
@@ -249,7 +291,7 @@ pub async fn chat(
             sequence_number: assistant_seq,
         })
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     // Update token usage if available
     if let Some(usage) = &ai_response.usage {
@@ -261,7 +303,7 @@ pub async fn chat(
                 &ai_response.model,
             )
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
     }
 
     Ok(Json(ChatCompletionResponse {
@@ -295,25 +337,32 @@ pub async fn stream_chat(
     user: AuthenticatedUser,
     state: State<AppState>,
     Json(payload): Json<ChatRequest>,
-) -> Result<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+) -> Result<Sse<impl futures::Stream<Item = Result<Event, Infallible>>>, Response> {
+    tracing::info!("Stream chat request: provider={}, model={}", payload.model_provider, payload.model_id);
+
     // Verify chat belongs to user
     let _chat = state
         .chat_repository
         .get(payload.chat_id, &user.0.id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+        .ok_or(StatusCode::NOT_FOUND.into_response())?;
 
     if state
         .model_catalog
         .find(&payload.model_provider, &payload.model_id)
         .is_none()
     {
-        return Err(StatusCode::BAD_REQUEST);
+        tracing::error!("Model not found in catalog: provider={}, model={}", payload.model_provider, payload.model_id);
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": format!("Model not found: {}/{}", payload.model_provider, payload.model_id) }))
+        ).into_response());
     }
 
     // Resolve provider implementation
     let provider_name = payload.model_provider.as_str();
+    tracing::info!("Resolving provider: {}", provider_name);
 
     // Special handling for RouteLLM: uses a backend-managed key from t3chat.yaml
     let ai_provider: Arc<ProviderWrapper> = if provider_name == "routellm" {
@@ -322,13 +371,25 @@ pub async fn stream_chat(
             .providers
             .routellm
             .as_ref()
-            .ok_or(StatusCode::BAD_REQUEST)?;
+            .ok_or_else(|| {
+                tracing::error!("RouteLLM config missing in t3chat.yaml");
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "RouteLLM not configured on server" }))
+                ).into_response()
+            })?;
 
         let api_key = routellm_cfg
             .provider
             .api_key
             .clone()
-            .ok_or(StatusCode::BAD_REQUEST)?;
+            .ok_or_else(|| {
+                tracing::error!("RouteLLM API key missing in config");
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": "RouteLLM API key missing on server" }))
+                ).into_response()
+            })?;
 
         let base_url = routellm_cfg.provider.base_url.clone();
 
@@ -343,30 +404,55 @@ pub async fn stream_chat(
             "google" => AiProvider::Google,
             "deepseek" => AiProvider::DeepSeek,
             "ollama" => AiProvider::Ollama,
-            _ => return Err(StatusCode::BAD_REQUEST),
+            _ => {
+                tracing::error!("Invalid provider name: {}", provider_name);
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": format!("Invalid provider: {}", provider_name) }))
+                ).into_response());
+            }
         };
 
         let api_key = state
             .user_api_key_repository
             .get_default_for_provider(&user.0.id, &provider)
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .ok_or(StatusCode::BAD_REQUEST)?;
+            .map_err(|e| {
+                tracing::error!("Database error fetching API key: {:?}", e);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            })?
+            .ok_or_else(|| {
+                tracing::warn!("No API key found for provider: {:?}", provider);
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ 
+                        "error": format!("Missing API key for provider '{}'. Please add one in Settings > API Keys.", provider.as_str()),
+                        "code": "missing_api_key",
+                        "provider": provider.as_str()
+                    }))
+                ).into_response()
+            })?;
 
         // Decrypt API key
         let decrypted_key = encryption::decrypt(&api_key.encrypted_key).map_err(|e| {
             tracing::error!("Failed to decrypt API key: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         })?;
 
         let mut api_keys = std::collections::HashMap::new();
         api_keys.insert(provider.clone(), decrypted_key);
+
+        // Add ABACUS_API_KEY from env if available for ChatLLM
+        if let Some(abacus_key) = crate::env::get_abacus_api_key() {
+            api_keys.insert(AiProvider::ChatLLM, abacus_key);
+        }
+
         let provider_manager = crate::ai::manager::ProviderManager::new(api_keys)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
         provider_manager
             .get_provider(&provider)
-            .ok_or(StatusCode::BAD_REQUEST)?
+            .ok_or((StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "Failed to initialize provider" }))).into_response())?
     };
 
     // Get messages for context
@@ -374,7 +460,7 @@ pub async fn stream_chat(
         .chat_repository
         .list_messages(payload.chat_id, &user.0.id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     // Convert to AI provider format
     let ai_messages: Vec<ChatMessage> = messages
@@ -419,37 +505,38 @@ pub async fn stream_chat(
     // Get streaming response
     let mut stream = ai_provider.stream_chat(ai_request).await.map_err(|e| {
         tracing::error!("AI provider streaming error: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
     })?;
 
     // Save user message
     let chat_repo = state.chat_repository.clone();
     let chat_id = payload.chat_id;
-    let user_message = payload.message.clone();
+    let user_message_content = payload.message.clone();
 
     let user_seq = state
         .chat_repository
         .get_next_sequence_number(chat_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
-    state
+    let user_msg = state
         .chat_repository
         .create_message(CreateMessageDto {
             chat_id,
             role: MessageRole::User,
-            content: user_message,
+            content: user_message_content,
             metadata: None,
             parent_message_id: None,
             sequence_number: user_seq,
         })
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     // Create SSE stream
     let mut full_response = String::new();
     let mut _finish_reason: Option<String> = None;
     let model = payload.model_id.clone();
+    let user_msg_id = user_msg.id;
 
     let event_stream = async_stream::stream! {
         while let Some(chunk_result) = stream.next().await {
@@ -497,9 +584,22 @@ pub async fn stream_chat(
                 }
                 Err(e) => {
                     tracing::error!("Stream error: {}", e);
+
+                    // Match LibreChat's structured error format
+                    let error_payload = serde_json::json!({
+                        "error": true,
+                        "messageId": uuid::Uuid::new_v4().to_string(),
+                        "conversationId": chat_id,
+                        "parentMessageId": user_msg_id,
+                        "sender": "Assistant",
+                        "text": format!("Error: {}", e),
+                        "final": true,
+                        "unfinished": false
+                    });
+
                     let error_event = Event::default()
                         .event("error")
-                        .data(format!("Error: {}", e));
+                        .data(error_payload.to_string());
                     yield Ok(error_event);
                     break;
                 }

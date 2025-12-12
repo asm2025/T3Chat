@@ -16,6 +16,9 @@ pub enum ProviderWrapper {
     Anthropic(AnthropicProvider),
     Google(GoogleProvider),
     RouteLLM(RouteLLMProvider),
+    DeepSeek(OpenAIProvider),
+    Ollama(OpenAIProvider),
+    ChatLLM(OpenAIProvider),
 }
 
 impl ProviderWrapper {
@@ -25,6 +28,9 @@ impl ProviderWrapper {
             ProviderWrapper::Anthropic(p) => p.name(),
             ProviderWrapper::Google(p) => p.name(),
             ProviderWrapper::RouteLLM(p) => p.name(),
+            ProviderWrapper::DeepSeek(_) => "deepseek",
+            ProviderWrapper::Ollama(_) => "ollama",
+            ProviderWrapper::ChatLLM(_) => "chatllm",
         }
     }
 
@@ -34,6 +40,9 @@ impl ProviderWrapper {
             ProviderWrapper::Anthropic(p) => p.chat(request).await,
             ProviderWrapper::Google(p) => p.chat(request).await,
             ProviderWrapper::RouteLLM(p) => p.chat(request).await,
+            ProviderWrapper::DeepSeek(p) => p.chat(request).await,
+            ProviderWrapper::Ollama(p) => p.chat(request).await,
+            ProviderWrapper::ChatLLM(p) => p.chat(request).await,
         }
     }
 
@@ -46,6 +55,9 @@ impl ProviderWrapper {
             ProviderWrapper::Anthropic(p) => p.stream_chat(request).await,
             ProviderWrapper::Google(p) => p.stream_chat(request).await,
             ProviderWrapper::RouteLLM(p) => p.stream_chat(request).await,
+            ProviderWrapper::DeepSeek(p) => p.stream_chat(request).await,
+            ProviderWrapper::Ollama(p) => p.stream_chat(request).await,
+            ProviderWrapper::ChatLLM(p) => p.stream_chat(request).await,
         }
     }
 
@@ -55,6 +67,9 @@ impl ProviderWrapper {
             ProviderWrapper::Anthropic(p) => p.get_model_info(model_id),
             ProviderWrapper::Google(p) => p.get_model_info(model_id),
             ProviderWrapper::RouteLLM(p) => p.get_model_info(model_id),
+            ProviderWrapper::DeepSeek(p) => p.get_model_info(model_id),
+            ProviderWrapper::Ollama(p) => p.get_model_info(model_id),
+            ProviderWrapper::ChatLLM(p) => p.get_model_info(model_id),
         }
     }
 
@@ -64,6 +79,9 @@ impl ProviderWrapper {
             ProviderWrapper::Anthropic(p) => p.list_models(),
             ProviderWrapper::Google(p) => p.list_models(),
             ProviderWrapper::RouteLLM(p) => p.list_models(),
+            ProviderWrapper::DeepSeek(p) => p.list_models(),
+            ProviderWrapper::Ollama(p) => p.list_models(),
+            ProviderWrapper::ChatLLM(p) => p.list_models(),
         }
     }
 
@@ -73,6 +91,9 @@ impl ProviderWrapper {
             ProviderWrapper::Anthropic(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::Google(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::RouteLLM(p) => p.validate_api_key(api_key).await,
+            ProviderWrapper::DeepSeek(p) => p.validate_api_key(api_key).await,
+            ProviderWrapper::Ollama(p) => p.validate_api_key(api_key).await,
+            ProviderWrapper::ChatLLM(p) => p.validate_api_key(api_key).await,
         }
     }
 }
@@ -98,7 +119,21 @@ impl ProviderManager {
                 AiProvider::Google => {
                     Arc::new(ProviderWrapper::Google(GoogleProvider::new(api_key)))
                 }
-                _ => continue, // Skip unsupported providers for now
+                AiProvider::DeepSeek => Arc::new(ProviderWrapper::DeepSeek(
+                    OpenAIProvider::new(api_key)
+                        .with_base_url("https://api.deepseek.com".to_string()),
+                )),
+                AiProvider::Ollama => {
+                    // Default to localhost, but this should ideally be configurable
+                    Arc::new(ProviderWrapper::Ollama(
+                        OpenAIProvider::new(api_key)
+                            .with_base_url("http://localhost:11434/v1".to_string()),
+                    ))
+                }
+                AiProvider::ChatLLM => Arc::new(ProviderWrapper::ChatLLM(
+                    OpenAIProvider::new(api_key)
+                        .with_base_url("https://pa002.abacus.ai/api".to_string()),
+                )),
             };
             providers.insert(provider, provider_impl);
         }
@@ -117,7 +152,16 @@ impl ProviderManager {
             AiProvider::OpenAI => ProviderWrapper::OpenAI(OpenAIProvider::new(api_key)),
             AiProvider::Anthropic => ProviderWrapper::Anthropic(AnthropicProvider::new(api_key)),
             AiProvider::Google => ProviderWrapper::Google(GoogleProvider::new(api_key)),
-            _ => anyhow::bail!("Unsupported provider: {:?}", provider),
+            AiProvider::DeepSeek => ProviderWrapper::DeepSeek(
+                OpenAIProvider::new(api_key).with_base_url("https://api.deepseek.com".to_string()),
+            ),
+            AiProvider::Ollama => ProviderWrapper::Ollama(
+                OpenAIProvider::new(api_key).with_base_url("http://localhost:11434/v1".to_string()),
+            ),
+            AiProvider::ChatLLM => ProviderWrapper::ChatLLM(
+                OpenAIProvider::new(api_key)
+                    .with_base_url("https://pa002.abacus.ai/api".to_string()),
+            ),
         };
         Ok(provider_impl)
     }

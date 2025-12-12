@@ -43,6 +43,7 @@ pub struct AppState {
     pub ai_provider_repository: Arc<db::repositories::AiProviderRepository>,
     pub user_api_key_repository: Arc<db::repositories::UserApiKeyRepository>,
     pub chat_repository: Arc<db::repositories::ChatRepository>,
+    pub file_repository: Arc<db::repositories::file_repository::FileRepository>,
     pub user_feature_repository: Arc<db::repositories::UserFeatureRepository>,
     pub oidc_client: Option<Arc<auth::OidcClient>>,
     pub jwks_cache: Option<Arc<auth::JwksCache>>,
@@ -108,6 +109,9 @@ async fn run() -> Result<()> {
     let user_api_key_repository =
         Arc::new(db::repositories::UserApiKeyRepository::new(pool.clone()));
     let chat_repository = Arc::new(db::repositories::ChatRepository::new(pool.clone()));
+    let file_repository = Arc::new(db::repositories::file_repository::FileRepository::new(
+        pool.clone(),
+    ));
     let user_feature_repository =
         Arc::new(db::repositories::UserFeatureRepository::new(pool.clone()));
 
@@ -159,6 +163,7 @@ async fn run() -> Result<()> {
         ai_provider_repository,
         user_api_key_repository,
         chat_repository,
+        file_repository,
         user_feature_repository,
         oidc_client,
         jwks_cache,
@@ -406,6 +411,23 @@ fn setup_router(state: AppState) -> Result<Router> {
             middleware::auth::auth_middleware,
         ));
 
+    let files_routes = Router::new()
+        .route(
+            "/",
+            get(api::v1::files::list_files).post(api::v1::files::upload_file),
+        )
+        .route("/stt", post(api::v1::files::stt::transcribe_audio))
+        .route(
+            "/{id}",
+            get(api::v1::files::get_file).delete(api::v1::files::delete_file),
+        )
+        .route("/{id}/content", get(api::v1::files::get_file_content))
+        .route("/{id}/download", get(api::v1::files::get_download_url))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::auth::auth_middleware,
+        ));
+
     let user_routes = Router::new()
         .route(
             "/me",
@@ -447,6 +469,7 @@ fn setup_router(state: AppState) -> Result<Router> {
         .nest("/api/v1/chat", chat_routes)
         .nest("/api/v1/keys", user_api_keys_routes)
         .nest("/api/v1/features", features_routes)
+        .nest("/api/v1/files", files_routes)
         .nest("/api/v1", user_routes)
         .nest("/api/v1/admin", admin_routes)
         .nest("/api/v1/config", config_routes);

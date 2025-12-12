@@ -123,6 +123,7 @@ pub struct LocalLoginRequest {
 #[derive(Serialize)]
 pub struct LocalLoginResponse {
     token: String,
+    expires_at: i64,
     user: UserResponse,
 }
 
@@ -189,12 +190,19 @@ pub async fn login(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let session_manager = SessionManager::new(jwt_secret, crate::env::get_jwt_expiry_seconds());
+    let expiry_seconds = crate::env::get_jwt_expiry_seconds();
+    let session_manager = SessionManager::new(jwt_secret, expiry_seconds);
 
     let session_token = session_manager.generate_token(&user).map_err(|e| {
         tracing::error!(error = ?e, user_id = %user.id, "Failed to generate session token");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    let expires_at = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        + expiry_seconds) as i64;
 
     // Get user roles
     let roles = user_repo.get_user_roles(&user.id).await.map_err(|e| {
@@ -204,6 +212,7 @@ pub async fn login(
 
     Ok(Json(LocalLoginResponse {
         token: session_token,
+        expires_at,
         user: UserResponse {
             id: user.id,
             email: user.email,

@@ -73,6 +73,8 @@ pub async fn create_message(
     Path(chat_id): Path<Uuid>,
     Json(payload): Json<CreateMessageRequest>,
 ) -> Result<Json<MessageResponse>, StatusCode> {
+    tracing::info!("Create message request: chat_id={}, payload={:?}", chat_id, payload);
+
     // Verify chat belongs to user
     let _chat = state
         .chat_repository

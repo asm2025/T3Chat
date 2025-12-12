@@ -103,6 +103,10 @@ pub fn is_debug_routes_enabled() -> bool {
         .unwrap_or(false)
 }
 
+pub fn get_abacus_api_key() -> Option<String> {
+    get_env("ABACUS_API_KEY")
+}
+
 pub fn ensure_env_loaded() {
     LazyLock::force(&ENV_FILES_LOADED);
 }

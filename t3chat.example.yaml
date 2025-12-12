@@ -91,7 +91,6 @@ providers:
               default:
                   - id: anthropic.claude-3-haiku-20240307-v1:0
                     label: "Claude 3 Haiku (Bedrock)"
-
 model_specs:
     - name: gpt4o-default
       label: "GPT-4o Default"

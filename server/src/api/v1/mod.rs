@@ -5,6 +5,7 @@ pub mod chat;
 pub mod chats;
 pub mod config;
 pub mod features;
+pub mod files;
 pub mod health;
 pub mod models;
 pub mod user;

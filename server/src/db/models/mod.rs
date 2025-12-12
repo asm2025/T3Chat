@@ -74,6 +74,7 @@ pub enum AiProvider {
     Google,
     DeepSeek,
     Ollama,
+    ChatLLM,
 }
 
 impl AiProvider {
@@ -84,6 +85,7 @@ impl AiProvider {
             AiProvider::Google => "google",
             AiProvider::DeepSeek => "deepseek",
             AiProvider::Ollama => "ollama",
+            AiProvider::ChatLLM => "chatllm",
         }
     }
 
@@ -94,6 +96,7 @@ impl AiProvider {
             "google" => Some(AiProvider::Google),
             "deepseek" => Some(AiProvider::DeepSeek),
             "ollama" => Some(AiProvider::Ollama),
+            "chatllm" => Some(AiProvider::ChatLLM),
             _ => None,
         }
     }

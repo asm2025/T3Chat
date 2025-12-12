@@ -162,6 +162,7 @@ pub async fn create_chat(
         "google" => AiProvider::Google,
         "deepseek" => AiProvider::DeepSeek,
         "ollama" => AiProvider::Ollama,
+        "chatllm" => AiProvider::ChatLLM,
         _ => return Err(StatusCode::BAD_REQUEST),
     };
 
@@ -176,7 +177,10 @@ pub async fn create_chat(
             model_id: payload.model_id,
         })
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to create chat: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     Ok(Json(ChatResponse::from(chat)))
 }

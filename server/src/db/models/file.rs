@@ -10,6 +10,7 @@ use crate::db::schema::files;
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = files)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[serde(rename_all = "camelCase")]
 pub struct File {
     pub id: Uuid,
     pub file_id: String, // for API compatibility
