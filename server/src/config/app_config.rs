@@ -1,7 +1,4 @@
-use super::{
-    placeholders::resolve_env_placeholders,
-    ConfigNotice, LoadedConfig, NoticeLevel,
-};
+use super::{ConfigNotice, LoadedConfig, NoticeLevel, placeholders::resolve_env_placeholders};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -38,7 +35,7 @@ pub struct DerivedEndpoint {
     pub headers: Option<Value>,
     pub add_params: Option<Value>,
     pub drop_params: Vec<String>,
-    
+
     // Internal use
     #[serde(skip)]
     pub original_key: String,
@@ -85,7 +82,7 @@ impl DerivedAppConfig {
         let mut notices = loaded.metadata.notices;
         let mut endpoints = Vec::new();
         let mut model_specs = Vec::new();
-        
+
         // Defaults
         let mut interface = DerivedInterfaceConfig {
             endpoints_menu: true,
@@ -94,17 +91,27 @@ impl DerivedAppConfig {
             side_panel: true,
             presets: true,
         };
-        
+
         let app_title = None; // Could extract if present in librechat yaml (not standard field but maybe useful)
 
         if let Some(config) = loaded.config {
             // 1. Interface
             if let Some(iface) = config.interface {
-                if let Some(val) = iface.endpoints_menu { interface.endpoints_menu = val; }
-                if let Some(val) = iface.model_select { interface.model_select = val; }
-                if let Some(val) = iface.parameters_menu { interface.parameters_menu = val; }
-                if let Some(val) = iface.side_panel { interface.side_panel = val; }
-                if let Some(val) = iface.presets { interface.presets = val; }
+                if let Some(val) = iface.endpoints_menu {
+                    interface.endpoints_menu = val;
+                }
+                if let Some(val) = iface.model_select {
+                    interface.model_select = val;
+                }
+                if let Some(val) = iface.parameters_menu {
+                    interface.parameters_menu = val;
+                }
+                if let Some(val) = iface.side_panel {
+                    interface.side_panel = val;
+                }
+                if let Some(val) = iface.presets {
+                    interface.presets = val;
+                }
             }
 
             // 2. Endpoints
@@ -123,13 +130,13 @@ impl DerivedAppConfig {
                         openai.add_params,
                         openai.drop_params,
                         &mut endpoints,
-                        &mut notices
+                        &mut notices,
                     );
                 }
 
                 // Anthropic
                 if let Some(anthropic) = eps.anthropic {
-                     process_endpoint(
+                    process_endpoint(
                         "anthropic",
                         "Anthropic",
                         anthropic.api_key,
@@ -141,13 +148,13 @@ impl DerivedAppConfig {
                         anthropic.add_params,
                         anthropic.drop_params,
                         &mut endpoints,
-                        &mut notices
+                        &mut notices,
                     );
                 }
 
                 // Google
                 if let Some(google) = eps.google {
-                     process_endpoint(
+                    process_endpoint(
                         "google",
                         "Google",
                         google.api_key,
@@ -159,10 +166,10 @@ impl DerivedAppConfig {
                         google.add_params,
                         google.drop_params,
                         &mut endpoints,
-                        &mut notices
+                        &mut notices,
                     );
                 }
-                
+
                 // Custom
                 if let Some(custom_list) = eps.custom {
                     for custom in custom_list {
@@ -172,7 +179,7 @@ impl DerivedAppConfig {
                         // Let's use the name directly but ensure uniqueness?
                         // Actually, T3Chat might expect specific keys for logic.
                         // For now, let's use the name.
-                        
+
                         process_endpoint(
                             &custom.name, // Use the name as the provider key
                             &custom.name, // And label
@@ -185,7 +192,7 @@ impl DerivedAppConfig {
                             custom.add_params,
                             custom.drop_params,
                             &mut endpoints,
-                            &mut notices
+                            &mut notices,
                         );
                     }
                 }
@@ -212,7 +219,7 @@ impl DerivedAppConfig {
                             resend_files: spec.preset.resend_files.unwrap_or(true), // Default true?
                             image_detail: spec.preset.image_detail,
                             tools: spec.preset.tools.unwrap_or(false),
-                        }
+                        },
                     });
                 }
             }
@@ -233,7 +240,7 @@ fn process_endpoint(
     default_label: &str,
     api_key: Option<String>,
     base_url: Option<String>,
-    models: Option<super::librechat::EndpointModels>,
+    models: Option<super::t3chat::EndpointModels>,
     model_display_label: Option<String>,
     icon_url: Option<String>,
     headers: Option<Value>,
@@ -246,27 +253,30 @@ fn process_endpoint(
     let resolved_api_key = if let Some(key) = api_key {
         let res = resolve_env_placeholders(&key);
         if !res.unresolved.is_empty() {
-             notices.push(ConfigNotice {
+            notices.push(ConfigNotice {
                 level: NoticeLevel::Warning,
                 message: format!("Endpoint '{}' disabled", provider_key),
-                detail: Some(format!("Missing environment variable(s): {}", res.unresolved.join(", "))),
+                detail: Some(format!(
+                    "Missing environment variable(s): {}",
+                    res.unresolved.join(", ")
+                )),
             });
             return; // Disable endpoint
         }
         if res.value.is_empty() {
-             // If key is present but empty, maybe disable too? Or allow if it's optional for some reason (e.g. local llm without auth)?
-             // Usually OpenAI/Anthropic need keys. Custom might not.
-             // Plan says: "If an endpoint requires apiKey and it resolves to empty... treat endpoint as disabled"
-             // We don't strictly know if it requires it, but for built-ins usually yes.
-             // Let's assume if it was provided as variable and resolved empty, it's bad.
-             // But if it wasn't provided at all? LibreChat `apiKey` is optional in struct.
-             
-             // If the user put `apiKey: ${MISSING}`, we return above.
-             // If `apiKey: ""` -> it is empty.
-             if key.trim().is_empty() {
-                  // explicitly empty string?
-             }
-             Some(res.value)
+            // If key is present but empty, maybe disable too? Or allow if it's optional for some reason (e.g. local llm without auth)?
+            // Usually OpenAI/Anthropic need keys. Custom might not.
+            // Plan says: "If an endpoint requires apiKey and it resolves to empty... treat endpoint as disabled"
+            // We don't strictly know if it requires it, but for built-ins usually yes.
+            // Let's assume if it was provided as variable and resolved empty, it's bad.
+            // But if it wasn't provided at all? LibreChat `apiKey` is optional in struct.
+
+            // If the user put `apiKey: ${MISSING}`, we return above.
+            // If `apiKey: ""` -> it is empty.
+            if key.trim().is_empty() {
+                // explicitly empty string?
+            }
+            Some(res.value)
         } else {
             Some(res.value)
         }
@@ -279,7 +289,7 @@ fn process_endpoint(
         let res = resolve_env_placeholders(&url);
         // We generally don't disable if base_url has missing vars, but maybe we should?
         // Let's just use the value.
-         Some(res.value)
+        Some(res.value)
     } else {
         None
     };

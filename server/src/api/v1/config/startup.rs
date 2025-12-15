@@ -49,6 +49,13 @@ pub async fn get_startup_config(state: State<AppState>) -> Json<StartupConfigRes
     // We already have notices in app_config
     let notices = config.notices.clone();
 
+    // Collect enabled provider keys (lowercase for comparison)
+    let enabled_providers: std::collections::HashSet<String> = config
+        .endpoints
+        .iter()
+        .map(|cfg| cfg.provider.to_lowercase())
+        .collect();
+
     let providers = config
         .endpoints
         .iter()
@@ -62,9 +69,11 @@ pub async fn get_startup_config(state: State<AppState>) -> Json<StartupConfigRes
         })
         .collect();
 
-    let specs = config
+    // Only include model specs whose endpoint is enabled
+    let specs: Vec<ModelSpecResponse> = config
         .model_specs
         .iter()
+        .filter(|spec| enabled_providers.contains(&spec.preset.endpoint.to_lowercase()))
         .map(ModelSpecResponse::from)
         .collect();
 

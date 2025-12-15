@@ -1,22 +1,21 @@
 pub mod app_config;
-pub mod librechat;
 pub mod placeholders;
 pub mod t3chat;
 
 #[cfg(test)]
 mod tests;
 
-use librechat::LibreChatConfig;
 use std::{
     env, fs,
     path::{Path, PathBuf},
     time::Duration,
 };
+use t3chat::T3ChatConfig;
 use tracing::{error, info, warn};
 
 #[derive(Debug, Clone)]
 pub struct LoadedConfig {
-    pub config: Option<LibreChatConfig>,
+    pub config: Option<T3ChatConfig>,
     pub metadata: ConfigMetadata,
 }
 
@@ -53,7 +52,7 @@ use std::future::Future;
 
 pub fn load_config() -> impl Future<Output = LoadedConfig> {
     let source_path = resolve_config_source();
-    
+
     async move {
         let mut notices = Vec::new();
 
@@ -65,7 +64,10 @@ pub fn load_config() -> impl Future<Output = LoadedConfig> {
                 }
                 Err(err) => {
                     if err.kind() == std::io::ErrorKind::NotFound {
-                        warn!("Config file not found at {}; using defaults", path.display());
+                        warn!(
+                            "Config file not found at {}; using defaults",
+                            path.display()
+                        );
                         notices.push(ConfigNotice {
                             level: NoticeLevel::Warning,
                             message: "Configuration file not found".to_string(),
@@ -98,8 +100,11 @@ pub fn load_config() -> impl Future<Output = LoadedConfig> {
                 }
             },
             ConfigSource::Missing { expected } => {
-                warn!("No config path specified and default not found at {}", expected.display());
-                 notices.push(ConfigNotice {
+                warn!(
+                    "No config path specified and default not found at {}",
+                    expected.display()
+                );
+                notices.push(ConfigNotice {
                     level: NoticeLevel::Warning,
                     message: "Configuration file not found".to_string(),
                     detail: Some(format!("Expected at: {}", expected.display())),
@@ -109,7 +114,7 @@ pub fn load_config() -> impl Future<Output = LoadedConfig> {
         };
 
         let config = if let Some(yaml_content) = raw_yaml {
-            match serde_yaml::from_str::<LibreChatConfig>(&yaml_content) {
+            match serde_yaml::from_str::<T3ChatConfig>(&yaml_content) {
                 Ok(cfg) => Some(cfg),
                 Err(err) => {
                     error!("Failed to parse configuration: {}", err);
@@ -141,7 +146,7 @@ fn resolve_config_source() -> ConfigSource {
             if custom.starts_with("http://") || custom.starts_with("https://") {
                 return ConfigSource::Url { url: custom };
             }
-            
+
             let path = Path::new(&custom);
             let candidate = if path.is_absolute() {
                 path.to_path_buf()
@@ -156,10 +161,10 @@ fn resolve_config_source() -> ConfigSource {
 
     // Also check T3CHAT_CONFIG for backward compatibility or alias
     if let Ok(custom) = env::var("T3CHAT_CONFIG") {
-         if !custom.trim().is_empty() {
-             // Treat as file path mostly
-             let path = Path::new(&custom);
-             let candidate = if path.is_absolute() {
+        if !custom.trim().is_empty() {
+            // Treat as file path mostly
+            let path = Path::new(&custom);
+            let candidate = if path.is_absolute() {
                 path.to_path_buf()
             } else {
                 env::current_dir().unwrap_or_default().join(path)
@@ -167,20 +172,26 @@ fn resolve_config_source() -> ConfigSource {
             return ConfigSource::File {
                 path: fs::canonicalize(&candidate).unwrap_or(candidate),
             };
-         }
+        }
     }
 
-    // Default: librechat.yaml in current dir
+    // Default: t3chat.yaml or librechat.yaml in current dir
     let cwd = env::current_dir().unwrap_or_default();
-    let candidate = cwd.join("librechat.yaml");
-    
-    // Check if it exists, otherwise return Missing
-    if candidate.exists() {
-         ConfigSource::File {
-            path: fs::canonicalize(&candidate).unwrap_or(candidate),
+    let t3chat_candidate = cwd.join("t3chat.yaml");
+    let librechat_candidate = cwd.join("librechat.yaml");
+
+    if t3chat_candidate.exists() {
+        ConfigSource::File {
+            path: fs::canonicalize(&t3chat_candidate).unwrap_or(t3chat_candidate),
+        }
+    } else if librechat_candidate.exists() {
+        ConfigSource::File {
+            path: fs::canonicalize(&librechat_candidate).unwrap_or(librechat_candidate),
         }
     } else {
-        ConfigSource::Missing { expected: candidate }
+        ConfigSource::Missing {
+            expected: t3chat_candidate,
+        }
     }
 }
 
@@ -188,7 +199,7 @@ async fn fetch_url_config(url: &str) -> Result<String, reqwest::Error> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
-    
+
     let response = client.get(url).send().await?;
     let content = response.error_for_status()?.text().await?;
     Ok(content)

@@ -29,19 +29,22 @@ export function ChatView({ chatId }: ChatViewProps) {
     const useSpecs = modelSpecs.length > 0;
 
     const effectiveModels: AIModel[] = useSpecs
-        ? modelSpecs.map((spec) => ({
-              id: spec.name,
-              provider: spec.provider as AiProvider,
-              model_id: spec.model,
-              display_name: spec.label,
-              context_window: 128000,
-              supports_streaming: true,
-              supports_images: false,
-              supports_functions: false,
-              is_active: true,
-              created_at: "",
-              updated_at: "",
-          }))
+        ? modelSpecs
+              // Filter out specs with missing endpoint or model
+              .filter((spec) => spec.preset?.endpoint && spec.preset?.model)
+              .map((spec) => ({
+                  id: spec.name,
+                  provider: spec.preset.endpoint.toLowerCase() as AiProvider,
+                  model_id: spec.preset.model,
+                  display_name: spec.label,
+                  context_window: 128000,
+                  supports_streaming: true,
+                  supports_images: false,
+                  supports_functions: false,
+                  is_active: true,
+                  created_at: "",
+                  updated_at: "",
+              }))
         : backendModels;
 
     const models = effectiveModels;
@@ -84,15 +87,33 @@ export function ChatView({ chatId }: ChatViewProps) {
             return;
         }
 
+        // Validate model has required fields before proceeding
+        const provider = selectedModel.provider;
+        const modelId = selectedModel.model_id;
+        
+        if (!provider || typeof provider !== "string" || provider.trim() === "") {
+            toast.error("Invalid model configuration", { description: "Model provider is missing or invalid. Please select a different model." });
+            console.error("Invalid model provider:", { selectedModel, provider });
+            return;
+        }
+        
+        if (!modelId || typeof modelId !== "string" || modelId.trim() === "") {
+            toast.error("Invalid model configuration", { description: "Model ID is missing or invalid. Please select a different model." });
+            console.error("Invalid model_id:", { selectedModel, modelId });
+            return;
+        }
+
         let currentChatId = chatId;
 
         // Create new chat if one doesn't exist
         if (!currentChatId) {
             try {
+                const normalizedProvider = provider.toLowerCase() as AiProvider;
+                
                 const newChat = await t3ChatClient.createChat({
                     title: content.slice(0, 30) + (content.length > 30 ? "..." : ""),
-                    model_provider: selectedModel.provider,
-                    model_id: selectedModel.model_id,
+                    model_provider: normalizedProvider,
+                    model_id: modelId,
                 });
                 currentChatId = newChat.id;
                 navigate(`/chat/${currentChatId}`, { replace: true });
@@ -143,8 +164,8 @@ export function ChatView({ chatId }: ChatViewProps) {
             {
                 chat_id: currentChatId,
                 message: content,
-                model_provider: selectedModel.provider,
-                model_id: selectedModel.model_id,
+                model_provider: provider.toLowerCase() as AiProvider,
+                model_id: modelId,
                 stream: true,
             },
             (chunk) => {

@@ -1,6 +1,9 @@
-use super::*;
 use super::app_config::DerivedAppConfig;
-use super::librechat::{LibreChatConfig, EndpointsConfig, OpenAIEndpoint, CustomEndpoint, EndpointModels, ModelSpec, ModelSpecPreset};
+use super::t3chat::{
+    CustomEndpoint, EndpointModels, EndpointsConfig, ModelSpec, ModelSpecPreset, OpenAIEndpoint,
+    T3ChatConfig,
+};
+use super::*;
 use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
@@ -10,9 +13,8 @@ use tempfile::tempdir;
 #[tokio::test]
 async fn test_load_config_missing_file() {
     // Override env var to point to non-existent file
-    let loaded = temp_env::with_var("CONFIG_PATH", Some("non_existent.yaml"), || {
-        load_config()
-    }).await;
+    let loaded =
+        temp_env::with_var("CONFIG_PATH", Some("non_existent.yaml"), || load_config()).await;
 
     assert!(loaded.config.is_none());
     // When CONFIG_PATH is set, the source is File even if it doesn't exist (yet)
@@ -32,7 +34,8 @@ async fn test_load_config_invalid_yaml() {
 
     let loaded = temp_env::with_var("CONFIG_PATH", Some(file_path.to_str().unwrap()), || {
         load_config()
-    }).await;
+    })
+    .await;
 
     assert!(loaded.config.is_none());
     assert!(matches!(loaded.metadata.source, ConfigSource::File { .. }));
@@ -50,12 +53,17 @@ async fn test_load_config_unknown_fields_strict() {
 
     let loaded = temp_env::with_var("CONFIG_PATH", Some(file_path.to_str().unwrap()), || {
         load_config()
-    }).await;
+    })
+    .await;
 
     // Should fail strict parsing
     assert!(loaded.config.is_none());
     assert!(!loaded.metadata.notices.is_empty());
-    assert!(loaded.metadata.notices[0].message.contains("parse configuration"));
+    assert!(
+        loaded.metadata.notices[0]
+            .message
+            .contains("parse configuration")
+    );
 }
 
 #[tokio::test]
@@ -63,16 +71,21 @@ async fn test_load_config_valid() {
     let dir = tempdir().unwrap();
     let file_path = dir.path().join("librechat.yaml");
     let mut file = File::create(&file_path).unwrap();
-    writeln!(file, r#"
+    writeln!(
+        file,
+        r#"
 version: 1.0.0
 endpoints:
   openAI:
     apiKey: "sk-123"
-"#).unwrap();
+"#
+    )
+    .unwrap();
 
     let loaded = temp_env::with_var("CONFIG_PATH", Some(file_path.to_str().unwrap()), || {
         load_config()
-    }).await;
+    })
+    .await;
 
     if loaded.config.is_none() {
         for notice in &loaded.metadata.notices {
@@ -93,7 +106,7 @@ endpoints:
 
 #[test]
 fn test_derive_app_config_openai() {
-    let libre_config = LibreChatConfig {
+    let libre_config = T3ChatConfig {
         version: Some("1.0".into()),
         endpoints: Some(EndpointsConfig {
             openai: Some(OpenAIEndpoint {
@@ -122,13 +135,15 @@ fn test_derive_app_config_openai() {
     let loaded = LoadedConfig {
         config: Some(libre_config),
         metadata: ConfigMetadata {
-            source: ConfigSource::Missing { expected: std::path::PathBuf::from("test") },
+            source: ConfigSource::Missing {
+                expected: std::path::PathBuf::from("test"),
+            },
             notices: vec![],
-        }
+        },
     };
 
     let app_config = DerivedAppConfig::from_loaded(loaded);
-    
+
     assert_eq!(app_config.endpoints.len(), 1);
     let endpoint = &app_config.endpoints[0];
     assert_eq!(endpoint.provider, "openai");
@@ -141,7 +156,7 @@ fn test_derive_app_config_openai() {
 
 #[test]
 fn test_derive_app_config_custom_endpoint() {
-    let libre_config = LibreChatConfig {
+    let libre_config = T3ChatConfig {
         version: Some("1.0".into()),
         endpoints: Some(EndpointsConfig {
             custom: Some(vec![CustomEndpoint {
@@ -166,13 +181,15 @@ fn test_derive_app_config_custom_endpoint() {
     let loaded = LoadedConfig {
         config: Some(libre_config),
         metadata: ConfigMetadata {
-            source: ConfigSource::Missing { expected: std::path::PathBuf::from("test") },
+            source: ConfigSource::Missing {
+                expected: std::path::PathBuf::from("test"),
+            },
             notices: vec![],
-        }
+        },
     };
 
     let app_config = DerivedAppConfig::from_loaded(loaded);
-    
+
     assert_eq!(app_config.endpoints.len(), 1);
     let endpoint = &app_config.endpoints[0];
     assert_eq!(endpoint.provider, "mistral");
@@ -183,16 +200,24 @@ fn test_derive_app_config_custom_endpoint() {
 #[test]
 fn test_derive_app_config_env_vars() {
     temp_env::with_var("OPENAI_API_KEY", Some("sk-env-key"), || {
-        let libre_config = LibreChatConfig {
+        let libre_config = T3ChatConfig {
             version: Some("1.0".into()),
             endpoints: Some(EndpointsConfig {
                 openai: Some(OpenAIEndpoint {
                     api_key: Some("${OPENAI_API_KEY}".into()),
-                    ..OpenAIEndpoint { 
-                        api_key: None, base_url: None, models: None, title_model: None, 
-                        summarize: None, summary_model: None, force_prompt: None, 
-                        model_display_label: None, icon_u_r_l: None, headers: None, 
-                        add_params: None, drop_params: None 
+                    ..OpenAIEndpoint {
+                        api_key: None,
+                        base_url: None,
+                        models: None,
+                        title_model: None,
+                        summarize: None,
+                        summary_model: None,
+                        force_prompt: None,
+                        model_display_label: None,
+                        icon_u_r_l: None,
+                        headers: None,
+                        add_params: None,
+                        drop_params: None,
                     }
                 }),
                 ..Default::default()
@@ -203,9 +228,11 @@ fn test_derive_app_config_env_vars() {
         let loaded = LoadedConfig {
             config: Some(libre_config),
             metadata: ConfigMetadata {
-                source: ConfigSource::Missing { expected: std::path::PathBuf::from("test") },
+                source: ConfigSource::Missing {
+                    expected: std::path::PathBuf::from("test"),
+                },
                 notices: vec![],
-            }
+            },
         };
 
         let app_config = DerivedAppConfig::from_loaded(loaded);
@@ -218,16 +245,24 @@ fn test_derive_app_config_env_vars() {
 #[test]
 fn test_derive_app_config_missing_env_var() {
     temp_env::with_var("OPENAI_API_KEY", None::<&str>, || {
-        let libre_config = LibreChatConfig {
+        let libre_config = T3ChatConfig {
             version: Some("1.0".into()),
             endpoints: Some(EndpointsConfig {
                 openai: Some(OpenAIEndpoint {
                     api_key: Some("${OPENAI_API_KEY}".into()),
-                    ..OpenAIEndpoint { 
-                        api_key: None, base_url: None, models: None, title_model: None, 
-                        summarize: None, summary_model: None, force_prompt: None, 
-                        model_display_label: None, icon_u_r_l: None, headers: None, 
-                        add_params: None, drop_params: None 
+                    ..OpenAIEndpoint {
+                        api_key: None,
+                        base_url: None,
+                        models: None,
+                        title_model: None,
+                        summarize: None,
+                        summary_model: None,
+                        force_prompt: None,
+                        model_display_label: None,
+                        icon_u_r_l: None,
+                        headers: None,
+                        add_params: None,
+                        drop_params: None,
                     }
                 }),
                 ..Default::default()
@@ -238,15 +273,17 @@ fn test_derive_app_config_missing_env_var() {
         let loaded = LoadedConfig {
             config: Some(libre_config),
             metadata: ConfigMetadata {
-                source: ConfigSource::Missing { expected: std::path::PathBuf::from("test") },
+                source: ConfigSource::Missing {
+                    expected: std::path::PathBuf::from("test"),
+                },
                 notices: vec![],
-            }
+            },
         };
 
         let app_config = DerivedAppConfig::from_loaded(loaded);
         // Endpoint should be disabled (not present in the list) because of missing env var
         assert!(app_config.endpoints.is_empty());
-        
+
         // Should have a warning notice
         assert!(!app_config.notices.is_empty());
         let notice = &app_config.notices[0];
@@ -258,7 +295,7 @@ fn test_derive_app_config_missing_env_var() {
 
 #[test]
 fn test_derive_app_config_model_specs() {
-    let libre_config = LibreChatConfig {
+    let libre_config = T3ChatConfig {
         version: Some("1.0".into()),
         model_specs: Some(vec![ModelSpec {
             name: "creative".into(),
@@ -269,12 +306,21 @@ fn test_derive_app_config_model_specs() {
                 endpoint: "openai".into(),
                 model: "gpt-4".into(),
                 temperature: Some(0.9),
-                ..ModelSpecPreset { 
-                    endpoint: "".into(), model: "".into(), model_label: None, greeting: None, 
-                    prompt_prefix: None, temperature: None, top_p: None, presence_penalty: None, 
-                    frequency_penalty: None, resend_files: None, image_detail: None, tools: None 
+                ..ModelSpecPreset {
+                    endpoint: "".into(),
+                    model: "".into(),
+                    model_label: None,
+                    greeting: None,
+                    prompt_prefix: None,
+                    temperature: None,
+                    top_p: None,
+                    presence_penalty: None,
+                    frequency_penalty: None,
+                    resend_files: None,
+                    image_detail: None,
+                    tools: None,
                 }
-            }
+            },
         }]),
         ..Default::default()
     };
@@ -282,9 +328,11 @@ fn test_derive_app_config_model_specs() {
     let loaded = LoadedConfig {
         config: Some(libre_config),
         metadata: ConfigMetadata {
-            source: ConfigSource::Missing { expected: std::path::PathBuf::from("test") },
+            source: ConfigSource::Missing {
+                expected: std::path::PathBuf::from("test"),
+            },
             notices: vec![],
-        }
+        },
     };
 
     let app_config = DerivedAppConfig::from_loaded(loaded);
