@@ -118,9 +118,9 @@ export function ConfigWarningBanner() {
             style={{ top: "env(safe-area-inset-top, 0px)" }}
             role="status"
             aria-live="polite">
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-center gap-3 px-6 text-center">
+            <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-6">
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="flex-1">{notice.message}</span>
+                <span className="flex-1 text-left">{notice.message}</span>
                 <Button
                     variant="ghost"
                     size="icon"
