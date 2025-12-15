@@ -9,20 +9,22 @@ use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 
-/// RouteLLM (Abacus.ai) provider implementation.
+/// ChatLLM provider implementation (OpenAI-compatible).
 ///
-/// This client targets the OpenAI-compatible
-/// `https://routellm.abacus.ai/v1/chat/completions` endpoint.
-/// The base URL is configurable so self-hosted proxies can be supported.
-pub struct RouteLLMProvider {
+/// The base URL is configurable to support different OpenAI-compatible providers.
+pub struct ChatLLMProvider {
     api_key: String,
     client: reqwest::Client,
     base_url: String,
 }
 
-impl RouteLLMProvider {
+const CHATLLM_DEFAULT_MODEL_ID: &str = "default";
+
+impl ChatLLMProvider {
     pub fn new(api_key: String, base_url: Option<String>) -> Self {
-        let base_url = base_url.unwrap_or_else(|| "https://routellm.abacus.ai/v1".to_string());
+        // Intentionally no hard-coded default base URL.
+        // Configure via `t3chat.yaml` (custom endpoint baseURL).
+        let base_url = base_url.unwrap_or_default();
         Self {
             api_key,
             client: reqwest::Client::new(),
@@ -39,6 +41,10 @@ impl RouteLLMProvider {
         #[derive(Deserialize)]
         struct ModelData {
             id: String,
+        }
+
+        if self.base_url.trim().is_empty() {
+            anyhow::bail!("ChatLLM base URL not configured (set custom endpoint baseURL in t3chat.yaml)");
         }
 
         let url = format!("{}/models", self.base_url.trim_end_matches('/'));
@@ -63,10 +69,10 @@ impl RouteLLMProvider {
             .map(|m| ModelInfo {
                 id: m.id.clone(),
                 display_name: m.id,
-                context_window: 128000, // Default assumption for RouteLLM/modern models
+                context_window: 128000,
                 max_output_tokens: None,
                 supports_streaming: true,
-                supports_images: false, // We can't know for sure without more metadata
+                supports_images: false,
                 supports_functions: false,
                 supports_vision: false,
                 cost_per_input_token: None,
@@ -79,39 +85,39 @@ impl RouteLLMProvider {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct RouteLLMMessage {
+struct ChatLLMMessage {
     role: String,
     content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     name: Option<String>,
 }
 
-fn build_routellm_messages(
+fn build_chatllm_messages(
     system_message: Option<String>,
     messages: Vec<ChatMessage>,
-) -> Vec<RouteLLMMessage> {
+) -> Vec<ChatLLMMessage> {
     let mut system_parts = Vec::new();
 
     if let Some(sys) = system_message {
         system_parts.push(sys);
     }
 
-    let mut converted: Vec<RouteLLMMessage> = Vec::new();
+    let mut converted: Vec<ChatLLMMessage> = Vec::new();
 
     for msg in messages {
         match msg.role {
             MessageRole::System => system_parts.push(msg.content),
-            MessageRole::User => converted.push(RouteLLMMessage {
+            MessageRole::User => converted.push(ChatLLMMessage {
                 role: "user".to_string(),
                 content: msg.content,
                 name: msg.name,
             }),
-            MessageRole::Assistant => converted.push(RouteLLMMessage {
+            MessageRole::Assistant => converted.push(ChatLLMMessage {
                 role: "assistant".to_string(),
                 content: msg.content,
                 name: msg.name,
             }),
-            MessageRole::Tool => converted.push(RouteLLMMessage {
+            MessageRole::Tool => converted.push(ChatLLMMessage {
                 role: "tool".to_string(),
                 content: msg.content,
                 name: msg.name,
@@ -122,7 +128,7 @@ fn build_routellm_messages(
     if !system_parts.is_empty() {
         converted.insert(
             0,
-            RouteLLMMessage {
+            ChatLLMMessage {
                 role: "system".to_string(),
                 content: system_parts.join("\n\n"),
                 name: None,
@@ -134,16 +140,17 @@ fn build_routellm_messages(
 }
 
 #[async_trait]
-impl AIProvider for RouteLLMProvider {
+impl AIProvider for ChatLLMProvider {
     fn name(&self) -> &str {
-        "routellm"
+        "chatllm"
     }
 
     async fn chat(&self, request: ChatRequest) -> anyhow::Result<ChatResponse> {
         #[derive(Serialize)]
-        struct RouteLLMRequest {
-            model: String,
-            messages: Vec<RouteLLMMessage>,
+        struct ChatLLMRequest {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            model: Option<String>,
+            messages: Vec<ChatLLMMessage>,
             #[serde(skip_serializing_if = "Option::is_none")]
             temperature: Option<f32>,
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -161,22 +168,22 @@ impl AIProvider for RouteLLMProvider {
         }
 
         #[derive(Deserialize)]
-        struct RouteLLMResponse {
-            choices: Vec<RouteLLMChoice>,
+        struct ChatLLMResponse {
+            choices: Vec<ChatLLMChoice>,
             model: String,
             #[serde(default)]
-            usage: Option<RouteLLMUsage>,
+            usage: Option<ChatLLMUsage>,
         }
 
         #[derive(Deserialize)]
-        struct RouteLLMChoice {
-            message: RouteLLMMessage,
+        struct ChatLLMChoice {
+            message: ChatLLMMessage,
             #[serde(default)]
             finish_reason: Option<String>,
         }
 
         #[derive(Deserialize)]
-        struct RouteLLMUsage {
+        struct ChatLLMUsage {
             prompt_tokens: u32,
             completion_tokens: u32,
             total_tokens: u32,
@@ -190,7 +197,7 @@ impl AIProvider for RouteLLMProvider {
             ..
         } = request;
 
-        let messages = build_routellm_messages(system_message, messages);
+        let messages = build_chatllm_messages(system_message, messages);
 
         let ModelParameters {
             temperature,
@@ -202,8 +209,17 @@ impl AIProvider for RouteLLMProvider {
             ..
         } = parameters;
 
-        let req = RouteLLMRequest {
-            model,
+        if self.base_url.trim().is_empty() {
+            anyhow::bail!("ChatLLM base URL not configured (set custom endpoint baseURL in t3chat.yaml)");
+        }
+
+        let req = ChatLLMRequest {
+            // Model id "default" means "let provider pick / route automatically" (omit model field).
+            model: if model.trim().is_empty() || model == CHATLLM_DEFAULT_MODEL_ID {
+                None
+            } else {
+                Some(model)
+            },
             messages,
             temperature,
             max_tokens,
@@ -227,10 +243,10 @@ impl AIProvider for RouteLLMProvider {
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("RouteLLM API error ({}): {}", status, error_text);
+            anyhow::bail!("ChatLLM API error ({}): {}", status, error_text);
         }
 
-        let response: RouteLLMResponse = response.json().await?;
+        let response: ChatLLMResponse = response.json().await?;
 
         Ok(ChatResponse {
             content: response
@@ -256,9 +272,10 @@ impl AIProvider for RouteLLMProvider {
         request: ChatRequest,
     ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<ChatResponseChunk>> + Send>>> {
         #[derive(Serialize)]
-        struct RouteLLMRequest {
-            model: String,
-            messages: Vec<RouteLLMMessage>,
+        struct ChatLLMRequest {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            model: Option<String>,
+            messages: Vec<ChatLLMMessage>,
             stream: bool,
             #[serde(skip_serializing_if = "Option::is_none")]
             temperature: Option<f32>,
@@ -302,7 +319,11 @@ impl AIProvider for RouteLLMProvider {
             ..
         } = request;
 
-        let messages = build_routellm_messages(system_message, messages);
+        if self.base_url.trim().is_empty() {
+            anyhow::bail!("ChatLLM base URL not configured (set custom endpoint baseURL in t3chat.yaml)");
+        }
+
+        let messages = build_chatllm_messages(system_message, messages);
 
         let ModelParameters {
             temperature,
@@ -314,8 +335,13 @@ impl AIProvider for RouteLLMProvider {
             ..
         } = parameters;
 
-        let req = RouteLLMRequest {
-            model: model.clone(),
+        let req = ChatLLMRequest {
+            // Model id "default" means "let provider pick / route automatically" (omit model field).
+            model: if model.trim().is_empty() || model == CHATLLM_DEFAULT_MODEL_ID {
+                None
+            } else {
+                Some(model.clone())
+            },
             messages,
             stream: true,
             temperature,
@@ -341,7 +367,7 @@ impl AIProvider for RouteLLMProvider {
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("RouteLLM API error ({}): {}", status, error_text);
+            anyhow::bail!("ChatLLM API error ({}): {}", status, error_text);
         }
 
         let stream = response
@@ -387,19 +413,19 @@ impl AIProvider for RouteLLMProvider {
     }
 
     fn get_model_info(&self, _model_id: &str) -> Option<ModelInfo> {
-        // RouteLLM models/routes are described via t3chat.yaml and the model catalog.
+        // Models are described via t3chat.yaml and the model catalog.
         // We rely on that metadata instead of duplicating it here.
         None
     }
 
     fn list_models(&self) -> Vec<ModelInfo> {
-        // RouteLLM models/routes are provided by the model catalog; this client
+        // Models are provided by the model catalog; this client
         // does not expose its own static list.
         Vec::new()
     }
 
     async fn validate_api_key(&self, _api_key: &str) -> anyhow::Result<bool> {
-        // For now, assume the configured key is valid; RouteLLM errors will be
+        // For now, assume the configured key is valid; errors will be
         // surfaced at request time.
         Ok(true)
     }
@@ -411,7 +437,7 @@ mod tests {
     use crate::db::models::MessageRole;
 
     #[test]
-    fn test_build_routellm_messages() {
+    fn test_build_chatllm_messages() {
         let system = Some("System prompt".to_string());
         let messages = vec![
             ChatMessage {
@@ -426,7 +452,7 @@ mod tests {
             },
         ];
 
-        let converted = build_routellm_messages(system, messages);
+        let converted = build_chatllm_messages(system, messages);
 
         assert_eq!(converted.len(), 3);
         assert_eq!(converted[0].role, "system");
@@ -438,14 +464,17 @@ mod tests {
     }
 
     #[test]
-    fn test_new_provider_default_url() {
-        let p = RouteLLMProvider::new("sk-test".to_string(), None);
-        assert_eq!(p.base_url, "https://routellm.abacus.ai/v1");
+    fn test_new_provider_default_url_empty() {
+        let p = ChatLLMProvider::new("sk-test".to_string(), None);
+        assert_eq!(p.base_url, "");
     }
 
     #[test]
     fn test_new_provider_custom_url() {
-        let p = RouteLLMProvider::new("sk-test".to_string(), Some("http://localhost:8000".to_string()));
+        let p = ChatLLMProvider::new(
+            "sk-test".to_string(),
+            Some("http://localhost:8000".to_string()),
+        );
         assert_eq!(p.base_url, "http://localhost:8000");
     }
 }

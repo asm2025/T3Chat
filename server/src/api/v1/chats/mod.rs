@@ -156,15 +156,11 @@ pub async fn create_chat(
     state: State<AppState>,
     Json(payload): Json<CreateChatRequest>,
 ) -> Result<Json<ChatResponse>, StatusCode> {
-    let provider = match payload.model_provider.as_str() {
-        "openai" => AiProvider::OpenAI,
-        "anthropic" => AiProvider::Anthropic,
-        "google" => AiProvider::Google,
-        "deepseek" => AiProvider::DeepSeek,
-        "ollama" => AiProvider::Ollama,
-        "chatllm" => AiProvider::ChatLLM,
-        _ => return Err(StatusCode::BAD_REQUEST),
-    };
+    let provider = AiProvider::from_str(&payload.model_provider)
+        .ok_or_else(|| {
+            tracing::warn!("Unknown provider: {}", payload.model_provider);
+            StatusCode::BAD_REQUEST
+        })?;
 
     let title = payload.title.unwrap_or_else(|| "New Chat".to_string());
 
@@ -215,7 +211,7 @@ pub async fn get_chat(
 
     let messages = state
         .chat_repository
-        .list_messages(id, &user.0.id)
+        .list_messages(chat.id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -248,10 +244,18 @@ pub async fn update_chat(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateChatRequest>,
 ) -> Result<Json<ChatResponse>, StatusCode> {
+    // Resolve `id` which might be either the internal UUID or the external conversation_id (TEXT)
+    let chat = state
+        .chat_repository
+        .get(id, &user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
     let chat = state
         .chat_repository
         .update(
-            id,
+            chat.id,
             &user.0.id,
             UpdateChatDto {
                 title: payload.title,
@@ -286,9 +290,17 @@ pub async fn delete_chat(
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
+    // Resolve `id` which might be either the internal UUID or the external conversation_id (TEXT)
+    let chat = state
+        .chat_repository
+        .get(id, &user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
     state
         .chat_repository
-        .delete(id, &user.0.id)
+        .delete(chat.id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

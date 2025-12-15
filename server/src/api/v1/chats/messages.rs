@@ -3,6 +3,7 @@ use crate::{
     AppState, db::prelude::*, db::repositories::chat_repository::TChatRepository,
     middleware::auth::AuthenticatedUser,
 };
+use emixdiesel::Error as DbError;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -39,9 +40,17 @@ pub async fn get_messages(
     state: State<AppState>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<Json<Vec<MessageResponse>>, StatusCode> {
+    // Resolve `chat_id` which might be either the internal UUID or the external conversation_id (TEXT)
+    let chat = state
+        .chat_repository
+        .get(chat_id, &user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
     let messages = state
         .chat_repository
-        .list_messages(chat_id, &user.0.id)
+        .list_messages(chat.id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -76,7 +85,7 @@ pub async fn create_message(
     tracing::info!("Create message request: chat_id={}, payload={:?}", chat_id, payload);
 
     // Verify chat belongs to user
-    let _chat = state
+    let chat = state
         .chat_repository
         .get(chat_id, &user.0.id)
         .await
@@ -91,14 +100,14 @@ pub async fn create_message(
 
     let sequence_number = state
         .chat_repository
-        .get_next_sequence_number(chat_id)
+        .get_next_sequence_number(chat.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let message = state
         .chat_repository
         .create_message(CreateMessageDto {
-            chat_id,
+            chat_id: chat.id,
             role,
             content: payload.content,
             metadata: None,
@@ -141,11 +150,19 @@ pub async fn update_message(
     Path((chat_id, message_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<UpdateMessageRequest>,
 ) -> Result<Json<MessageResponse>, StatusCode> {
+    // Resolve `chat_id` which might be either the internal UUID or the external conversation_id (TEXT)
+    let chat = state
+        .chat_repository
+        .get(chat_id, &user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
     let message = state
         .chat_repository
         .update_message(
             message_id,
-            chat_id,
+            chat.id,
             &user.0.id,
             UpdateMessageDto {
                 content: payload.content,
@@ -153,7 +170,10 @@ pub async fn update_message(
             },
         )
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| match e {
+            DbError::NotFound(_) => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        })?;
 
     Ok(Json(MessageResponse::from(message)))
 }
@@ -180,11 +200,22 @@ pub async fn delete_message(
     state: State<AppState>,
     Path((chat_id, message_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
+    // Resolve `chat_id` which might be either the internal UUID or the external conversation_id (TEXT)
+    let chat = state
+        .chat_repository
+        .get(chat_id, &user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
     state
         .chat_repository
-        .delete_message(message_id, chat_id, &user.0.id)
+        .delete_message(message_id, chat.id, &user.0.id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| match e {
+            DbError::NotFound(_) => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        })?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -210,11 +241,22 @@ pub async fn clear_messages(
     state: State<AppState>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
+    // Resolve `chat_id` which might be either the internal UUID or the external conversation_id (TEXT)
+    let chat = state
+        .chat_repository
+        .get(chat_id, &user.0.id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
     state
         .chat_repository
-        .clear_messages(chat_id, &user.0.id)
+        .clear_messages(chat.id, &user.0.id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| match e {
+            DbError::NotFound(_) => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        })?;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -420,13 +420,13 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 - **Anthropic** - Claude 3.5, Claude 3
 - **Google** - Gemini 1.5
 - **OpenRouter** - Aggregated models via OpenRouter
-- **RouteLLM** - Routing profiles defined in config, backed by a single backend-managed key from `t3chat.yaml` (e.g. `ABACUS_API_KEY`)
+- **ChatLLM** - An OpenAI-compatible provider backed by a single backend-managed key from `t3chat.yaml` (e.g. `ABACUS_API_KEY`)
 - **Custom** - Additional OpenAI‑compatible providers via `custom` entries in `t3chat.yaml`
 
 ### Architecture
 
 **Backend (Rust):**
-- `ai/providers/mod.rs` defines the `AIProvider` trait and concrete providers (OpenAI, Anthropic, Google, OpenRouter, RouteLLM)
+- `ai/providers/mod.rs` defines the `AIProvider` trait and concrete providers (OpenAI, Anthropic, Google, OpenRouter, ChatLLM)
 - `ai/model_catalog.rs` builds a provider/model catalog from `t3chat.yaml`
 - Streaming support via Server-Sent Events (SSE) and typed chat request/response types in `ai/types.rs`
 
@@ -471,7 +471,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 │   │   ├── ai/         # AI provider integrations
 │   │   │   ├── model_catalog.rs
 │   │   │   ├── manager.rs
-│   │   │   └── providers/      # OpenAI, Anthropic, Google, OpenRouter, RouteLLM
+│   │   │   └── providers/      # OpenAI, Anthropic, Google, OpenRouter, ChatLLM
 │   │   ├── db/         # Diesel models, repositories, schema
 │   │   │   ├── models/         # Domain models
 │   │   │   ├── repositories/   # Data access layer

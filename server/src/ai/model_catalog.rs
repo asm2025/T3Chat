@@ -1,5 +1,5 @@
 use crate::ai::providers::openrouter::OpenRouterClient;
-use crate::ai::providers::routellm::RouteLLMProvider;
+use crate::ai::providers::chatllm::ChatLLMProvider;
 use crate::ai::providers::{
     AIProvider, anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider,
 };
@@ -124,6 +124,24 @@ async fn collect_models_for_endpoint(
 fn get_static_model_info(provider: &str, model_id: &str) -> ModelInfo {
      // Try to get detailed info from the provider struct if possible, otherwise generic
      match provider {
+         "chatllm" => {
+             // For ChatLLM, `default` means "let provider route automatically" (omit model field).
+             // Show a friendly label in the UI.
+             if model_id == "default" {
+                 return ModelInfo {
+                     id: "default".to_string(),
+                     display_name: "ChatLLM".to_string(),
+                     context_window: 128000,
+                     max_output_tokens: None,
+                     supports_streaming: true,
+                     supports_images: false,
+                     supports_functions: false,
+                     supports_vision: false,
+                     cost_per_input_token: None,
+                     cost_per_output_token: None,
+                 };
+             }
+         }
          "openai" => {
              let p = OpenAIProvider::new(String::new());
              if let Some(info) = p.get_model_info(model_id) {
@@ -188,12 +206,12 @@ async fn fetch_remote_models(
                 ModelCatalogError::FetchFailed(provider_key.to_string(), err.to_string())
             })
         }
-        "routellm" | "RouteLLM" | "chatllm" | "ChatLLM" => {
+        "chatllm" | "ChatLLM" => {
              let api_key = endpoint
                 .api_key
                 .clone()
                 .ok_or_else(|| ModelCatalogError::MissingApiKey(provider_key.to_string()))?;
-            let provider = RouteLLMProvider::new(api_key, endpoint.base_url.clone());
+            let provider = ChatLLMProvider::new(api_key, endpoint.base_url.clone());
             provider.fetch_models().await.map_err(|err| {
                 ModelCatalogError::FetchFailed(provider_key.to_string(), err.to_string())
             })

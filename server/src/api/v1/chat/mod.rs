@@ -2,7 +2,7 @@ use crate::{
     AppState,
     ai::{
         manager::ProviderWrapper,
-        providers::routellm::RouteLLMProvider,
+        providers::chatllm::ChatLLMProvider,
         types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
     },
     db::models::{MessageRole, AiProvider},
@@ -87,80 +87,81 @@ pub async fn chat(
     Json(payload): Json<ChatRequest>,
 ) -> Result<Json<ChatCompletionResponse>, Response> {
     // Verify chat belongs to user
-    let _chat = state
+    let chat = state
         .chat_repository
         .get(payload.chat_id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
         .ok_or(StatusCode::NOT_FOUND.into_response())?;
 
+    let provider_key = payload.model_provider.to_lowercase();
+
     // Verify the provider is configured (has an endpoint in config)
-    let provider_name = payload.model_provider.as_str();
     let endpoint_config = state
         .app_config
         .endpoints
         .iter()
-        .find(|e| e.provider.to_lowercase() == provider_name.to_lowercase());
+        .find(|e| e.provider.to_lowercase() == provider_key);
 
     // Log if model isn't in catalog (warning only, don't block - let upstream API handle invalid models)
     if state
         .model_catalog
-        .find(&payload.model_provider, &payload.model_id)
+        .find(&provider_key, &payload.model_id)
         .is_none()
     {
         tracing::warn!(
             "Model not found in catalog (proceeding anyway): provider={}, model={}",
-            payload.model_provider,
+            provider_key,
             payload.model_id
         );
     }
 
-    tracing::info!("Resolving provider: {}", provider_name);
+    tracing::info!("Resolving provider: {}", provider_key);
 
-    // Custom providers configured via YAML (e.g., routellm, chatllm, openrouter) use backend-managed API keys
+    // Custom providers configured via YAML (e.g., chatllm, openrouter) use backend-managed API keys
     let is_custom_provider = matches!(
-        provider_name.to_lowercase().as_str(),
-        "routellm" | "chatllm" | "openrouter"
+        provider_key.as_str(),
+        "chatllm" | "openrouter"
     );
 
     let ai_provider: Arc<ProviderWrapper> = if is_custom_provider {
         // Custom provider - requires endpoint config with API key
         let config = endpoint_config.ok_or_else(|| {
-            tracing::error!("Custom provider {} not configured in YAML", provider_name);
+            tracing::error!("Custom provider {} not configured in YAML", provider_key);
             (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": format!("Provider {} not configured on server", provider_name) })),
+                Json(serde_json::json!({ "error": format!("Provider {} not configured on server", provider_key) })),
             )
                 .into_response()
         })?;
 
         let api_key = config.api_key.clone().ok_or_else(|| {
-            tracing::error!("API key missing in config for provider: {}", provider_name);
+            tracing::error!("API key missing in config for provider: {}", provider_key);
             (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": format!("{} API key missing on server", provider_name) })),
+                Json(serde_json::json!({ "error": format!("{} API key missing on server", provider_key) })),
             )
                 .into_response()
         })?;
 
         let base_url = config.base_url.clone();
 
-        Arc::new(ProviderWrapper::RouteLLM(RouteLLMProvider::new(
+        Arc::new(ProviderWrapper::ChatLLM(ChatLLMProvider::new(
             api_key, base_url,
         )))
     } else {
         // Built-in provider - use user's API key
-        let provider = match provider_name {
+        let provider = match provider_key.as_str() {
             "openai" => AiProvider::OpenAI,
             "anthropic" => AiProvider::Anthropic,
             "google" => AiProvider::Google,
             "deepseek" => AiProvider::DeepSeek,
             "ollama" => AiProvider::Ollama,
             _ => {
-                tracing::error!("Unknown provider: {}", provider_name);
+                tracing::error!("Unknown provider: {}", provider_key);
                 return Err((
                     StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": format!("Unknown provider: {}", provider_name) }))
+                    Json(serde_json::json!({ "error": format!("Unknown provider: {}", provider_key) }))
                 ).into_response());
             }
         };
@@ -210,7 +211,7 @@ pub async fn chat(
     // Get messages for context
     let messages = state
         .chat_repository
-        .list_messages(payload.chat_id, &user.0.id)
+        .list_messages(chat.id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
@@ -263,14 +264,14 @@ pub async fn chat(
     // Save user message
     let user_seq = state
         .chat_repository
-        .get_next_sequence_number(payload.chat_id)
+        .get_next_sequence_number(chat.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     state
         .chat_repository
         .create_message(CreateMessageDto {
-            chat_id: payload.chat_id,
+            chat_id: chat.id,
             role: MessageRole::User,
             content: payload.message,
             metadata: None,
@@ -283,14 +284,14 @@ pub async fn chat(
     // Save assistant response
     let assistant_seq = state
         .chat_repository
-        .get_next_sequence_number(payload.chat_id)
+        .get_next_sequence_number(chat.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     let assistant_message = state
         .chat_repository
         .create_message(CreateMessageDto {
-            chat_id: payload.chat_id,
+            chat_id: chat.id,
             role: MessageRole::Assistant,
             content: ai_response.content.clone(),
             metadata: None,
@@ -348,80 +349,81 @@ pub async fn stream_chat(
     tracing::info!("Stream chat request: provider={}, model={}", payload.model_provider, payload.model_id);
 
     // Verify chat belongs to user
-    let _chat = state
+    let chat = state
         .chat_repository
         .get(payload.chat_id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
         .ok_or(StatusCode::NOT_FOUND.into_response())?;
 
+    let provider_key = payload.model_provider.to_lowercase();
+
     // Verify the provider is configured (has an endpoint in config)
-    let provider_name = payload.model_provider.as_str();
     let endpoint_config = state
         .app_config
         .endpoints
         .iter()
-        .find(|e| e.provider.to_lowercase() == provider_name.to_lowercase());
+        .find(|e| e.provider.to_lowercase() == provider_key);
 
     // Log if model isn't in catalog (warning only, don't block - let upstream API handle invalid models)
     if state
         .model_catalog
-        .find(&payload.model_provider, &payload.model_id)
+        .find(&provider_key, &payload.model_id)
         .is_none()
     {
         tracing::warn!(
             "Model not found in catalog (proceeding anyway): provider={}, model={}",
-            payload.model_provider,
+            provider_key,
             payload.model_id
         );
     }
 
-    tracing::info!("Resolving provider: {}", provider_name);
+    tracing::info!("Resolving provider: {}", provider_key);
 
-    // Custom providers configured via YAML (e.g., routellm, chatllm, openrouter) use backend-managed API keys
+    // Custom providers configured via YAML (e.g., chatllm, openrouter) use backend-managed API keys
     let is_custom_provider = matches!(
-        provider_name.to_lowercase().as_str(),
-        "routellm" | "chatllm" | "openrouter"
+        provider_key.as_str(),
+        "chatllm" | "openrouter"
     );
 
     let ai_provider: Arc<ProviderWrapper> = if is_custom_provider {
         // Custom provider - requires endpoint config with API key
         let config = endpoint_config.ok_or_else(|| {
-            tracing::error!("Custom provider {} not configured in YAML", provider_name);
+            tracing::error!("Custom provider {} not configured in YAML", provider_key);
             (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": format!("Provider {} not configured on server", provider_name) })),
+                Json(serde_json::json!({ "error": format!("Provider {} not configured on server", provider_key) })),
             )
                 .into_response()
         })?;
 
         let api_key = config.api_key.clone().ok_or_else(|| {
-            tracing::error!("API key missing in config for provider: {}", provider_name);
+            tracing::error!("API key missing in config for provider: {}", provider_key);
             (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": format!("{} API key missing on server", provider_name) })),
+                Json(serde_json::json!({ "error": format!("{} API key missing on server", provider_key) })),
             )
                 .into_response()
         })?;
 
         let base_url = config.base_url.clone();
 
-        Arc::new(ProviderWrapper::RouteLLM(RouteLLMProvider::new(
+        Arc::new(ProviderWrapper::ChatLLM(ChatLLMProvider::new(
             api_key, base_url,
         )))
     } else {
         // Built-in provider - use user's API key
-        let provider = match provider_name {
+        let provider = match provider_key.as_str() {
             "openai" => AiProvider::OpenAI,
             "anthropic" => AiProvider::Anthropic,
             "google" => AiProvider::Google,
             "deepseek" => AiProvider::DeepSeek,
             "ollama" => AiProvider::Ollama,
             _ => {
-                tracing::error!("Unknown provider: {}", provider_name);
+                tracing::error!("Unknown provider: {}", provider_key);
                 return Err((
                     StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": format!("Unknown provider: {}", provider_name) }))
+                    Json(serde_json::json!({ "error": format!("Unknown provider: {}", provider_key) }))
                 ).into_response());
             }
         };
@@ -471,7 +473,7 @@ pub async fn stream_chat(
     // Get messages for context
     let messages = state
         .chat_repository
-        .list_messages(payload.chat_id, &user.0.id)
+        .list_messages(chat.id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
@@ -523,7 +525,7 @@ pub async fn stream_chat(
 
     // Save user message
     let chat_repo = state.chat_repository.clone();
-    let chat_id = payload.chat_id;
+    let chat_id = chat.id;
     let user_message_content = payload.message.clone();
 
     let user_seq = state

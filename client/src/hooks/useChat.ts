@@ -9,6 +9,9 @@ export function useChat(chatId: string | null) {
     const mountedRef = useRef(true);
 
     useEffect(() => {
+        // React StrictMode in dev will mount/unmount effects twice.
+        // Ensure we always reset this ref on mount so async completions can update state.
+        mountedRef.current = true;
         return () => {
             mountedRef.current = false;
         };

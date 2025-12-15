@@ -24,6 +24,7 @@ export function useStreamingChat() {
             toast.error("Failed to send message", {
                 description: getErrorMessage(err),
             });
+            throw error;
         } finally {
             setStreaming(false);
         }

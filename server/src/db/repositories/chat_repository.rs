@@ -142,9 +142,14 @@ impl TChatRepository for ChatRepository {
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
+        // NOTE: We support looking up conversations by either the internal UUID primary key (`id`)
+        // or the external LibreChat-compatible identifier (`conversation_id`), which is stored as TEXT.
+        // Both are UUID-shaped strings in practice, but they may not be equal.
+        let id_str = id.to_string();
+
         let conversation = chats::table
-            .filter(chats::id.eq(id))
             .filter(chats::user_id.eq(user_id))
+            .filter(chats::id.eq(id).or(chats::conversation_id.eq(&id_str)))
             .filter(
                 chats::is_archived
                     .eq(false)
@@ -273,25 +278,22 @@ impl TChatRepository for ChatRepository {
     }
 
     async fn list_messages(&self, chat_id: Uuid, user_id: &str) -> Result<Vec<MessageModel>> {
+        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
+        // or the external LibreChat-compatible identifier (`conversation_id`).
+        let chat = self
+            .get(chat_id, user_id)
+            .await?
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
+
         let mut conn = self
             .pool
             .get()
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        // Verify chat belongs to user
-        let _chat = chats::table
-            .filter(chats::id.eq(chat_id))
-            .filter(chats::user_id.eq(user_id))
-            .first::<Conversation>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
         // Query messages from conversation - returns Message (conversation model), which is aliased as MessageModel
         messages::table
-            .filter(messages::conversation_id.eq(chat_id))
+            .filter(messages::conversation_id.eq(chat.id))
             .order(messages::created_at.asc())
             .load::<MessageModel>(&mut conn)
             .await
@@ -374,31 +376,23 @@ impl TChatRepository for ChatRepository {
         user_id: &str,
         model: UpdateMessageDto,
     ) -> Result<MessageModel> {
+        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
+        // or the external LibreChat-compatible identifier (`conversation_id`).
+        let chat = self
+            .get(chat_id, user_id)
+            .await?
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
+
         let mut conn = self
             .pool
             .get()
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        // Verify chat belongs to user
-        let _chat = chats::table
-            .filter(chats::id.eq(chat_id))
-            .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
-            .first::<Conversation>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
         // Check if message exists and belongs to the chat
         let _existing = messages::table
             .filter(messages::id.eq(id))
-            .filter(messages::conversation_id.eq(chat_id))
+            .filter(messages::conversation_id.eq(chat.id))
             .first::<Message>(&mut conn)
             .await
             .optional()
@@ -407,7 +401,11 @@ impl TChatRepository for ChatRepository {
 
         let update: UpdateMessage = model.into();
 
-        diesel::update(messages::table.filter(messages::id.eq(id)))
+        diesel::update(
+            messages::table
+                .filter(messages::id.eq(id))
+                .filter(messages::conversation_id.eq(chat.id)),
+        )
             .set(&update)
             .get_result(&mut conn)
             .await
@@ -415,31 +413,23 @@ impl TChatRepository for ChatRepository {
     }
 
     async fn delete_message(&self, id: Uuid, chat_id: Uuid, user_id: &str) -> Result<()> {
+        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
+        // or the external LibreChat-compatible identifier (`conversation_id`).
+        let chat = self
+            .get(chat_id, user_id)
+            .await?
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
+
         let mut conn = self
             .pool
             .get()
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        // Verify chat belongs to user
-        let _chat = chats::table
-            .filter(chats::id.eq(chat_id))
-            .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
-            .first::<Conversation>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
         // Check if message exists and belongs to the chat
         let _existing = messages::table
             .filter(messages::id.eq(id))
-            .filter(messages::conversation_id.eq(chat_id))
+            .filter(messages::conversation_id.eq(chat.id))
             .first::<Message>(&mut conn)
             .await
             .optional()
@@ -455,28 +445,20 @@ impl TChatRepository for ChatRepository {
     }
 
     async fn clear_messages(&self, chat_id: Uuid, user_id: &str) -> Result<()> {
+        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
+        // or the external LibreChat-compatible identifier (`conversation_id`).
+        let chat = self
+            .get(chat_id, user_id)
+            .await?
+            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
+
         let mut conn = self
             .pool
             .get()
             .await
             .map_err(|e| Error::from_std_error(e))?;
 
-        // Verify chat belongs to user
-        let _chat = chats::table
-            .filter(chats::id.eq(chat_id))
-            .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
-            .first::<Conversation>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
-        diesel::delete(messages::table.filter(messages::conversation_id.eq(chat_id)))
+        diesel::delete(messages::table.filter(messages::conversation_id.eq(chat.id)))
             .execute(&mut conn)
             .await
             .map_err(Error::from_std_error)?;

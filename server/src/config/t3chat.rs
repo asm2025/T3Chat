@@ -63,6 +63,7 @@ pub struct EndpointsConfig {
 #[serde(rename_all = "camelCase")]
 pub struct OpenAIEndpoint {
     pub api_key: Option<String>,
+    #[serde(alias = "baseURL", alias = "baseUrl")]
     pub base_url: Option<String>,
     pub models: Option<EndpointModels>,
     pub title_model: Option<String>,
@@ -85,6 +86,7 @@ pub struct OpenAIEndpoint {
 #[serde(rename_all = "camelCase")]
 pub struct AnthropicEndpoint {
     pub api_key: Option<String>,
+    #[serde(alias = "baseURL", alias = "baseUrl")]
     pub base_url: Option<String>,
     pub models: Option<EndpointModels>,
     pub model_display_label: Option<String>,
@@ -102,6 +104,7 @@ pub struct AnthropicEndpoint {
 #[serde(rename_all = "camelCase")]
 pub struct GoogleEndpoint {
     pub api_key: Option<String>,
+    #[serde(alias = "baseURL", alias = "baseUrl")]
     pub base_url: Option<String>,
     pub models: Option<EndpointModels>,
     pub model_display_label: Option<String>,
@@ -120,6 +123,7 @@ pub struct GoogleEndpoint {
 pub struct CustomEndpoint {
     pub name: String,
     pub api_key: Option<String>,
+    #[serde(alias = "baseURL", alias = "baseUrl")]
     pub base_url: Option<String>,
     pub models: Option<EndpointModels>,
     pub model_display_label: Option<String>,

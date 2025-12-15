@@ -1,6 +1,6 @@
 use crate::ai::providers::{
-    AIProvider, anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider,
-    routellm::RouteLLMProvider,
+    AIProvider, anthropic::AnthropicProvider, chatllm::ChatLLMProvider,
+    google::GoogleProvider, openai::OpenAIProvider,
 };
 use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
 use crate::db::models::AiProvider;
@@ -15,10 +15,9 @@ pub enum ProviderWrapper {
     OpenAI(OpenAIProvider),
     Anthropic(AnthropicProvider),
     Google(GoogleProvider),
-    RouteLLM(RouteLLMProvider),
     DeepSeek(OpenAIProvider),
     Ollama(OpenAIProvider),
-    ChatLLM(RouteLLMProvider),
+    ChatLLM(ChatLLMProvider),
 }
 
 impl ProviderWrapper {
@@ -27,7 +26,6 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.name(),
             ProviderWrapper::Anthropic(p) => p.name(),
             ProviderWrapper::Google(p) => p.name(),
-            ProviderWrapper::RouteLLM(p) => p.name(),
             ProviderWrapper::DeepSeek(_) => "deepseek",
             ProviderWrapper::Ollama(_) => "ollama",
             ProviderWrapper::ChatLLM(_) => "chatllm",
@@ -39,7 +37,6 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.chat(request).await,
             ProviderWrapper::Anthropic(p) => p.chat(request).await,
             ProviderWrapper::Google(p) => p.chat(request).await,
-            ProviderWrapper::RouteLLM(p) => p.chat(request).await,
             ProviderWrapper::DeepSeek(p) => p.chat(request).await,
             ProviderWrapper::Ollama(p) => p.chat(request).await,
             ProviderWrapper::ChatLLM(p) => p.chat(request).await,
@@ -54,7 +51,6 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.stream_chat(request).await,
             ProviderWrapper::Anthropic(p) => p.stream_chat(request).await,
             ProviderWrapper::Google(p) => p.stream_chat(request).await,
-            ProviderWrapper::RouteLLM(p) => p.stream_chat(request).await,
             ProviderWrapper::DeepSeek(p) => p.stream_chat(request).await,
             ProviderWrapper::Ollama(p) => p.stream_chat(request).await,
             ProviderWrapper::ChatLLM(p) => p.stream_chat(request).await,
@@ -66,7 +62,6 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.get_model_info(model_id),
             ProviderWrapper::Anthropic(p) => p.get_model_info(model_id),
             ProviderWrapper::Google(p) => p.get_model_info(model_id),
-            ProviderWrapper::RouteLLM(p) => p.get_model_info(model_id),
             ProviderWrapper::DeepSeek(p) => p.get_model_info(model_id),
             ProviderWrapper::Ollama(p) => p.get_model_info(model_id),
             ProviderWrapper::ChatLLM(p) => p.get_model_info(model_id),
@@ -78,7 +73,6 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.list_models(),
             ProviderWrapper::Anthropic(p) => p.list_models(),
             ProviderWrapper::Google(p) => p.list_models(),
-            ProviderWrapper::RouteLLM(p) => p.list_models(),
             ProviderWrapper::DeepSeek(p) => p.list_models(),
             ProviderWrapper::Ollama(p) => p.list_models(),
             ProviderWrapper::ChatLLM(p) => p.list_models(),
@@ -90,7 +84,6 @@ impl ProviderWrapper {
             ProviderWrapper::OpenAI(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::Anthropic(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::Google(p) => p.validate_api_key(api_key).await,
-            ProviderWrapper::RouteLLM(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::DeepSeek(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::Ollama(p) => p.validate_api_key(api_key).await,
             ProviderWrapper::ChatLLM(p) => p.validate_api_key(api_key).await,
@@ -131,7 +124,10 @@ impl ProviderManager {
                     ))
                 }
                 AiProvider::ChatLLM => Arc::new(ProviderWrapper::ChatLLM(
-                    RouteLLMProvider::new(api_key, None)
+                    ChatLLMProvider::new(api_key, None)
+                )),
+                AiProvider::OpenRouter => Arc::new(ProviderWrapper::ChatLLM(
+                    ChatLLMProvider::new(api_key, Some("https://openrouter.ai/api/v1".to_string()))
                 )),
             };
             providers.insert(provider, provider_impl);
@@ -158,7 +154,10 @@ impl ProviderManager {
                 OpenAIProvider::new(api_key).with_base_url("http://localhost:11434/v1".to_string()),
             ),
             AiProvider::ChatLLM => ProviderWrapper::ChatLLM(
-                RouteLLMProvider::new(api_key, None)
+                ChatLLMProvider::new(api_key, None)
+            ),
+            AiProvider::OpenRouter => ProviderWrapper::ChatLLM(
+                ChatLLMProvider::new(api_key, Some("https://openrouter.ai/api/v1".to_string()))
             ),
         };
         Ok(provider_impl)

@@ -129,6 +129,7 @@ impl DerivedAppConfig {
                         openai.headers,
                         openai.add_params,
                         openai.drop_params,
+                        false,
                         &mut endpoints,
                         &mut notices,
                     );
@@ -147,6 +148,7 @@ impl DerivedAppConfig {
                         anthropic.headers,
                         anthropic.add_params,
                         anthropic.drop_params,
+                        false,
                         &mut endpoints,
                         &mut notices,
                     );
@@ -165,6 +167,7 @@ impl DerivedAppConfig {
                         google.headers,
                         google.add_params,
                         google.drop_params,
+                        false,
                         &mut endpoints,
                         &mut notices,
                     );
@@ -173,7 +176,21 @@ impl DerivedAppConfig {
                 // Custom
                 if let Some(custom_list) = eps.custom {
                     for custom in custom_list {
-                        let _provider_key = custom.name.to_lowercase(); // Or keep as is? LibreChat uses name as key often.
+                        let provider_key = custom.name.to_lowercase(); // Or keep as is? LibreChat uses name as key often.
+                        // Only expose custom providers that the backend supports today.
+                        // (OpenAI-compatible custom endpoints: OpenRouter + ChatLLM.)
+                        let supported = matches!(provider_key.as_str(), "openrouter" | "chatllm");
+                        if !supported {
+                            notices.push(ConfigNotice {
+                                level: NoticeLevel::Warning,
+                                message: format!("Endpoint '{}' ignored", provider_key),
+                                detail: Some(
+                                    "Unsupported custom endpoint key. Supported custom providers: openrouter, chatllm."
+                                        .to_string(),
+                                ),
+                            });
+                            continue;
+                        }
                         // We map custom endpoints to "custom:name" or just use the name if it doesn't conflict?
                         // The plan says: `endpoints.custom[]` → unique provider keys (e.g. `custom:<name>` or the LibreChat `name`)
                         // Let's use the name directly but ensure uniqueness?
@@ -181,8 +198,8 @@ impl DerivedAppConfig {
                         // For now, let's use the name.
 
                         process_endpoint(
-                            &custom.name.to_lowercase(), // Use the name as the provider key
-                            &custom.name, // And label
+                            &provider_key, // Use the normalized name as the provider key
+                            &custom.name,  // And label
                             custom.api_key,
                             custom.base_url,
                             custom.models,
@@ -191,6 +208,7 @@ impl DerivedAppConfig {
                             custom.headers,
                             custom.add_params,
                             custom.drop_params,
+                            true,
                             &mut endpoints,
                             &mut notices,
                         );
@@ -200,7 +218,16 @@ impl DerivedAppConfig {
 
             // 3. Model Specs
             if let Some(specs) = config.model_specs {
+                // Collect valid endpoint keys (providers) for filtering specs
+                let valid_providers: std::collections::HashSet<String> =
+                    endpoints.iter().map(|e| e.provider.clone()).collect();
+
                 for spec in specs {
+                    // Skip if endpoint is not configured/enabled
+                    if !valid_providers.contains(&spec.preset.endpoint.to_lowercase()) {
+                        continue;
+                    }
+
                     model_specs.push(DerivedModelSpec {
                         name: spec.name,
                         label: spec.label,
@@ -246,6 +273,7 @@ fn process_endpoint(
     headers: Option<Value>,
     add_params: Option<Value>,
     drop_params: Option<Vec<String>>,
+    requires_api_key: bool,
     endpoints: &mut Vec<DerivedEndpoint>,
     notices: &mut Vec<ConfigNotice>,
 ) {
@@ -253,17 +281,28 @@ fn process_endpoint(
     let resolved_api_key = if let Some(key) = api_key {
         let res = resolve_env_placeholders(&key);
         if !res.unresolved.is_empty() {
+            if requires_api_key {
+                notices.push(ConfigNotice {
+                    level: NoticeLevel::Warning,
+                    message: format!("Endpoint '{}' disabled", provider_key),
+                    detail: Some(format!(
+                        "Missing environment variable(s): {}",
+                        res.unresolved.join(", ")
+                    )),
+                });
+                return; // Disable endpoint
+            }
+
             notices.push(ConfigNotice {
-                level: NoticeLevel::Warning,
-                message: format!("Endpoint '{}' disabled", provider_key),
+                level: NoticeLevel::Info,
+                message: format!("Endpoint '{}' enabled (no server apiKey)", provider_key),
                 detail: Some(format!(
-                    "Missing environment variable(s): {}",
+                    "Missing environment variable(s): {}. This provider will require a user API key (Settings > API Keys).",
                     res.unresolved.join(", ")
                 )),
             });
-            return; // Disable endpoint
-        }
-        if res.value.is_empty() {
+            None
+        } else if res.value.is_empty() {
             // If key is present but empty, maybe disable too? Or allow if it's optional for some reason (e.g. local llm without auth)?
             // Usually OpenAI/Anthropic need keys. Custom might not.
             // Plan says: "If an endpoint requires apiKey and it resolves to empty... treat endpoint as disabled"
@@ -276,7 +315,16 @@ fn process_endpoint(
             if key.trim().is_empty() {
                 // explicitly empty string?
             }
-            Some(res.value)
+            if requires_api_key {
+                notices.push(ConfigNotice {
+                    level: NoticeLevel::Warning,
+                    message: format!("Endpoint '{}' disabled", provider_key),
+                    detail: Some("apiKey resolved to an empty string".to_string()),
+                });
+                return; // Disable endpoint
+            }
+
+            None
         } else {
             Some(res.value)
         }

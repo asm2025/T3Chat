@@ -139,7 +139,26 @@ export class T3ChatClient extends ApiClient {
                         if (data === "[DONE]") return;
                         try {
                             const parsed = JSON.parse(data);
-                            yield parsed.content || "";
+                            // Server may emit structured errors on the stream.
+                            if (parsed && typeof parsed === "object") {
+                                const maybeError = parsed as Record<string, unknown>;
+                                if (maybeError.error === true) {
+                                    const message =
+                                        (typeof maybeError.text === "string" && maybeError.text) ||
+                                        (typeof maybeError.error === "string" && maybeError.error) ||
+                                        "Streaming request failed";
+                                    throw new Error(message);
+                                }
+                            }
+                            // Server emits chunks like { delta, done, ... } (ChatResponseChunk).
+                            // Some providers may emit { content } - support both.
+                            if (typeof parsed?.content === "string") {
+                                yield parsed.content;
+                            } else if (typeof parsed?.delta === "string") {
+                                yield parsed.delta;
+                            } else {
+                                yield "";
+                            }
                         } catch {
                             // Skip invalid JSON
                         }

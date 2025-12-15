@@ -26,5 +26,12 @@ export interface ChatWithMessages extends Chat {
   messages: Message[];
 }
 
-export type AiProvider = 'openai' | 'anthropic' | 'google' | 'deepseek' | 'ollama' | 'routellm' | 'chatllm';
+export type AiProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'google'
+  | 'deepseek'
+  | 'ollama'
+  | 'openrouter'
+  | 'chatllm';
 

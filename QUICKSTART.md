@@ -78,9 +78,8 @@ The Rust backend reads provider and model configuration from a YAML file.
     # OpenRouter (optional)
     export OPENROUTER_API_KEY=your-openrouter-key
 
-    # RouteLLM / Abacus.ai (optional, backend-managed key shared by all users)
-    # Used when the `routellm` provider is enabled in t3chat.yaml
-    export ABACUS_API_KEY=your-abacus-api-key
+    # ChatLLM (optional, backend-managed key shared by all users)
+    export ABACUS_API_KEY=your-chatllm-api-key
     ```
 
 3. If you want to keep the config file elsewhere, set `T3CHAT_CONFIG` to point to it:
@@ -91,35 +90,14 @@ The Rust backend reads provider and model configuration from a YAML file.
 
 > 💡 You can comment out or remove providers from `t3chat.yaml` if you don't have keys for them yet.
 
-### RouteLLM / Abacus.ai routing provider (optional)
+### ChatLLM (optional)
 
-If you want to use RouteLLM (Abacus.ai) as a routing provider:
+If you want to use ChatLLM (an OpenAI-compatible provider) as a backend-managed provider:
 
-1. **Keep the `routellm` block enabled in `t3chat.yaml`** (it is present in `t3chat.example.yaml` by default):
-
-    ```yaml
-    providers:
-        routellm:
-            display_name: "RouteLLM"
-            api_key: "${ABACUS_API_KEY}"
-            base_url: "https://routellm.abacus.ai/v1"
-            routes:
-                fetch: false
-                default:
-                    - id: route/general
-                      label: "General Routing"
-                    - id: route/coding
-                      label: "Coding Optimized"
-    ```
-
-2. **Set the backend-managed API key** (shared by all users) in your environment or `server/.env`:
-
-    ```bash
-    # In your shell or server/.env
-    ABACUS_API_KEY=your-abacus-api-key
-    ```
-
-3. **Restart the backend**. The RouteLLM provider and its routes will now appear in the UI wherever you select providers/models.
+- Ensure your `t3chat.yaml` has a custom endpoint named `ChatLLM` with:
+  - `apiKey: "${ABACUS_API_KEY}"`
+- `baseURL` set directly in the YAML.
+- Restart the backend so the provider appears in the UI.
 
 ## Step 4: Configure Environment Variables
 

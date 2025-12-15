@@ -75,6 +75,7 @@ pub enum AiProvider {
     DeepSeek,
     Ollama,
     ChatLLM,
+    OpenRouter,
 }
 
 impl AiProvider {
@@ -86,17 +87,19 @@ impl AiProvider {
             AiProvider::DeepSeek => "deepseek",
             AiProvider::Ollama => "ollama",
             AiProvider::ChatLLM => "chatllm",
+            AiProvider::OpenRouter => "openrouter",
         }
     }
 
     pub fn from_str(s: &str) -> Option<Self> {
-        match s {
+        match s.to_lowercase().as_str() {
             "openai" => Some(AiProvider::OpenAI),
             "anthropic" => Some(AiProvider::Anthropic),
             "google" => Some(AiProvider::Google),
             "deepseek" => Some(AiProvider::DeepSeek),
             "ollama" => Some(AiProvider::Ollama),
             "chatllm" => Some(AiProvider::ChatLLM),
+            "openrouter" => Some(AiProvider::OpenRouter),
             _ => None,
         }
     }
