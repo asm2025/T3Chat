@@ -47,7 +47,7 @@ pub struct AppState {
     pub user_feature_repository: Arc<db::repositories::UserFeatureRepository>,
     pub oidc_client: Option<Arc<auth::OidcClient>>,
     pub jwks_cache: Option<Arc<auth::JwksCache>>,
-    pub t3_config: Arc<config::t3chat::T3ChatConfig>,
+    pub app_config: Arc<config::app_config::DerivedAppConfig>,
     pub config_metadata: Arc<config::ConfigMetadata>,
     pub model_catalog: Arc<ai::model_catalog::ModelCatalog>,
 }
@@ -79,14 +79,14 @@ async fn run() -> Result<()> {
     tracing::info!("Configuring database");
 
     tracing::info!("Loading T3Chat configuration");
-    let loaded_config = config::load_config()
-        .map_err(|err| anyhow::anyhow!("failed to load t3chat.yaml: {}", err))?;
-    let t3_config = Arc::new(loaded_config.config);
+    let loaded_config = config::load_config().await;
+    
+    let app_config = Arc::new(config::app_config::DerivedAppConfig::from_loaded(loaded_config.clone()));
     let config_metadata = Arc::new(loaded_config.metadata);
 
     tracing::info!("Building model catalog");
     let model_catalog = Arc::new(
-        ai::model_catalog::ModelCatalog::build(t3_config.clone(), config_metadata.missing_file)
+        ai::model_catalog::ModelCatalog::build(app_config.clone(), true)
             .await
             .map_err(|err| anyhow::anyhow!("failed to build model catalog: {}", err))?,
     );
@@ -167,7 +167,7 @@ async fn run() -> Result<()> {
         user_feature_repository,
         oidc_client,
         jwks_cache,
-        t3_config,
+        app_config,
         config_metadata,
         model_catalog,
     };
@@ -470,7 +470,7 @@ fn setup_router(state: AppState) -> Result<Router> {
         .nest("/api/v1/keys", user_api_keys_routes)
         .nest("/api/v1/features", features_routes)
         .nest("/api/v1/files", files_routes)
-        .nest("/api/v1", user_routes)
+        .nest("/api/v1/user", user_routes)
         .nest("/api/v1/admin", admin_routes)
         .nest("/api/v1/config", config_routes);
 

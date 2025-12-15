@@ -5,6 +5,7 @@ use crate::{
         providers::routellm::RouteLLMProvider,
         types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
     },
+    db::models::{MessageRole, AiProvider},
     db::prelude::*,
     db::repositories::{
         chat_repository::TChatRepository, user_api_key_repository::TUserApiKeyRepository,
@@ -109,34 +110,22 @@ pub async fn chat(
     let provider_name = payload.model_provider.as_str();
     tracing::info!("Resolving provider: {}", provider_name);
 
-    // Special handling for RouteLLM: uses a backend-managed key from t3chat.yaml
+    // Special handling for RouteLLM: uses a backend-managed key from librechat.yaml (DerivedAppConfig)
     let ai_provider: Arc<ProviderWrapper> = if provider_name == "routellm" {
-        let routellm_cfg = state
-            .t3_config
-            .providers
-            .routellm
-            .as_ref()
+        // Find routellm config in endpoints
+        let routellm_endpoint = state.app_config.endpoints.iter().find(|e| e.provider == "routellm");
+        
+        let api_key = routellm_endpoint
+            .and_then(|e| e.api_key.clone())
             .ok_or_else(|| {
-                tracing::error!("RouteLLM config missing in t3chat.yaml");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": "RouteLLM not configured on server" }))
-                ).into_response()
-            })?;
-
-        let api_key = routellm_cfg
-            .provider
-            .api_key
-            .clone()
-            .ok_or_else(|| {
-                tracing::error!("RouteLLM API key missing in config");
-                (
+                 tracing::error!("RouteLLM API key missing in config");
+                 (
                     StatusCode::BAD_REQUEST,
                     Json(serde_json::json!({ "error": "RouteLLM API key missing on server" }))
-                ).into_response()
+                 ).into_response()
             })?;
-
-        let base_url = routellm_cfg.provider.base_url.clone();
+            
+        let base_url = routellm_endpoint.and_then(|e| e.base_url.clone());
 
         Arc::new(ProviderWrapper::RouteLLM(RouteLLMProvider::new(
             api_key, base_url,
@@ -364,34 +353,22 @@ pub async fn stream_chat(
     let provider_name = payload.model_provider.as_str();
     tracing::info!("Resolving provider: {}", provider_name);
 
-    // Special handling for RouteLLM: uses a backend-managed key from t3chat.yaml
+    // Special handling for RouteLLM: uses a backend-managed key from librechat.yaml (DerivedAppConfig)
     let ai_provider: Arc<ProviderWrapper> = if provider_name == "routellm" {
-        let routellm_cfg = state
-            .t3_config
-            .providers
-            .routellm
-            .as_ref()
+        // Find routellm config in endpoints
+        let routellm_endpoint = state.app_config.endpoints.iter().find(|e| e.provider == "routellm");
+        
+        let api_key = routellm_endpoint
+            .and_then(|e| e.api_key.clone())
             .ok_or_else(|| {
-                tracing::error!("RouteLLM config missing in t3chat.yaml");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({ "error": "RouteLLM not configured on server" }))
-                ).into_response()
-            })?;
-
-        let api_key = routellm_cfg
-            .provider
-            .api_key
-            .clone()
-            .ok_or_else(|| {
-                tracing::error!("RouteLLM API key missing in config");
-                (
+                 tracing::error!("RouteLLM API key missing in config");
+                 (
                     StatusCode::BAD_REQUEST,
                     Json(serde_json::json!({ "error": "RouteLLM API key missing on server" }))
-                ).into_response()
+                 ).into_response()
             })?;
-
-        let base_url = routellm_cfg.provider.base_url.clone();
+            
+        let base_url = routellm_endpoint.and_then(|e| e.base_url.clone());
 
         Arc::new(ProviderWrapper::RouteLLM(RouteLLMProvider::new(
             api_key, base_url,

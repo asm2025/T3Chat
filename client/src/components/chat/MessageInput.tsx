@@ -11,9 +11,10 @@ interface MessageInputProps {
     models?: AIModel[];
     selectedModel?: AIModel | null;
     onModelSelect?: (model: AIModel) => void;
+    modelSelectEnabled?: boolean;
 }
 
-export function MessageInput({ onSend, disabled, models = [], selectedModel, onModelSelect }: MessageInputProps) {
+export function MessageInput({ onSend, disabled, models = [], selectedModel, onModelSelect, modelSelectEnabled = true }: MessageInputProps) {
     const [content, setContent] = useState("");
     const [hasAcceptedPolicies, setHasAcceptedPolicies] = useState(() => {
         if (typeof window === "undefined") {
@@ -153,26 +154,28 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
                             </div>
 
                             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pr-2">
-                                <div className="min-w-0 flex-1 sm:max-w-sm">
-                                    <Select
-                                        value={selectedModel?.id}
-                                        onValueChange={(value) => {
-                                            const model = models.find((m) => m.id === value);
-                                            if (model && onModelSelect) onModelSelect(model);
-                                        }}
-                                        disabled={disabled}>
-                                        <SelectTrigger className="focus-visible:ring-ring inline-flex min-w-0 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:ring-1 focus-visible:outline-none h-auto border-none bg-transparent shadow-none [&>svg]:opacity-100">
-                                            <SelectValue placeholder="Select a model" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {models.map((model) => (
-                                                <SelectItem key={model.id} value={model.id}>
-                                                    {model.display_name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {modelSelectEnabled && (
+                                    <div className="min-w-0 flex-1 sm:max-w-sm">
+                                        <Select
+                                            value={selectedModel?.id}
+                                            onValueChange={(value) => {
+                                                const model = models.find((m) => m.id === value);
+                                                if (model && onModelSelect) onModelSelect(model);
+                                            }}
+                                            disabled={disabled}>
+                                            <SelectTrigger className="focus-visible:ring-ring inline-flex min-w-0 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:ring-1 focus-visible:outline-none h-auto border-none bg-transparent shadow-none [&>svg]:opacity-100">
+                                                <SelectValue placeholder="Select a model" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {models.map((model) => (
+                                                    <SelectItem key={model.id} value={model.id}>
+                                                        {model.display_name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
 
                                 <button
                                     type="button"

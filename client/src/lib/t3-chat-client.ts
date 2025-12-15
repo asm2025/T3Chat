@@ -97,6 +97,10 @@ export class T3ChatClient extends ApiClient {
         return this.get<StartupConfigResponse>("/v1/config/startup");
     }
 
+    async getModelsConfig(): Promise<{ providers: Record<string, unknown[]> }> {
+        return this.get<{ providers: Record<string, unknown[]> }>("/v1/config/models");
+    }
+
     // Messages endpoints
     async getMessages(chatId: string): Promise<Message[]> {
         return this.get<Message[]>(`/v1/chats/${chatId}/messages`);

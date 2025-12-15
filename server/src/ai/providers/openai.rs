@@ -464,3 +464,36 @@ fn truncate_for_log(s: &str, max: usize) -> String {
     }
     format!("{}...[truncated]", &s[..max])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::models::MessageRole;
+
+    #[test]
+    fn test_build_openai_messages() {
+        let system = Some("System prompt".to_string());
+        let messages = vec![
+            ChatMessage {
+                role: MessageRole::User,
+                content: "Hello".to_string(),
+                name: None,
+            },
+            ChatMessage {
+                role: MessageRole::Assistant,
+                content: "Hi there".to_string(),
+                name: None,
+            },
+        ];
+
+        let converted = build_openai_messages(system, messages);
+
+        assert_eq!(converted.len(), 3);
+        assert_eq!(converted[0].role, "system");
+        assert_eq!(converted[0].content, "System prompt");
+        assert_eq!(converted[1].role, "user");
+        assert_eq!(converted[1].content, "Hello");
+        assert_eq!(converted[2].role, "assistant");
+        assert_eq!(converted[2].content, "Hi there");
+    }
+}

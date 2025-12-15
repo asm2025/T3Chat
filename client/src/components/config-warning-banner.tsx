@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { t3ChatClient } from "@/lib/t3-chat-client";
+import { useConfig } from "@/stores/appStore";
 import type { StartupNotice } from "@/types/config";
 
 const CONFIG_WARNING_DISMISS_KEY = "t3chat-config-warning-dismissed";
 
 type DismissedNoticeMap = Record<string, true>;
 
-const noticeIdentifier = (notice: StartupNotice) =>
-    `${notice.kind}:${notice.message}`.toLowerCase();
+const noticeIdentifier = (notice: StartupNotice) => `${notice.kind}:${notice.message}`.toLowerCase();
 
 const readDismissed = (): DismissedNoticeMap => {
     if (typeof window === "undefined") {
@@ -55,32 +54,17 @@ const pickNotice = (notices: StartupNotice[] | undefined) => {
 };
 
 export function ConfigWarningBanner() {
-    const [notice, setNotice] = useState<StartupNotice | null>(null);
+    const { config, fetchStartupConfig } = useConfig();
     const [dismissed, setDismissed] = useState<DismissedNoticeMap>(() => readDismissed());
     const bannerRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        let cancelled = false;
+        if (!config) {
+            void fetchStartupConfig();
+        }
+    }, [config, fetchStartupConfig]);
 
-        const loadStartupConfig = async () => {
-            try {
-                const data = await t3ChatClient.getStartupConfig();
-                if (!cancelled) {
-                    setNotice(pickNotice(data.notices));
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    console.error("Failed to load startup configuration notices:", error);
-                }
-            }
-        };
-
-        void loadStartupConfig();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
+    const notice = pickNotice(config?.notices);
     const noticeId = notice ? noticeIdentifier(notice) : null;
     const isVisible = Boolean(notice && noticeId && !dismissed[noticeId]);
 
@@ -95,16 +79,12 @@ export function ConfigWarningBanner() {
                 return;
             }
             const height = bannerRef.current.getBoundingClientRect().height;
-            document.documentElement.style.setProperty(
-                "--t3chat-top-banner-offset",
-                `${height}px`,
-            );
+            document.documentElement.style.setProperty("--t3chat-top-banner-offset", `${height}px`);
         };
 
         updateOffset();
 
-        const observer =
-            typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateOffset) : null;
+        const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateOffset) : null;
         if (observer && bannerRef.current) {
             observer.observe(bannerRef.current);
         }
@@ -153,4 +133,3 @@ export function ConfigWarningBanner() {
         </div>
     );
 }
-

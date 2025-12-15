@@ -166,3 +166,32 @@ impl ProviderManager {
         Ok(provider_impl)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_manager_creation() {
+        let mut keys = HashMap::new();
+        keys.insert(AiProvider::OpenAI, "sk-test".to_string());
+        keys.insert(AiProvider::Anthropic, "sk-ant-test".to_string());
+
+        let manager = ProviderManager::new(keys).unwrap();
+
+        assert!(manager.get_provider(&AiProvider::OpenAI).is_some());
+        assert!(manager.get_provider(&AiProvider::Anthropic).is_some());
+        assert!(manager.get_provider(&AiProvider::Google).is_none());
+    }
+
+    #[test]
+    fn test_provider_wrapper_names() {
+        let mut keys = HashMap::new();
+        keys.insert(AiProvider::OpenAI, "sk-test".to_string());
+        
+        let manager = ProviderManager::new(keys).unwrap();
+        let provider = manager.get_provider(&AiProvider::OpenAI).unwrap();
+        
+        assert_eq!(provider.name(), "openai");
+    }
+}

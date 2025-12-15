@@ -357,3 +357,48 @@ impl AIProvider for RouteLLMProvider {
         Ok(true)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::models::MessageRole;
+
+    #[test]
+    fn test_build_routellm_messages() {
+        let system = Some("System prompt".to_string());
+        let messages = vec![
+            ChatMessage {
+                role: MessageRole::User,
+                content: "Hello".to_string(),
+                name: None,
+            },
+            ChatMessage {
+                role: MessageRole::Assistant,
+                content: "Hi".to_string(),
+                name: None,
+            },
+        ];
+
+        let converted = build_routellm_messages(system, messages);
+
+        assert_eq!(converted.len(), 3);
+        assert_eq!(converted[0].role, "system");
+        assert_eq!(converted[0].content, "System prompt");
+        assert_eq!(converted[1].role, "user");
+        assert_eq!(converted[1].content, "Hello");
+        assert_eq!(converted[2].role, "assistant");
+        assert_eq!(converted[2].content, "Hi");
+    }
+
+    #[test]
+    fn test_new_provider_default_url() {
+        let p = RouteLLMProvider::new("sk-test".to_string(), None);
+        assert_eq!(p.base_url, "https://routellm.abacus.ai/v1");
+    }
+
+    #[test]
+    fn test_new_provider_custom_url() {
+        let p = RouteLLMProvider::new("sk-test".to_string(), Some("http://localhost:8000".to_string()));
+        assert_eq!(p.base_url, "http://localhost:8000");
+    }
+}

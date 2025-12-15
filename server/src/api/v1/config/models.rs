@@ -10,6 +10,7 @@ pub struct ProviderModelsResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CatalogModel {
     pub id: String,
     pub display_name: String,

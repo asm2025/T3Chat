@@ -8,7 +8,8 @@ import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
-import type { Message } from "@/types/chat";
+import { useConfig } from "@/stores/appStore";
+import type { Message, AiProvider } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 
 interface ChatViewProps {
@@ -18,10 +19,33 @@ interface ChatViewProps {
 export function ChatView({ chatId }: ChatViewProps) {
     const navigate = useNavigate();
     const { chat, loading, error, refresh } = useChat(chatId);
-    const { models } = useModels();
+    const { models: backendModels } = useModels();
+    const { config } = useConfig();
     const { sendMessage, streaming } = useStreamingChat();
     const [messages, setMessages] = useState<Message[]>([]);
     const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+
+    const modelSpecs = config?.modelSpecs || [];
+    const useSpecs = modelSpecs.length > 0;
+
+    const effectiveModels: AIModel[] = useSpecs
+        ? modelSpecs.map((spec) => ({
+              id: spec.name,
+              provider: spec.provider as AiProvider,
+              model_id: spec.model,
+              display_name: spec.label,
+              context_window: 128000,
+              supports_streaming: true,
+              supports_images: false,
+              supports_functions: false,
+              is_active: true,
+              created_at: "",
+              updated_at: "",
+          }))
+        : backendModels;
+
+    const models = effectiveModels;
+    const modelSelectEnabled = config?.interface?.modelSelect ?? true;
 
     useEffect(() => {
         setMessages(chat?.messages ?? []);
@@ -36,9 +60,23 @@ export function ChatView({ chatId }: ChatViewProps) {
             const activeModel = models.find((model) => model.provider === chat.model_provider && model.model_id === chat.model_id);
             setSelectedModel(activeModel ?? models[0]);
         } else if (!selectedModel) {
+            if (config?.interface?.defaultModelSpec) {
+                const defaultSpec = models.find((m) => m.id === config.interface!.defaultModelSpec);
+                if (defaultSpec) {
+                    setSelectedModel(defaultSpec);
+                    return;
+                }
+            }
+            if (config?.interface?.defaultProvider && config?.interface?.defaultModel) {
+                const defaultModel = models.find((m) => m.provider === config.interface!.defaultProvider && m.model_id === config.interface!.defaultModel);
+                if (defaultModel) {
+                    setSelectedModel(defaultModel);
+                    return;
+                }
+            }
             setSelectedModel(models[0]);
         }
-    }, [chat, models, selectedModel]);
+    }, [chat, models, selectedModel, config]);
 
     const handleSendMessage = async (content: string) => {
         if (!selectedModel) {
@@ -154,7 +192,7 @@ export function ChatView({ chatId }: ChatViewProps) {
             <div className="flex-1 min-h-0">
                 <MessageList messages={messages} streaming={streaming} onPromptClick={handleSendMessage} />
             </div>
-            <MessageInput onSend={handleSendMessage} disabled={streaming || !selectedModel} models={models} selectedModel={selectedModel} onModelSelect={setSelectedModel} />
+            <MessageInput onSend={handleSendMessage} disabled={streaming || !selectedModel} models={models} selectedModel={selectedModel} onModelSelect={setSelectedModel} modelSelectEnabled={modelSelectEnabled} />
         </div>
     );
 }

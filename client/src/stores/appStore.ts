@@ -7,6 +7,7 @@ import type { Message, Chat, ChatWithMessages } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
 import type { Conversation, ConversationWithTags, Preset, Agent, AgentWithDetails, Tag, Tool, EndpointOption, Message as LibreChatMessage, CreateConversationRequest } from "@/types/librechat";
+import type { StartupConfigResponse } from "@/types/config";
 
 // ============================================================================
 // Types
@@ -93,6 +94,45 @@ const createAuthSlice = (set: StoreSet, get: StoreGet): AuthSlice => ({
     forceRefresh: () => {
         const state = get();
         state.setRefreshTrigger(state.refreshTrigger + 1);
+    },
+});
+
+// ============================================================================
+// Config Slice
+// ============================================================================
+
+interface ConfigSlice {
+    startupConfig: StartupConfigResponse | null;
+    configLoading: boolean;
+    configError: Error | null;
+
+    setStartupConfig: (config: StartupConfigResponse | null) => void;
+    setConfigLoading: (loading: boolean) => void;
+    setConfigError: (error: Error | null) => void;
+    fetchStartupConfig: () => Promise<void>;
+}
+
+const createConfigSlice = (set: StoreSet, get: StoreGet): ConfigSlice => ({
+    startupConfig: null,
+    configLoading: false,
+    configError: null,
+
+    setStartupConfig: (startupConfig) => set({ startupConfig }),
+    setConfigLoading: (configLoading) => set({ configLoading }),
+    setConfigError: (configError) => set({ configError }),
+
+    fetchStartupConfig: async () => {
+        const state = get();
+        try {
+            state.setConfigLoading(true);
+            state.setConfigError(null);
+            const config = await t3ChatClient.getStartupConfig();
+            state.setStartupConfig(config);
+        } catch (error) {
+            state.setConfigError(error as Error);
+        } finally {
+            state.setConfigLoading(false);
+        }
     },
 });
 
@@ -839,7 +879,7 @@ const createToolsSlice = (set: StoreSet, get: StoreGet): ToolsSlice => ({
 // Combined Store
 // ============================================================================
 
-type AppStore = AuthSlice & ModelsSlice & ChatsSlice & ChatSlice & UserApiKeysSlice & FeaturesSlice & LibreChatConversationsSlice & LibreChatCurrentConversationSlice & PresetsSlice & AgentsSlice & TagsSlice & ToolsSlice;
+type AppStore = AuthSlice & ConfigSlice & ModelsSlice & ChatsSlice & ChatSlice & UserApiKeysSlice & FeaturesSlice & LibreChatConversationsSlice & LibreChatCurrentConversationSlice & PresetsSlice & AgentsSlice & TagsSlice & ToolsSlice;
 
 type StoreSet = StoreApi<AppStore>["setState"];
 type StoreGet = StoreApi<AppStore>["getState"];
@@ -849,6 +889,7 @@ export const useAppStore = create<AppStore>()(
         persist(
             (set, get) => ({
                 ...createAuthSlice(set, get),
+                ...createConfigSlice(set, get),
                 ...createModelsSlice(set, get),
                 ...createChatsSlice(set, get),
                 ...createChatSlice(set, get),
@@ -889,6 +930,16 @@ export const useAuth = () =>
             fetchUserProfile: state.fetchUserProfile,
             logout: state.logout,
             forceRefresh: state.forceRefresh,
+        })),
+    );
+
+export const useConfig = () =>
+    useAppStore(
+        useShallow((state) => ({
+            config: state.startupConfig,
+            loading: state.configLoading,
+            error: state.configError,
+            fetchStartupConfig: state.fetchStartupConfig,
         })),
     );
 

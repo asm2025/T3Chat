@@ -1,32 +1,33 @@
 export interface StartupConfigResponse {
-    app_title?: string | null;
-    interface: InterfaceConfigResponse;
-    providers: ProviderSummaryResponse[];
-    model_specs: ModelSpecResponse[];
+    appTitle?: string | null;
+    interface?: InterfaceConfig;
+    providers: ProviderSummary[];
+    modelSpecs: ModelSpec[];
     notices?: StartupNotice[];
 }
 
-export interface InterfaceConfigResponse {
-    model_select_enabled: boolean;
-    default_model_spec?: string | null;
-    default_provider?: string | null;
-    default_model?: string | null;
+export interface InterfaceConfig {
+    endpointsMenu?: boolean;
+    modelSelect?: boolean;
+    presets?: boolean;
+    // T3Chat specific legacy fallbacks if needed, or purely LibreChat style
 }
 
-export interface ProviderSummaryResponse {
+export interface ProviderSummary {
     key: string;
     label: string;
     icon?: string | null;
+    description?: string | null;
 }
 
-export interface ModelSpecResponse {
+export interface ModelSpec {
     name: string;
     label: string;
     provider: string;
     model: string;
     description?: string | null;
     icon?: string | null;
-    default: boolean;
+    default?: boolean;
     parameters?: unknown;
 }
 
@@ -36,4 +37,3 @@ export interface StartupNotice {
 }
 
 export type StartupNoticeKind = "info" | "warning";
-
