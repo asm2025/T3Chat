@@ -181,7 +181,7 @@ impl DerivedAppConfig {
                         // For now, let's use the name.
 
                         process_endpoint(
-                            &custom.name, // Use the name as the provider key
+                            &custom.name.to_lowercase(), // Use the name as the provider key
                             &custom.name, // And label
                             custom.api_key,
                             custom.base_url,
