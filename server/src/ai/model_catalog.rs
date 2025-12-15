@@ -1,4 +1,5 @@
 use crate::ai::providers::openrouter::OpenRouterClient;
+use crate::ai::providers::routellm::RouteLLMProvider;
 use crate::ai::providers::{
     AIProvider, anthropic::AnthropicProvider, google::GoogleProvider, openai::OpenAIProvider,
 };
@@ -184,6 +185,16 @@ async fn fetch_remote_models(
                 .ok_or_else(|| ModelCatalogError::MissingApiKey(provider_key.to_string()))?;
             let client = OpenRouterClient::new(api_key, endpoint.base_url.clone());
             client.list_models().await.map_err(|err| {
+                ModelCatalogError::FetchFailed(provider_key.to_string(), err.to_string())
+            })
+        }
+        "routellm" | "RouteLLM" => {
+             let api_key = endpoint
+                .api_key
+                .clone()
+                .ok_or_else(|| ModelCatalogError::MissingApiKey(provider_key.to_string()))?;
+            let provider = RouteLLMProvider::new(api_key, endpoint.base_url.clone());
+            provider.fetch_models().await.map_err(|err| {
                 ModelCatalogError::FetchFailed(provider_key.to_string(), err.to_string())
             })
         }

@@ -29,6 +29,53 @@ impl RouteLLMProvider {
             base_url,
         }
     }
+
+    pub async fn fetch_models(&self) -> anyhow::Result<Vec<ModelInfo>> {
+        #[derive(Deserialize)]
+        struct ModelsResponse {
+            data: Vec<ModelData>,
+        }
+
+        #[derive(Deserialize)]
+        struct ModelData {
+            id: String,
+        }
+
+        let url = format!("{}/models", self.base_url.trim_end_matches('/'));
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            anyhow::bail!("Failed to fetch models: {} - {}", status, text);
+        }
+
+        let parsed: ModelsResponse = response.json().await?;
+
+        let models = parsed
+            .data
+            .into_iter()
+            .map(|m| ModelInfo {
+                id: m.id.clone(),
+                display_name: m.id,
+                context_window: 128000, // Default assumption for RouteLLM/modern models
+                max_output_tokens: None,
+                supports_streaming: true,
+                supports_images: false, // We can't know for sure without more metadata
+                supports_functions: false,
+                supports_vision: false,
+                cost_per_input_token: None,
+                cost_per_output_token: None,
+            })
+            .collect();
+
+        Ok(models)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
