@@ -18,7 +18,7 @@ pub enum ProviderWrapper {
     RouteLLM(RouteLLMProvider),
     DeepSeek(OpenAIProvider),
     Ollama(OpenAIProvider),
-    ChatLLM(OpenAIProvider),
+    ChatLLM(RouteLLMProvider),
 }
 
 impl ProviderWrapper {
@@ -131,8 +131,7 @@ impl ProviderManager {
                     ))
                 }
                 AiProvider::ChatLLM => Arc::new(ProviderWrapper::ChatLLM(
-                    OpenAIProvider::new(api_key)
-                        .with_base_url("https://pa002.abacus.ai/api".to_string()),
+                    RouteLLMProvider::new(api_key, None)
                 )),
             };
             providers.insert(provider, provider_impl);
@@ -159,8 +158,7 @@ impl ProviderManager {
                 OpenAIProvider::new(api_key).with_base_url("http://localhost:11434/v1".to_string()),
             ),
             AiProvider::ChatLLM => ProviderWrapper::ChatLLM(
-                OpenAIProvider::new(api_key)
-                    .with_base_url("https://pa002.abacus.ai/api".to_string()),
+                RouteLLMProvider::new(api_key, None)
             ),
         };
         Ok(provider_impl)

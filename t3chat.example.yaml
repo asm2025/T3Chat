@@ -50,13 +50,13 @@ endpoints:
           modelDisplayLabel: "OpenRouter"
           dropParams: ["stop"]
 
-        - name: "RouteLLM"
+        - name: "ChatLLM"
           apiKey: "${ABACUS_API_KEY}"
           baseURL: "https://routellm.abacus.ai/v1"
           models:
               fetch: true
               default: []
-          modelDisplayLabel: "RouteLLM"
+          modelDisplayLabel: "ChatLLM"
 
         - name: "AWS Bedrock"
           apiKey: "dummy"

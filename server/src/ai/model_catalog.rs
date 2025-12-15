@@ -188,7 +188,7 @@ async fn fetch_remote_models(
                 ModelCatalogError::FetchFailed(provider_key.to_string(), err.to_string())
             })
         }
-        "routellm" | "RouteLLM" => {
+        "routellm" | "RouteLLM" | "chatllm" | "ChatLLM" => {
              let api_key = endpoint
                 .api_key
                 .clone()
