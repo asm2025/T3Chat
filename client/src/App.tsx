@@ -23,7 +23,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Sidebar } from "@/components/sidebar";
 import { MobileWarningBanner } from "@/components/mobile-warning-banner";
 import { FloatingToolbar } from "@/components/floating-toolbar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/useMobile";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfigWarningBanner } from "@/components/config-warning-banner";
 

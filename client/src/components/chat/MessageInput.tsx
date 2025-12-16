@@ -169,7 +169,7 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
                                             <SelectContent>
                                                 {models.map((model) => (
                                                     <SelectItem key={model.id} value={model.id}>
-                                                        {model.display_name}
+                                                        {model.displayName}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

@@ -190,11 +190,11 @@ export function PresetEditor({ open, onOpenChange, presetId }: PresetEditorProps
                                 <Label>Model</Label>
                                 <ModelSelector
                                     models={models.filter((m) => m.provider === endpointOptions.endpoint as string)}
-                                    selectedModel={models.find((m) => m.model_id === endpointOptions.model) || null}
+                                    selectedModel={models.find((m) => m.modelId === endpointOptions.model) || null}
                                     onSelect={(model) => setEndpointOptions({ 
                                         ...endpointOptions, 
-                                        model: model.model_id,
-                                        modelLabel: model.display_name
+                                        model: model.modelId,
+                                        modelLabel: model.displayName
                                     })}
                                 />
                             </div>

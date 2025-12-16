@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t3ChatClient } from "@/lib/t3-chat-client";
-import type { Chat } from "@/types/chat";
+import type { Conversation } from "@/types/conversation";
 
-export function useChats(page = 1, pageSize = 20) {
-    const [chats, setChats] = useState<Chat[]>([]);
+export function useConversations(page = 1, pageSize = 20) {
+    const [chats, setChats] = useState<Conversation[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -28,4 +28,3 @@ export function useChats(page = 1, pageSize = 20) {
 
     return { chats, total, loading, error, refresh: loadChats };
 }
-

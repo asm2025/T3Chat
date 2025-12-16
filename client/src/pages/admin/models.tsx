@@ -11,14 +11,14 @@ import { Plus, Search, Edit, Trash2, Power, PowerOff, AlertTriangle } from 'luci
 
 interface Model {
   id: string;
-  model_id: string;
-  display_name: string;
+  modelId: string;
+  displayName: string;
   description?: string;
-  provider_id: string;
+  providerId: string;
   disabled: boolean;
-  is_active: boolean;
-  deprecated_at?: string;
-  created_at: string;
+  isActive: boolean;
+  deprecatedAt?: string;
+  createdAt: string;
 }
 
 interface ModelsResponse {
@@ -167,22 +167,22 @@ export function AdminModels() {
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium">{model.display_name}</p>
+                      <p className="font-medium">{model.displayName}</p>
                         {model.disabled && (
                           <Badge variant="destructive">Disabled</Badge>
                         )}
-                        {!model.is_active && (
+                        {!model.isActive && (
                           <Badge variant="secondary">Inactive</Badge>
                         )}
-                        {model.deprecated_at && (
+                        {model.deprecatedAt && (
                           <Badge variant="outline">
                             <AlertTriangle className="mr-1 h-3 w-3" />
                             Deprecated
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{model.model_id}</p>
-                      <p className="text-xs text-muted-foreground">Provider: {model.provider_id}</p>
+                      <p className="text-sm text-muted-foreground">{model.modelId}</p>
+                      <p className="text-xs text-muted-foreground">Provider: {model.providerId}</p>
                       {model.description && (
                         <p className="text-sm text-muted-foreground mt-1">{model.description}</p>
                       )}
@@ -205,7 +205,7 @@ export function AdminModels() {
                           <PowerOff className="h-4 w-4" />
                         </Button>
                       )}
-                      {!model.deprecated_at && (
+                      {!model.deprecatedAt && (
                         <Button
                           variant="outline"
                           size="sm"

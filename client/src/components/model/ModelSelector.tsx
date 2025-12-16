@@ -32,7 +32,7 @@ export function ModelSelector({
       <SelectContent>
         {models.map(model => (
           <SelectItem key={model.id} value={model.id}>
-            {model.display_name} ({model.provider})
+            {model.displayName} ({model.provider})
           </SelectItem>
         ))}
       </SelectContent>

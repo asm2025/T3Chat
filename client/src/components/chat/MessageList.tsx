@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import type { Message } from "@/types/chat";
+import type { Message } from "@/types/conversation";
 import { MessageBubble } from "./MessageBubble";
-import { ChatPlaceholder } from "./ChatPlaceholder";
+import { MessagePlaceholder } from "./MessagePlaceholder";
 
 interface MessageListProps {
     messages: Message[];
@@ -19,11 +19,13 @@ export function MessageList({ messages, streaming, showPlaceholder = true, place
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    if (messages.length === 0 && showPlaceholder) {
+    const filteredMessages = messages.filter((message) => message.role === "user" || message.role === "assistant");
+
+    if (filteredMessages.length === 0 && showPlaceholder) {
         return (
             <div className="flex h-full flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
-                    <ChatPlaceholder userName={placeholderUserName} onPromptClick={onPromptClick} />
+                    <MessagePlaceholder userName={placeholderUserName} onPromptClick={onPromptClick} />
                 </div>
             </div>
         );
@@ -33,9 +35,13 @@ export function MessageList({ messages, streaming, showPlaceholder = true, place
         <div className="flex h-full flex-col overflow-hidden">
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 scroll-smooth">
                 <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-                    {messages.map((message, index) => {
-                        const isLastMessage = index === messages.length - 1;
+                    {filteredMessages.map((message, index) => {
+                        const isLastMessage = index === filteredMessages.length - 1;
                         const isStreaming = streaming && isLastMessage;
+
+                        if (message.role === "user") {
+                            return <MessageBubble key={message.id} message={message} streaming={isStreaming} />;
+                        }
 
                         return <MessageBubble key={message.id} message={message} streaming={isStreaming} />;
                     })}
@@ -56,4 +62,3 @@ export function MessageList({ messages, streaming, showPlaceholder = true, place
         </div>
     );
 }
-

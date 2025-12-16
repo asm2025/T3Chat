@@ -11,12 +11,12 @@ import { Plus, Search, Edit, Trash2, Power, PowerOff } from 'lucide-react';
 
 interface Provider {
   id: string;
-  provider_id: string;
-  display_name: string;
+  providerId: string;
+  displayName: string;
   description?: string;
   disabled: boolean;
-  is_active: boolean;
-  created_at: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 interface ProvidersResponse {
@@ -147,15 +147,15 @@ export function AdminProviders() {
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium">{provider.display_name}</p>
+                        <p className="font-medium">{provider.displayName}</p>
                         {provider.disabled && (
                           <Badge variant="destructive">Disabled</Badge>
                         )}
-                        {!provider.is_active && (
+                        {!provider.isActive && (
                           <Badge variant="secondary">Inactive</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{provider.provider_id}</p>
+                      <p className="text-sm text-muted-foreground">{provider.providerId}</p>
                       {provider.description && (
                         <p className="text-sm text-muted-foreground mt-1">{provider.description}</p>
                       )}

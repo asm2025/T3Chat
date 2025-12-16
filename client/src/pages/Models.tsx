@@ -7,21 +7,7 @@ import { api } from "@/lib/api-client";
 import { toast } from "@/lib/toast";
 import { Search, Brain, Zap, Image, Code } from "lucide-react";
 import { MasterLayout } from "@/components/master-layout";
-
-interface AIModel {
-    id: string;
-    model_id: string;
-    display_name: string;
-    description?: string;
-    provider_id: string;
-    context_window: number;
-    max_output_tokens?: number;
-    supports_streaming: boolean;
-    supports_images: boolean;
-    supports_functions: boolean;
-    supports_vision: boolean;
-    is_paid: boolean;
-}
+import type { AIModel } from "@/types/model";
 
 export function Models() {
     const [models, setModels] = useState<AIModel[]>([]);
@@ -48,13 +34,16 @@ export function Models() {
     };
 
     // Get unique providers
-    const providers = Array.from(new Set(models.map((m) => m.provider_id)));
+    const providers = Array.from(new Set(models.map((m) => m.provider)));
 
     // Filter models
     const filteredModels = models.filter((model) => {
-        const matchesSearch = model.display_name.toLowerCase().includes(searchQuery.toLowerCase()) || model.model_id.toLowerCase().includes(searchQuery.toLowerCase()) || model.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch =
+            model.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            model.modelId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            model.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const matchesProvider = selectedProvider === "all" || model.provider_id === selectedProvider;
+        const matchesProvider = selectedProvider === "all" || model.provider === selectedProvider;
 
         return matchesSearch && matchesProvider;
     });
@@ -116,35 +105,36 @@ export function Models() {
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
-                                                <CardTitle className="text-lg">{model.display_name}</CardTitle>
-                                                <CardDescription className="mt-1 font-mono text-xs">{model.model_id}</CardDescription>
+                                                        <CardTitle className="text-lg">{model.displayName}</CardTitle>
+                                                        <CardDescription className="mt-1 font-mono text-xs">{model.modelId}</CardDescription>
                                             </div>
-                                            {model.is_paid && <Badge variant="secondary">Paid</Badge>}
+                                                    {/* Catalog response doesn't currently expose paid/free status */}
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         {model.description && <p className="text-sm text-muted-foreground line-clamp-2">{model.description}</p>}
 
                                         <div className="flex flex-wrap gap-2">
-                                            {model.supports_streaming && (
+                                                    {model.supportsStreaming && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Zap className="mr-1 h-3 w-3" />
                                                     Streaming
                                                 </Badge>
                                             )}
-                                            {model.supports_images && (
+                                                    {model.supportsImages && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Image className="mr-1 h-3 w-3" />
                                                     Images
                                                 </Badge>
                                             )}
-                                            {model.supports_functions && (
+                                                    {model.supportsFunctions && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Code className="mr-1 h-3 w-3" />
                                                     Functions
                                                 </Badge>
                                             )}
-                                            {model.supports_vision && (
+                                                    {/* Catalog response doesn't currently expose supportsVision on this endpoint */}
+                                                    {"supportsVision" in model && (model as unknown as { supportsVision: boolean }).supportsVision && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Brain className="mr-1 h-3 w-3" />
                                                     Vision
@@ -155,16 +145,16 @@ export function Models() {
                                         <div className="text-xs text-muted-foreground space-y-1">
                                             <div className="flex justify-between">
                                                 <span>Provider:</span>
-                                                <span className="font-medium">{model.provider_id}</span>
+                                                        <span className="font-medium">{model.provider}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span>Context Window:</span>
-                                                <span className="font-medium">{model.context_window.toLocaleString()}</span>
+                                                        <span className="font-medium">{model.contextWindow.toLocaleString()}</span>
                                             </div>
-                                            {model.max_output_tokens && (
+                                                    {"maxOutputTokens" in model && (model as unknown as { maxOutputTokens?: number }).maxOutputTokens && (
                                                 <div className="flex justify-between">
                                                     <span>Max Output:</span>
-                                                    <span className="font-medium">{model.max_output_tokens.toLocaleString()}</span>
+                                                            <span className="font-medium">{(model as unknown as { maxOutputTokens: number }).maxOutputTokens.toLocaleString()}</span>
                                                 </div>
                                             )}
                                         </div>

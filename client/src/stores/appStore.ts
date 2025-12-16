@@ -3,10 +3,21 @@ import type { StoreApi } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { t3ChatClient } from "@/lib/t3-chat-client";
-import type { Message, Chat, ChatWithMessages } from "@/types/chat";
+import type { Message as ChatMessage, Conversation as ChatConversation, ConversationWithMessages as ChatConversationWithMessages } from "@/types/conversation";
 import type { AIModel } from "@/types/model";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
-import type { Conversation, ConversationWithTags, Preset, Agent, AgentWithDetails, Tag, Tool, EndpointOption, Message as LibreChatMessage, CreateConversationRequest } from "@/types/librechat";
+import type {
+    Conversation as LibreChatConversation,
+    ConversationWithTags,
+    Preset,
+    Agent,
+    AgentWithDetails,
+    Tag,
+    Tool,
+    EndpointOption,
+    Message as LibreChatMessage,
+    CreateConversationRequest,
+} from "@/types/librechat";
 import type { StartupConfigResponse } from "@/types/config";
 
 // ============================================================================
@@ -16,10 +27,10 @@ import type { StartupConfigResponse } from "@/types/config";
 interface UserProfile {
     id: string;
     email: string | null;
-    display_name: string | null;
-    image_url: string | null;
-    created_at: string;
-    updated_at: string;
+    displayName: string | null;
+    imageUrl: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 // ============================================================================
@@ -185,19 +196,19 @@ const createModelsSlice = (set: StoreSet, get: StoreGet): ModelsSlice => ({
 
 interface ChatsSlice {
     // State
-    chats: Chat[];
+    chats: ChatConversation[];
     chatsLoading: boolean;
     chatsError: Error | null;
     chatsTotal: number;
 
     // Actions
-    setChats: (chats: Chat[]) => void;
+    setChats: (chats: ChatConversation[]) => void;
     setChatsLoading: (loading: boolean) => void;
     setChatsError: (error: Error | null) => void;
     setChatsTotal: (total: number) => void;
     fetchChats: (page?: number, pageSize?: number) => Promise<void>;
-    addChat: (chat: Chat) => void;
-    updateChat: (id: string, updates: Partial<Chat>) => void;
+    addChat: (chat: ChatConversation) => void;
+    updateChat: (id: string, updates: Partial<ChatConversation>) => void;
     removeChat: (id: string) => void;
 }
 
@@ -229,19 +240,19 @@ const createChatsSlice = (set: StoreSet, get: StoreGet): ChatsSlice => ({
         }
     },
 
-    addChat: (chat: Chat) => {
+    addChat: (chat: ChatConversation) => {
         const state = get();
         state.setChats([chat, ...state.chats]);
     },
 
     updateChat: (id, updates) => {
         const state = get();
-        state.setChats(state.chats.map((chat: Chat) => (chat.id === id ? { ...chat, ...updates } : chat)));
+        state.setChats(state.chats.map((chat: ChatConversation) => (chat.id === id ? { ...chat, ...updates } : chat)));
     },
 
     removeChat: (id) => {
         const state = get();
-        state.setChats(state.chats.filter((chat: Chat) => chat.id !== id));
+        state.setChats(state.chats.filter((chat: ChatConversation) => chat.id !== id));
     },
 });
 
@@ -252,8 +263,8 @@ const createChatsSlice = (set: StoreSet, get: StoreGet): ChatsSlice => ({
 interface ChatSlice {
     // State
     currentChatId: string | null;
-    currentChat: ChatWithMessages | null;
-    messages: Message[];
+    currentChat: ChatConversationWithMessages | null;
+    messages: ChatMessage[];
     selectedModel: AIModel | null;
     webSearchEnabled: boolean;
     chatLoading: boolean;
@@ -261,10 +272,10 @@ interface ChatSlice {
 
     // Actions
     setCurrentChatId: (chatId: string | null) => void;
-    setCurrentChat: (chat: ChatWithMessages | null) => void;
-    setMessages: (messages: Message[]) => void;
-    addMessage: (message: Message) => void;
-    updateMessage: (messageId: string, updates: Partial<Message>) => void;
+    setCurrentChat: (chat: ChatConversationWithMessages | null) => void;
+    setMessages: (messages: ChatMessage[]) => void;
+    addMessage: (message: ChatMessage) => void;
+    updateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
     removeMessage: (messageId: string) => void;
     setSelectedModel: (model: AIModel | null) => void;
     setWebSearchEnabled: (enabled: boolean) => void;
@@ -488,7 +499,7 @@ interface LibreChatConversationsSlice {
     fetchConversations: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => Promise<void>;
     createConversation: (data: CreateConversationRequest) => Promise<ConversationWithTags | null>;
     addConversation: (conversation: ConversationWithTags) => void;
-    updateConversation: (id: string, updates: Partial<Conversation>) => void;
+    updateConversation: (id: string, updates: Partial<LibreChatConversation>) => void;
     removeConversation: (id: string) => void;
 }
 

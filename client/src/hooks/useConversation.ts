@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t3ChatClient } from "@/lib/t3-chat-client";
-import type { ChatWithMessages } from "@/types/chat";
+import type { ConversationWithMessages } from "@/types/conversation";
 
-export function useChat(chatId: string | null) {
-    const [chat, setChat] = useState<ChatWithMessages | null>(null);
+export function useConversation(conversationId: string | null) {
+    const [conversation, setConversation] = useState<ConversationWithMessages | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const mountedRef = useRef(true);
@@ -17,10 +17,10 @@ export function useChat(chatId: string | null) {
         };
     }, []);
 
-    const loadChat = useCallback(async () => {
-        if (!chatId) {
+    const loadConversation = useCallback(async () => {
+        if (!conversationId) {
             if (mountedRef.current) {
-                setChat(null);
+                setConversation(null);
                 setLoading(false);
                 setError(null);
             }
@@ -32,9 +32,9 @@ export function useChat(chatId: string | null) {
                 setLoading(true);
                 setError(null);
             }
-            const data = await t3ChatClient.getChat(chatId);
+            const data = await t3ChatClient.getChat(conversationId);
             if (mountedRef.current) {
-                setChat(data);
+                setConversation(data);
             }
         } catch (err) {
             if (mountedRef.current) {
@@ -45,12 +45,11 @@ export function useChat(chatId: string | null) {
                 setLoading(false);
             }
         }
-    }, [chatId]);
+    }, [conversationId]);
 
     useEffect(() => {
-        loadChat();
-    }, [loadChat]);
+        loadConversation();
+    }, [loadConversation]);
 
-    return { chat, loading, error, refresh: loadChat };
+    return { conversation, loading, error, refresh: loadConversation };
 }
-

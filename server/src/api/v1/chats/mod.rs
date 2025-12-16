@@ -14,6 +14,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatResponse {
     pub id: Uuid,
     pub user_id: String,
@@ -39,6 +40,7 @@ impl From<ChatModel> for ChatResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct MessageResponse {
     pub id: Uuid,
     pub chat_id: Uuid,
@@ -71,6 +73,7 @@ impl From<Message> for MessageResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatWithMessagesResponse {
     #[serde(flatten)]
     pub chat: ChatResponse,
@@ -79,25 +82,32 @@ pub struct ChatWithMessagesResponse {
 
 #[derive(Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
 pub struct PaginationParams {
     pub page: Option<u64>,
+    #[serde(alias = "page_size")]
     pub page_size: Option<u64>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatListResponse {
     pub data: Vec<ChatResponse>,
     pub total: u64,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateChatRequest {
     pub title: Option<String>,
+    #[serde(alias = "model_provider")]
     pub model_provider: String,
+    #[serde(alias = "model_id")]
     pub model_id: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateChatRequest {
     pub title: Option<String>,
 }

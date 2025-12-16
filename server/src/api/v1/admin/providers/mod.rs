@@ -15,6 +15,7 @@ use crate::db::repositories::{AiProviderRepository, TAiProviderRepository};
 use crate::middleware::auth::AuthenticatedUser;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListProvidersQuery {
     #[serde(default = "default_page")]
     pub page: u64,
@@ -31,6 +32,7 @@ fn default_limit() -> u64 {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProviderResponse {
     pub id: Uuid,
     pub provider_id: String,
@@ -76,6 +78,7 @@ impl From<AiProvider> for ProviderResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateProviderRequest {
     pub provider_id: String,
     pub display_name: String,
@@ -94,6 +97,7 @@ pub struct CreateProviderRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateProviderRequest {
     pub display_name: Option<String>,
     pub description: Option<String>,
@@ -111,6 +115,7 @@ pub struct UpdateProviderRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListProvidersResponse {
     pub data: Vec<ProviderResponse>,
     pub total: u64,

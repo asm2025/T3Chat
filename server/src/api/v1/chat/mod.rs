@@ -29,22 +29,29 @@ use utoipa::ToSchema;
 
 /// Chat completion request with full LibreChat support
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatRequest {
     /// Chat ID
+    #[serde(alias = "chat_id", alias = "id")]
     pub chat_id: uuid::Uuid,
     /// User's message text
     pub message: String,
     /// AI provider (openai, anthropic, google, etc.)
+    #[serde(alias = "model_provider")]
     pub model_provider: String,
     /// Model ID (e.g., gpt-4-turbo, claude-3-opus)
+    #[serde(alias = "model_id")]
     pub model_id: String,
     /// Model parameters (temperature, max_tokens, etc.)
     #[serde(default)]
+    #[serde(alias = "model_parameters")]
     pub model_parameters: Option<Value>,
     /// Feature flags (resend_files, prompt_cache, etc.)
     #[serde(default)]
+    #[serde(alias = "feature_flags")]
     pub feature_flags: Option<Value>,
     /// System message/instructions
+    #[serde(alias = "system_message")]
     pub system_message: Option<String>,
     /// Enable streaming response
     #[serde(default)]
@@ -52,6 +59,7 @@ pub struct ChatRequest {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatCompletionResponse {
     pub content: String,
     pub model: String,
@@ -60,6 +68,7 @@ pub struct ChatCompletionResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct TokenUsageResponse {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,

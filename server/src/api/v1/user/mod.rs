@@ -21,14 +21,17 @@ pub async fn profile(user: AuthenticatedUser) -> Result<Json<UserResponse>, Stat
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateUserRequest {
     // Since frontend always sends display_name (either string or null),
     // we can use Option<String> directly. When null is sent, it becomes None.
     // When a value is sent, it becomes Some(value).
     // We use #[serde(default)] so missing fields don't cause errors.
     #[serde(default)]
+    #[serde(alias = "display_name")]
     pub display_name: Option<String>,
     #[serde(default)]
+    #[serde(alias = "image_url")]
     pub image_url: Option<String>,
 }
 

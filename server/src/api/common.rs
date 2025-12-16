@@ -4,6 +4,7 @@ use utoipa::ToSchema;
 
 /// Common response type for user data
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UserResponse {
     pub id: String,
     pub email: Option<String>,

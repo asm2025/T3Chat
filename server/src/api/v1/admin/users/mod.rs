@@ -15,6 +15,7 @@ use crate::middleware::auth::AuthenticatedUser;
 
 // DTOs
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListUsersQuery {
     #[serde(default = "default_page")]
     pub page: u64,
@@ -23,6 +24,7 @@ pub struct ListUsersQuery {
     pub search: Option<String>,
     pub role: Option<String>,
     pub disabled: Option<bool>,
+    #[serde(alias = "locked_out")]
     pub locked_out: Option<bool>,
 }
 
@@ -35,6 +37,7 @@ fn default_limit() -> u64 {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdminUserResponse {
     pub id: String,
     pub email: String,
@@ -57,37 +60,49 @@ pub struct AdminUserResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateUserRequest {
     pub id: String,
     pub email: String,
+    #[serde(alias = "email_verified")]
     pub email_verified: Option<bool>,
     pub name: Option<String>,
     pub username: Option<String>,
+    #[serde(alias = "avatar_url")]
     pub avatar_url: Option<String>,
     pub provider: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateUserRequest {
     pub email: Option<String>,
+    #[serde(alias = "email_verified")]
     pub email_verified: Option<bool>,
     pub name: Option<String>,
     pub username: Option<String>,
+    #[serde(alias = "avatar_url")]
     pub avatar_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LockUserRequest {
+    #[serde(alias = "duration_minutes")]
     pub duration_minutes: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AddRoleRequest {
+    #[serde(alias = "role_name")]
     pub role_name: String,
+    #[serde(alias = "assigned_by")]
     pub assigned_by: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListUsersResponse {
     pub data: Vec<AdminUserResponse>,
     pub total: u64,
@@ -96,6 +111,7 @@ pub struct ListUsersResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserStatsResponse {
     pub login_count: i32,
     pub last_login_at: Option<chrono::DateTime<chrono::Utc>>,

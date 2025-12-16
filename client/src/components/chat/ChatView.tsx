@@ -2,38 +2,38 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
-import { useChat } from "@/hooks/useChat";
+import { useConversation } from "@/hooks/useConversation";
 import { useModels } from "@/hooks/useModels";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 import { useConfig } from "@/stores/appStore";
-import type { Message, AiProvider } from "@/types/chat";
+import type { Message, AiProvider } from "@/types/conversation";
 import type { AIModel } from "@/types/model";
 
 interface ChatViewProps {
-    chatId: string | null;
+    conversationId: string | null;
 }
 
-const NEW_CHAT_KEY = "__new__";
+const NEW_CONVERSATION_KEY = "__new__";
 
-export function ChatView({ chatId }: ChatViewProps) {
+export function ChatView({ conversationId }: ChatViewProps) {
     const navigate = useNavigate();
-    const { chat, loading, error, refresh } = useChat(chatId);
+    const { conversation, loading, error, refresh } = useConversation(conversationId);
     const { models: backendModels } = useModels();
     const { config } = useConfig();
     const { sendMessage, streaming } = useStreamingChat();
-    const [messagesByChatId, setMessagesByChatId] = useState<Record<string, Message[]>>({
-        [NEW_CHAT_KEY]: [],
+    const [messagesByConversationId, setMessagesByConversationId] = useState<Record<string, Message[]>>({
+        [NEW_CONVERSATION_KEY]: [],
     });
     const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
 
-    const chatKey = chatId ?? NEW_CHAT_KEY;
+    const chatKey = conversationId ?? NEW_CONVERSATION_KEY;
     // During the "/chat -> /chat/{id}" transition, React may render once with the new `chatId`
     // before our state has been migrated to that key. Fall back to the new-chat bucket to avoid
     // the placeholder flashing back in.
-    const messages = messagesByChatId[chatKey] ?? (chatId ? messagesByChatId[NEW_CHAT_KEY] ?? [] : []);
+    const messages = messagesByConversationId[chatKey] ?? (conversationId ? messagesByConversationId[NEW_CONVERSATION_KEY] ?? [] : []);
 
     const modelSpecs = config?.modelSpecs || [];
     const useSpecs = modelSpecs.length > 0;
@@ -45,15 +45,15 @@ export function ChatView({ chatId }: ChatViewProps) {
               .map((spec) => ({
                   id: spec.name,
                   provider: spec.preset.endpoint.toLowerCase() as AiProvider,
-                  model_id: spec.preset.model,
-                  display_name: spec.label,
-                  context_window: 128000,
-                  supports_streaming: true,
-                  supports_images: false,
-                  supports_functions: false,
-                  is_active: true,
-                  created_at: "",
-                  updated_at: "",
+                  modelId: spec.preset.model,
+                  displayName: spec.label,
+                  contextWindow: 128000,
+                  supportsStreaming: true,
+                  supportsImages: false,
+                  supportsFunctions: false,
+                  isActive: true,
+                  createdAt: "",
+                  updatedAt: "",
               }))
         : [];
 
@@ -62,18 +62,18 @@ export function ChatView({ chatId }: ChatViewProps) {
         const merged = new Map<string, AIModel>();
         for (const m of backendModels) {
             // Remove trailing "Default" for nicer labels (e.g., "GPT-4o Default" -> "GPT-4o")
-            const cleaned = { ...m, display_name: m.display_name.replace(/\s+Default$/i, "") };
-            merged.set(`${cleaned.provider}:${cleaned.model_id}`, cleaned);
+            const cleaned = { ...m, displayName: m.displayName.replace(/\s+Default$/i, "") };
+            merged.set(`${cleaned.provider}:${cleaned.modelId}`, cleaned);
         }
         for (const m of specModels) {
-            merged.set(`${m.provider}:${m.model_id}`, m);
+            merged.set(`${m.provider}:${m.modelId}`, m);
         }
         return Array.from(merged.values());
     }, [backendModels, specModels]);
     const modelSelectEnabled = config?.interface?.modelSelect ?? true;
 
     const setMessagesForChat = useCallback((key: string, updater: Message[] | ((prev: Message[]) => Message[])) => {
-        setMessagesByChatId((prev) => {
+        setMessagesByConversationId((prev) => {
             const prevForChat = prev[key] ?? [];
             const nextForChat = typeof updater === "function" ? (updater as (p: Message[]) => Message[])(prevForChat) : updater;
             return { ...prev, [key]: nextForChat };
@@ -84,39 +84,39 @@ export function ChatView({ chatId }: ChatViewProps) {
     // Important: do NOT clear messages when `chat` is temporarily null during loading,
     // otherwise the placeholder reappears after the first optimistic bubble.
     useEffect(() => {
-        if (!chat) {
+        if (!conversation) {
             return;
         }
 
-        setMessagesByChatId((prev) => {
+        setMessagesByConversationId((prev) => {
             const next = { ...prev };
-            const nextMessages = chat.messages ?? [];
+            const nextMessages = conversation.messages ?? [];
 
             // Store under the internal id (what the API returns) and also the current route param
             // (in case the user entered a URL using the external conversation_id).
-            next[chat.id] = nextMessages;
-            if (chatId) {
-                next[chatId] = nextMessages;
+            next[conversation.id] = nextMessages;
+            if (conversationId) {
+                next[conversationId] = nextMessages;
             }
             return next;
         });
-    }, [chat, chatId]);
+    }, [conversation, conversationId]);
 
     // When navigating to /chat (no id), reset the new-chat placeholder state.
     useEffect(() => {
-        if (chatId !== null) {
+        if (conversationId !== null) {
             return;
         }
-        setMessagesForChat(NEW_CHAT_KEY, []);
-    }, [chatId, setMessagesForChat]);
+        setMessagesForChat(NEW_CONVERSATION_KEY, []);
+    }, [conversationId, setMessagesForChat]);
 
     useEffect(() => {
         if (!models.length) {
             return;
         }
 
-        if (chat) {
-            const activeModel = models.find((model) => model.provider === chat.model_provider && model.model_id === chat.model_id);
+        if (conversation) {
+            const activeModel = models.find((model) => model.provider === conversation.modelProvider && model.modelId === conversation.modelId);
             if (activeModel) {
                 if (selectedModel?.id !== activeModel.id) {
                     setSelectedModel(activeModel);
@@ -136,7 +136,7 @@ export function ChatView({ chatId }: ChatViewProps) {
                 }
             }
             if (config?.interface?.defaultProvider && config?.interface?.defaultModel) {
-                const defaultModel = models.find((m) => m.provider === config.interface!.defaultProvider && m.model_id === config.interface!.defaultModel);
+                const defaultModel = models.find((m) => m.provider === config.interface!.defaultProvider && m.modelId === config.interface!.defaultModel);
                 if (defaultModel) {
                     setSelectedModel(defaultModel);
                     return;
@@ -144,7 +144,7 @@ export function ChatView({ chatId }: ChatViewProps) {
             }
             setSelectedModel(models[0]);
         }
-    }, [chat, models, selectedModel, config]);
+    }, [conversation, models, selectedModel, config]);
 
     const handleSendMessage = async (content: string) => {
         if (!selectedModel) {
@@ -154,7 +154,7 @@ export function ChatView({ chatId }: ChatViewProps) {
 
         // Validate model has required fields before proceeding
         const provider = selectedModel.provider;
-        const modelId = selectedModel.model_id;
+        const modelId = selectedModel.modelId;
 
         if (!provider || typeof provider !== "string" || provider.trim() === "") {
             toast.error("Invalid model configuration", { description: "Model provider is missing or invalid. Please select a different model." });
@@ -169,36 +169,36 @@ export function ChatView({ chatId }: ChatViewProps) {
         }
 
         // Prefer the internal chat id once loaded (it always maps to messages.conversation_id).
-        let currentChatId = chat?.id ?? chatId;
+        let currentChatId = conversation?.id ?? conversationId;
 
         const timestamp = new Date().toISOString();
-        const nextSequence = (messages[messages.length - 1]?.sequence_number ?? 0) + 1;
+        const nextSequence = (messages[messages.length - 1]?.sequenceNumber ?? 0) + 1;
         const userTempId = `temp-user-${Date.now()}`;
         const assistantTempId = `temp-assistant-${Date.now()}`;
 
         const optimisticUserBase: Message = {
             id: userTempId,
-            chat_id: currentChatId ?? NEW_CHAT_KEY,
+            chatId: currentChatId ?? NEW_CONVERSATION_KEY,
             role: "user",
             content,
-            sequence_number: nextSequence,
-            created_at: timestamp,
+            sequenceNumber: nextSequence,
+            createdAt: timestamp,
         };
 
         let assistantContent = "";
         const optimisticAssistantBase: Message = {
             id: assistantTempId,
-            chat_id: currentChatId ?? NEW_CHAT_KEY,
+            chatId: currentChatId ?? NEW_CONVERSATION_KEY,
             role: "assistant",
             content: "",
-            sequence_number: nextSequence + 1,
-            created_at: new Date().toISOString(),
+            sequenceNumber: nextSequence + 1,
+            createdAt: new Date().toISOString(),
         };
 
         // If we don't have a chat id yet, show the first bubbles immediately under the new-chat key
         // so the placeholder is removed instantly.
         if (!currentChatId) {
-            setMessagesForChat(NEW_CHAT_KEY, (prev) => [...prev, optimisticUserBase, optimisticAssistantBase]);
+            setMessagesForChat(NEW_CONVERSATION_KEY, (prev) => [...prev, optimisticUserBase, optimisticAssistantBase]);
 
             // Create new chat before streaming (stream endpoint requires a chat id)
             try {
@@ -206,20 +206,20 @@ export function ChatView({ chatId }: ChatViewProps) {
 
                 const newChat = await t3ChatClient.createChat({
                     title: content.slice(0, 30) + (content.length > 30 ? "..." : ""),
-                    model_provider: normalizedProvider,
-                    model_id: modelId,
+                    modelProvider: normalizedProvider,
+                    modelId,
                 });
                 currentChatId = newChat.id;
 
                 // Migrate optimistic messages from the new-chat key to the real chat id.
-                setMessagesByChatId((prev) => {
-                    const pending = prev[NEW_CHAT_KEY] ?? [];
-                    const migrated = pending.map((m) => ({ ...m, chat_id: currentChatId! }));
+                setMessagesByConversationId((prev) => {
+                    const pending = prev[NEW_CONVERSATION_KEY] ?? [];
+                    const migrated = pending.map((m) => ({ ...m, chatId: currentChatId! }));
                     return {
                         ...prev,
                         // Keep NEW_CHAT_KEY messages around briefly so the UI can fall back during route transition.
                         // We clear it when navigating back to "/chat".
-                        [NEW_CHAT_KEY]: pending,
+                        [NEW_CONVERSATION_KEY]: pending,
                         [currentChatId!]: migrated,
                     };
                 });
@@ -228,24 +228,24 @@ export function ChatView({ chatId }: ChatViewProps) {
             } catch (err) {
                 // If chat creation fails, keep the user bubble and replace assistant placeholder with an error.
                 const msg = getErrorMessage(err);
-                setMessagesForChat(NEW_CHAT_KEY, (prev) => prev.map((m) => (m.id === assistantTempId ? { ...m, content: `Error: ${msg}` } : m)));
+                setMessagesForChat(NEW_CONVERSATION_KEY, (prev) => prev.map((m) => (m.id === assistantTempId ? { ...m, content: `Error: ${msg}` } : m)));
                 toast.error("Failed to create new chat", { description: msg });
                 return;
             }
         } else {
             // Existing chat: append optimistic bubbles directly under the resolved chat id.
-            const optimisticUser: Message = { ...optimisticUserBase, chat_id: currentChatId };
-            const optimisticAssistant: Message = { ...optimisticAssistantBase, chat_id: currentChatId };
+            const optimisticUser: Message = { ...optimisticUserBase, chatId: currentChatId };
+            const optimisticAssistant: Message = { ...optimisticAssistantBase, chatId: currentChatId };
             setMessagesForChat(currentChatId, (prev) => [...prev, optimisticUser, optimisticAssistant]);
         }
 
         try {
             await sendMessage(
                 {
-                    chat_id: currentChatId,
+                    chatId: currentChatId,
                     message: content,
-                    model_provider: provider.toLowerCase() as AiProvider,
-                    model_id: modelId,
+                    modelProvider: provider.toLowerCase() as AiProvider,
+                    modelId,
                     stream: true,
                 },
                 (chunk) => {
@@ -256,13 +256,13 @@ export function ChatView({ chatId }: ChatViewProps) {
                     try {
                         // `/v1/chat/stream` persists user + assistant messages on the server.
                         // Refresh to reconcile optimistic state with DB.
-                        if (chatId === currentChatId) {
+                        if (conversationId === currentChatId) {
                             await refresh();
                         } else {
                             // New chat navigation: `refresh` in this closure may be tied to the old chatId (null),
                             // so fetch directly and sync messages into the cache.
                             const latest = await t3ChatClient.getChat(currentChatId!);
-                            setMessagesByChatId((prev) => ({
+                            setMessagesByConversationId((prev) => ({
                                 ...prev,
                                 [currentChatId!]: latest.messages ?? prev[currentChatId!] ?? [],
                             }));
@@ -288,18 +288,18 @@ export function ChatView({ chatId }: ChatViewProps) {
         return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border bg-card p-8 text-center text-red-500">Unable to load chat. {error.message}</div>;
     }
 
-    if (!loading && chatId && !chat) {
+    if (!loading && conversationId && !conversation) {
         return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Chat not found.</div>;
     }
 
     return (
         <div className="flex h-full flex-col">
-            {chat && (
+            {conversation && (
                 <div className="border-b border-border p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
-                            <h2 className="text-lg font-semibold">{chat.title}</h2>
+                            <h2 className="text-lg font-semibold">{conversation.title}</h2>
                         </div>
                     </div>
                 </div>

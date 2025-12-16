@@ -1,18 +1,17 @@
-import type { AiProvider } from './chat';
+import type { AiProvider } from "./conversation";
 
 export interface AIModel {
-  id: string;
-  provider: AiProvider;
-  model_id: string;
-  display_name: string;
-  description?: string;
-  context_window: number;
-  supports_streaming: boolean;
-  supports_images: boolean;
-  supports_functions: boolean;
-  cost_per_token?: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+    id: string;
+    provider: AiProvider;
+    modelId: string;
+    displayName: string;
+    description?: string;
+    contextWindow: number;
+    supportsStreaming: boolean;
+    supportsImages: boolean;
+    supportsFunctions: boolean;
+    costPerToken?: number;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
-

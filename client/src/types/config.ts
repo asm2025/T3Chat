@@ -34,15 +34,15 @@ export interface ModelSpec {
     preset: {
         endpoint: string;
         model: string;
-        model_label?: string | null;
+        modelLabel?: string | null;
         greeting?: string | null;
-        prompt_prefix?: string | null;
+        promptPrefix?: string | null;
         temperature?: number | null;
-        top_p?: number | null;
-        presence_penalty?: number | null;
-        frequency_penalty?: number | null;
-        resend_files?: boolean;
-        image_detail?: string | null;
+        topP?: number | null;
+        presencePenalty?: number | null;
+        frequencyPenalty?: number | null;
+        resendFiles?: boolean;
+        imageDetail?: string | null;
         tools?: boolean;
     };
 }

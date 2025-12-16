@@ -8,7 +8,7 @@ export function Chat() {
     return (
         <MasterLayout contentClassName="h-full">
             <div className="h-full">
-                <ChatView chatId={conversationId ?? null} />
+                <ChatView conversationId={conversationId ?? null} />
             </div>
         </MasterLayout>
     );

@@ -1,17 +1,4 @@
-// ============================================================================
-// LibreChat Type Definitions - Phase 1B
-// ============================================================================
-// These types match the normalized PostgreSQL schema from plan.md
-
-// ============================================================================
-// Endpoint & Provider Types
-// ============================================================================
-
 export type Endpoint = "openai" | "anthropic" | "google" | "custom" | "bedrock";
-
-// ============================================================================
-// Model Parameters (JSONB in database)
-// ============================================================================
 
 export interface ModelParameters {
     temperature?: number;
@@ -27,10 +14,6 @@ export interface ModelParameters {
     [key: string]: unknown;
 }
 
-// ============================================================================
-// Feature Flags (JSONB in database)
-// ============================================================================
-
 export interface FeatureFlags {
     resend_files?: boolean;
     resend_images?: boolean;
@@ -41,10 +24,6 @@ export interface FeatureFlags {
     // Provider-specific flags can be added here
     [key: string]: unknown;
 }
-
-// ============================================================================
-// Conversation Types
-// ============================================================================
 
 export interface Conversation {
     id: string; // UUID
@@ -104,10 +83,6 @@ export interface UpdateConversationRequest {
     featureFlags?: FeatureFlags;
     isArchived?: boolean;
 }
-
-// ============================================================================
-// Message Types
-// ============================================================================
 
 export type MessageRole = "user" | "assistant" | "system" | "tool";
 
@@ -472,4 +447,3 @@ export interface StreamChunk {
     delta: string;
     finishReason?: string;
 }
-

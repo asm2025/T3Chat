@@ -15,15 +15,15 @@ interface User {
   name?: string;
   roles?: string[];
   disabled: boolean;
-  locked_out: boolean;
-  created_at: string;
+  lockedOut: boolean;
+  createdAt: string;
 }
 
 interface UsersResponse {
   data: User[];
   total: number;
   page: number;
-  page_size: number;
+  pageSize: number;
 }
 
 export function AdminUsers() {
@@ -89,7 +89,7 @@ export function AdminUsers() {
 
   const handleLock = async (userId: string) => {
     try {
-      await api.post(`/v1/admin/users/${userId}/lock`, { duration_minutes: 60 });
+      await api.post(`/v1/admin/users/${userId}/lock`, { durationMinutes: 60 });
       toast.success('User locked');
       fetchUsers();
     } catch (err) {
@@ -187,7 +187,7 @@ export function AdminUsers() {
                           {user.disabled && (
                             <Badge variant="destructive">Disabled</Badge>
                           )}
-                          {user.locked_out && (
+                          {user.lockedOut && (
                             <Badge variant="secondary">Locked</Badge>
                           )}
                           {user.roles?.includes('admin') && (
@@ -196,7 +196,7 @@ export function AdminUsers() {
                         </div>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
                         <p className="text-xs text-muted-foreground">
-                          Created: {new Date(user.created_at).toLocaleDateString()}
+                          Created: {new Date(user.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ export function AdminUsers() {
                             <UserX className="h-4 w-4" />
                           </Button>
                         )}
-                        {user.locked_out ? (
+                        {user.lockedOut ? (
                           <Button
                             variant="outline"
                             size="sm"

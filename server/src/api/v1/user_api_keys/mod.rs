@@ -8,6 +8,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UserApiKeyResponse {
     pub id: Uuid,
     pub user_id: String,
@@ -31,9 +32,12 @@ impl From<UserApiKeyModel> for UserApiKeyResponse {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateUserApiKeyRequest {
     pub provider: String,
+    #[serde(alias = "api_key")]
     pub api_key: String,
+    #[serde(alias = "is_default")]
     pub is_default: Option<bool>,
 }
 

@@ -1,44 +1,49 @@
-import type { AiProvider } from "./chat";
+import type { AiProvider } from "./conversation";
+import type { MessageRole } from "./librechat";
 
-export interface CreateChatRequest {
-    model_provider: AiProvider;
-    model_id: string;
+export interface CreateConversationRequest {
+    modelProvider: AiProvider;
+    modelId: string;
     title?: string;
 }
 
 export interface CreateMessageRequest {
     content: string;
-    role?: "user" | "assistant" | "system";
+    role?: MessageRole;
 }
 
-export interface ChatRequest {
-    chat_id: string;
+export interface ConversationRequest {
+    chatId: string;
     message: string;
-    model_provider: AiProvider;
-    model_id: string;
+    modelProvider: AiProvider;
+    modelId: string;
     temperature?: number;
-    max_tokens?: number;
+    maxTokens?: number;
     stream?: boolean;
 }
 
-export interface ChatResponse {
+export interface ConversationResponse {
     content: string;
     model: string;
-    tokens_used?: number;
-    finish_reason?: string;
+    usage?: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+    };
+    finishReason?: string;
 }
 
 export interface UserApiKey {
     id: string;
-    user_id: string;
+    userId: string;
     provider: AiProvider;
-    is_default: boolean;
-    created_at: string;
-    updated_at: string;
+    isDefault: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface CreateUserApiKeyRequest {
     provider: AiProvider;
-    api_key: string;
-    is_default?: boolean;
+    apiKey: string;
+    isDefault?: boolean;
 }

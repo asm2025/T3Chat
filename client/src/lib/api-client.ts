@@ -11,7 +11,7 @@ export interface ApiResponse<T> {
 export interface ApiClientError extends Error {
     status?: number;
     code?: string;
-    user_id?: string;
+    userId?: string;
     isNetworkError?: boolean;
 }
 
@@ -154,8 +154,11 @@ export class ApiClient {
                 if (typeof errorData.code === "string") {
                     apiError.code = errorData.code;
                 }
-                if (typeof errorData.user_id === "string") {
-                    apiError.user_id = errorData.user_id;
+                if (typeof errorData.userId === "string") {
+                    apiError.userId = errorData.userId;
+                } else if (typeof errorData.user_id === "string") {
+                    // Backwards-compat: accept snake_case from older server responses
+                    apiError.userId = errorData.user_id;
                 }
             }
 

@@ -1,11 +1,18 @@
 import { ApiClient, type ApiClientError } from "./api-client";
-import type { ChatRequest, ChatResponse, CreateChatRequest, CreateMessageRequest, CreateUserApiKeyRequest, UserApiKey } from "@/types/api";
-import type { AIModel } from "@/types/model";
-import type { Chat, ChatWithMessages, Message } from "@/types/chat";
 import type {
-    Conversation,
+    ConversationRequest as ChatConversationRequest,
+    ConversationResponse as ChatConversationResponse,
+    CreateConversationRequest as CreateChatRequest,
+    CreateMessageRequest as CreateChatMessageRequest,
+    CreateUserApiKeyRequest,
+    UserApiKey,
+} from "@/types/api";
+import type { AIModel } from "@/types/model";
+import type { Conversation as ChatConversation, ConversationWithMessages as ChatConversationWithMessages, Message as ChatMessage } from "@/types/conversation";
+import type {
+    Conversation as LibreChatConversation,
     ConversationWithTags,
-    CreateConversationRequest,
+    CreateConversationRequest as LibreCreateConversationRequest,
     UpdateConversationRequest,
     Message as LibreConversationMessage,
     CreateMessageRequest as LibreCreateMessageRequest,
@@ -38,10 +45,10 @@ export interface PaginatedResponse<T> {
 interface UserProfile {
     id: string;
     email: string | null;
-    display_name: string | null;
-    image_url: string | null;
-    created_at: string;
-    updated_at: string;
+    displayName: string | null;
+    imageUrl: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 /**
@@ -54,7 +61,7 @@ export class T3ChatClient extends ApiClient {
         return this.get<UserProfile>("/v1/me");
     }
 
-    async updateUser(data: { display_name?: string | null; image_url?: string | null }): Promise<UserProfile> {
+    async updateUser(data: { displayName?: string | null; imageUrl?: string | null }): Promise<UserProfile> {
         return this.update<UserProfile>("/v1/me", data);
     }
 
@@ -72,20 +79,20 @@ export class T3ChatClient extends ApiClient {
     }
 
     // Chats endpoints
-    async listChats(page = 1, pageSize = 20): Promise<{ data: Chat[]; total: number }> {
-        return this.list<{ data: Chat[]; total: number }>("/v1/chats", { page, page_size: pageSize });
+    async listChats(page = 1, pageSize = 20): Promise<{ data: ChatConversation[]; total: number }> {
+        return this.list<{ data: ChatConversation[]; total: number }>("/v1/chats", { page, pageSize });
     }
 
-    async getChat(id: string): Promise<ChatWithMessages> {
-        return this.get<ChatWithMessages>(`/v1/chats/${id}`);
+    async getChat(id: string): Promise<ChatConversationWithMessages> {
+        return this.get<ChatConversationWithMessages>(`/v1/chats/${id}`);
     }
 
-    async createChat(data: CreateChatRequest): Promise<Chat> {
-        return this.post<Chat>("/v1/chats", data);
+    async createChat(data: CreateChatRequest): Promise<ChatConversation> {
+        return this.post<ChatConversation>("/v1/chats", data);
     }
 
-    async updateChat(id: string, data: { title?: string }): Promise<Chat> {
-        return this.update<Chat>(`/v1/chats/${id}`, data);
+    async updateChat(id: string, data: { title?: string }): Promise<ChatConversation> {
+        return this.update<ChatConversation>(`/v1/chats/${id}`, data);
     }
 
     async deleteChat(id: string): Promise<void> {
@@ -102,20 +109,20 @@ export class T3ChatClient extends ApiClient {
     }
 
     // Messages endpoints
-    async getMessages(chatId: string): Promise<Message[]> {
-        return this.get<Message[]>(`/v1/chats/${chatId}/messages`);
+    async getMessages(chatId: string): Promise<ChatMessage[]> {
+        return this.get<ChatMessage[]>(`/v1/chats/${chatId}/messages`);
     }
 
-    async createMessage(chatId: string, data: CreateMessageRequest): Promise<Message> {
-        return this.post<Message>(`/v1/chats/${chatId}/messages`, data);
+    async createMessage(chatId: string, data: CreateChatMessageRequest): Promise<ChatMessage> {
+        return this.post<ChatMessage>(`/v1/chats/${chatId}/messages`, data);
     }
 
     // Chat endpoints
-    async sendChat(data: ChatRequest): Promise<ChatResponse> {
-        return this.post<ChatResponse>("/v1/chat", data);
+    async sendChat(data: ChatConversationRequest): Promise<ChatConversationResponse> {
+        return this.post<ChatConversationResponse>("/v1/chat", data);
     }
 
-    async *streamChat(data: ChatRequest): AsyncGenerator<string, void, unknown> {
+    async *streamChat(data: ChatConversationRequest): AsyncGenerator<string, void, unknown> {
         const response = await this.stream("/v1/chat/stream", { ...data, stream: true });
 
         if (!response.body) {
@@ -143,10 +150,7 @@ export class T3ChatClient extends ApiClient {
                             if (parsed && typeof parsed === "object") {
                                 const maybeError = parsed as Record<string, unknown>;
                                 if (maybeError.error === true) {
-                                    const message =
-                                        (typeof maybeError.text === "string" && maybeError.text) ||
-                                        (typeof maybeError.error === "string" && maybeError.error) ||
-                                        "Streaming request failed";
+                                    const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
                                     throw new Error(message);
                                 }
                             }
@@ -195,10 +199,10 @@ export class T3ChatClient extends ApiClient {
     conversations = {
         list: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => this.list<PaginatedResponse<ConversationWithTags>>("/v1/conversations", params),
         get: (id: string) => this.get<ConversationWithTags>(`/v1/conversations/${id}`),
-        create: (data: CreateConversationRequest) => this.post<Conversation>("/v1/conversations", data),
-        update: (id: string, data: UpdateConversationRequest) => this.update<Conversation>(`/v1/conversations/${id}`, data),
+        create: (data: LibreCreateConversationRequest) => this.post<LibreChatConversation>("/v1/conversations", data),
+        update: (id: string, data: UpdateConversationRequest) => this.update<LibreChatConversation>(`/v1/conversations/${id}`, data),
         delete: (id: string) => this.delete(`/v1/conversations/${id}`),
-        archive: (id: string, isArchived: boolean) => this.update<Conversation>(`/v1/conversations/${id}`, { isArchived }),
+        archive: (id: string, isArchived: boolean) => this.update<LibreChatConversation>(`/v1/conversations/${id}`, { isArchived }),
         addTags: (id: string, tagIds: string[]) => this.post<void>(`/v1/conversations/${id}/tags`, { tagIds }),
         removeTags: (id: string, tagIds: string[]) => this.delete(`/v1/conversations/${id}/tags`, { body: { tagIds } }),
     };

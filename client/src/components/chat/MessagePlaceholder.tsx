@@ -1,11 +1,11 @@
 import { Sparkles, Newspaper, Code, GraduationCap } from "lucide-react";
 
-interface ChatPlaceholderProps {
+interface MessagePlaceholderProps {
     userName?: string;
     onPromptClick?: (prompt: string) => void;
 }
 
-export function ChatPlaceholder({ userName, onPromptClick }: ChatPlaceholderProps) {
+export function MessagePlaceholder({ userName, onPromptClick }: MessagePlaceholderProps) {
     const greeting = userName ? `How can I help you, ${userName}?` : "How can I help you?";
 
     const actionButtons = [

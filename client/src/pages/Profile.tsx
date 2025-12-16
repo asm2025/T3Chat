@@ -18,8 +18,8 @@ interface UserProfile {
     email: string;
     name?: string;
     avatar_url?: string;
-    created_at: string;
-    updated_at: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export function Profile() {
@@ -42,8 +42,8 @@ export function Profile() {
                         email: data.email,
                         name: data.name || undefined,
                         avatar_url: data.avatar_url,
-                        created_at: new Date().toISOString(), // API should return this
-                        updated_at: new Date().toISOString(), // API should return this
+                        createdAt: new Date().toISOString(), // API should return this
+                        updatedAt: new Date().toISOString(), // API should return this
                     });
                     setDisplayName(data.name || "");
                     setOriginalDisplayName(data.name || "");
@@ -82,7 +82,7 @@ export function Profile() {
         try {
             setSaving(true);
             // Update user profile via API - use /v1/me endpoint
-            await api.update("/v1/me", { display_name: displayName || null });
+            await api.update("/v1/me", { displayName: displayName || null });
 
             // Refresh the profile
             const updatedData = await getCurrentUser();
@@ -92,8 +92,8 @@ export function Profile() {
                     email: updatedData.email,
                     name: updatedData.name || undefined,
                     avatar_url: updatedData.avatar_url,
-                    created_at: userProfile.created_at,
-                    updated_at: new Date().toISOString(),
+                    createdAt: userProfile.createdAt,
+                    updatedAt: new Date().toISOString(),
                 });
                 setOriginalDisplayName(updatedData.name || "");
             }
@@ -236,11 +236,11 @@ export function Profile() {
                                         </div>
                                         <div className="flex justify-between items-center py-2">
                                             <span className="text-sm font-medium text-muted-foreground">Member Since</span>
-                                            <span className="text-sm">{formatDate(userProfile.created_at)}</span>
+                                            <span className="text-sm">{formatDate(userProfile.createdAt)}</span>
                                         </div>
                                         <div className="flex justify-between items-center py-2">
                                             <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
-                                            <span className="text-sm">{formatDate(userProfile.updated_at)}</span>
+                                            <span className="text-sm">{formatDate(userProfile.updatedAt)}</span>
                                         </div>
                                     </div>
 
@@ -271,11 +271,11 @@ export function Profile() {
                                         </div>
                                         <div className="flex justify-between items-center py-2">
                                             <span className="text-sm font-medium text-muted-foreground">Member Since</span>
-                                            <span className="text-sm">{formatDate(userProfile.created_at)}</span>
+                                            <span className="text-sm">{formatDate(userProfile.createdAt)}</span>
                                         </div>
                                         <div className="flex justify-between items-center py-2">
                                             <span className="text-sm font-medium text-muted-foreground">Last Updated</span>
-                                            <span className="text-sm">{formatDate(userProfile.updated_at)}</span>
+                                            <span className="text-sm">{formatDate(userProfile.updatedAt)}</span>
                                         </div>
                                     </div>
 

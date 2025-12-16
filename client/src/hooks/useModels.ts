@@ -16,8 +16,8 @@ export function useModels() {
                 setError(null);
                 const data = await t3ChatClient.listModels();
                 if (!cancelled) {
-                    // Sort models by display_name
-                    const sortedModels = data.sort((a, b) => a.display_name.localeCompare(b.display_name));
+                    // Sort models by displayName
+                    const sortedModels = data.sort((a, b) => a.displayName.localeCompare(b.displayName));
                     setModels(sortedModels);
                 }
             } catch (err) {

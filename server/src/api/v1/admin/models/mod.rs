@@ -14,11 +14,13 @@ use crate::db::repositories::{TAiModelRepository, TAiProviderRepository};
 use crate::middleware::auth::AuthenticatedUser;
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListModelsQuery {
     #[serde(default = "default_page")]
     pub page: u64,
     #[serde(default = "default_limit")]
     pub limit: u64,
+    #[serde(alias = "provider_id")]
     pub provider_id: Option<Uuid>,
     pub disabled: Option<bool>,
 }
@@ -32,6 +34,7 @@ fn default_limit() -> u64 {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelResponse {
     pub id: Uuid,
     pub provider: String,
@@ -83,6 +86,7 @@ impl From<(AiModel, String)> for ModelResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateModelRequest {
     pub provider: String,
     pub model_id: String,
@@ -102,6 +106,7 @@ pub struct CreateModelRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateModelRequest {
     pub display_name: Option<String>,
     pub description: Option<String>,
@@ -120,6 +125,7 @@ pub struct UpdateModelRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListModelsResponse {
     pub data: Vec<ModelResponse>,
     pub total: u64,
