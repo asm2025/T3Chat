@@ -10,8 +10,8 @@ pub mod user;
 pub mod user_api_key;
 pub mod user_role;
 
-// Conversation & messaging
-pub mod conversation;
+// Chat & messaging
+pub mod chat;
 pub mod file;
 pub mod preset;
 
@@ -31,15 +31,13 @@ pub mod transaction;
 // Sharing
 pub mod shared_link;
 
-// Legacy models (keeping for backward compatibility during migration)
-pub mod chat;
 pub mod feature;
 pub mod message;
 
 // Re-export all models for convenience
 pub use agent::*;
 pub use ai_model::*;
-pub use conversation::*;
+pub use chat::*;
 pub use file::*;
 pub use preset::*;
 pub use project::*;
@@ -49,18 +47,19 @@ pub use transaction::*;
 pub use user::*;
 pub use user_api_key::*;
 
-// Legacy re-exports - only export specific types to avoid conflicts
-pub use chat::{ChatModel, CreateChatDto, UpdateChatDto};
 pub use feature::*;
-// Note: message::NewMessage and message::UpdateMessage conflict with conversation types
-// Use conversation::NewMessage and conversation::UpdateMessage for database operations
+// Note: message::NewMessage and message::UpdateMessage conflict with chat types
+// Use chat::NewMessage and chat::UpdateMessage for database operations
 pub use message::{CreateMessageDto, MessageRole, UpdateMessageDto};
 
-// Type aliases for compatibility
+// Re-export chat DTOs
+pub use chat::{CreateChatDto, UpdateChatDto};
+
+// Type aliases for compatibility (ChatModel is just Chat)
 pub type UserModel = User;
 pub type UserApiKeyModel = UserApiKey;
 pub type AiModelModel = AiModel;
-pub type ConversationModel = Conversation;
+pub type ChatModel = Chat;
 pub type MessageModel = Message;
 
 // AI Provider enum

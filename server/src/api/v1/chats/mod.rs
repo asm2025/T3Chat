@@ -25,14 +25,16 @@ pub struct ChatResponse {
     pub updated_at: String,
 }
 
-impl From<ChatModel> for ChatResponse {
-    fn from(chat: ChatModel) -> Self {
+impl From<Chat> for ChatResponse {
+    fn from(chat: Chat) -> Self {
+        // Parse provider from endpoint string
+        let model_provider = AiProvider::from_str(&chat.endpoint).unwrap_or(AiProvider::OpenAI);
         Self {
             id: chat.id,
             user_id: chat.user_id,
-            title: chat.title,
-            model_provider: chat.model_provider.as_str().to_string(),
-            model_id: chat.model_id,
+            title: chat.title.unwrap_or_else(|| "New Chat".to_string()),
+            model_provider: model_provider.as_str().to_string(),
+            model_id: chat.model,
             created_at: chat.created_at.to_rfc3339(),
             updated_at: chat.updated_at.to_rfc3339(),
         }
@@ -54,12 +56,12 @@ pub struct MessageResponse {
     pub model_used: Option<String>,
 }
 
-// Convert from the conversation::Message model (MessageModel is an alias to Message)
+// Convert from the chat::Message model
 impl From<Message> for MessageResponse {
     fn from(message: Message) -> Self {
         Self {
             id: message.id,
-            chat_id: message.conversation_id, // Note: conversation_id maps to chat_id for API compatibility
+            chat_id: message.chat_id, // Note: chat_id maps to chat_id for API compatibility
             role: message.role,
             content: message.text.unwrap_or_default(),
             metadata: message.content, // content field stores metadata JSON
@@ -254,7 +256,7 @@ pub async fn update_chat(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateChatRequest>,
 ) -> Result<Json<ChatResponse>, StatusCode> {
-    // Resolve `id` which might be either the internal UUID or the external conversation_id (TEXT)
+    // Resolve `id` which might be either the internal UUID or the external chat_id (TEXT)
     let chat = state
         .chat_repository
         .get(id, &user.0.id)
@@ -300,7 +302,7 @@ pub async fn delete_chat(
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
-    // Resolve `id` which might be either the internal UUID or the external conversation_id (TEXT)
+    // Resolve `id` which might be either the internal UUID or the external chat_id (TEXT)
     let chat = state
         .chat_repository
         .get(id, &user.0.id)

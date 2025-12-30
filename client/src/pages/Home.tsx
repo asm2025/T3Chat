@@ -13,7 +13,7 @@ export function Home() {
                 {/* Hero Section */}
                 <div className="text-center space-y-6 mb-16">
                     <h1 className="text-5xl font-bold tracking-tight">Welcome to T3Chat</h1>
-                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">A modern, open-source chat platform powered by AI. Connect, collaborate, and create with intelligent conversations.</p>
+                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">A modern, open-source chat platform powered by AI. Connect, collaborate, and create with intelligent chats.</p>
                     <div className="flex gap-4 justify-center">
                         {isAuthenticated ? (
                             <Button asChild size="lg">
@@ -36,7 +36,7 @@ export function Home() {
                         <CardHeader>
                             <MessageSquare className="h-8 w-8 text-primary mb-2" />
                             <CardTitle>AI-Powered Chat</CardTitle>
-                            <CardDescription>Engage in intelligent conversations with state-of-the-art AI models</CardDescription>
+                            <CardDescription>Engage in intelligent chats with state-of-the-art AI models</CardDescription>
                         </CardHeader>
                     </Card>
 

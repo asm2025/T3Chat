@@ -25,9 +25,9 @@ export interface FeatureFlags {
     [key: string]: unknown;
 }
 
-export interface Conversation {
+export interface Chat {
     id: string; // UUID
-    conversationId: string; // TEXT for API compatibility
+    chatId: string; // TEXT for API compatibility
     userId: string;
     title: string;
 
@@ -59,7 +59,7 @@ export interface Conversation {
     updatedAt: string;
 }
 
-export interface CreateConversationRequest {
+export interface CreateChatRequest {
     title?: string;
     endpoint: Endpoint;
     model: string;
@@ -72,7 +72,7 @@ export interface CreateConversationRequest {
     assistantId?: string;
 }
 
-export interface UpdateConversationRequest {
+export interface UpdateChatRequest {
     title?: string;
     endpoint?: Endpoint;
     model?: string;
@@ -89,7 +89,7 @@ export type MessageRole = "user" | "assistant" | "system" | "tool";
 export interface Message {
     id: string; // UUID
     messageId: string; // TEXT for API compatibility
-    conversationId: string;
+    chatId: string;
     parentMessageId?: string;
 
     // Message basics
@@ -350,7 +350,7 @@ export interface File {
     id: string; // UUID
     fileId: string; // TEXT for API compatibility
     userId: string;
-    conversationId?: string;
+    chatId?: string;
 
     // File info
     filename: string;
@@ -398,10 +398,10 @@ export interface EndpointOption {
 }
 
 // ============================================================================
-// Conversation with Tags
+// Chat with Tags
 // ============================================================================
 
-export interface ConversationWithTags extends Conversation {
+export interface ChatWithTags extends Chat {
     tags?: Tag[];
 }
 
@@ -409,7 +409,7 @@ export interface ConversationWithTags extends Conversation {
 // Agent with Tools and Starters
 // ============================================================================
 
-export interface ConversationStarter {
+export interface ChatStarter {
     id: string;
     text: string;
     orderIndex: number;
@@ -418,7 +418,7 @@ export interface ConversationStarter {
 
 export interface AgentWithDetails extends Agent {
     tools?: Tool[];
-    conversationStarters?: ConversationStarter[];
+    chatStarters?: ChatStarter[];
 }
 
 // ============================================================================
@@ -426,7 +426,7 @@ export interface AgentWithDetails extends Agent {
 // ============================================================================
 
 export interface ChatCompletionRequest {
-    conversationId?: string;
+    chatId?: string;
     message: string;
     endpointOptions: EndpointOption;
     parentMessageId?: string;
@@ -434,7 +434,7 @@ export interface ChatCompletionRequest {
 }
 
 export interface ChatCompletionResponse {
-    conversation: Conversation;
+    chat: Chat;
     message: Message;
     usage?: {
         promptTokens: number;

@@ -3,21 +3,10 @@ import type { StoreApi } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { t3ChatClient } from "@/lib/t3-chat-client";
-import type { Message as ChatMessage, Conversation as ChatConversation, ConversationWithMessages as ChatConversationWithMessages } from "@/types/conversation";
+import type { Message, ChatWithMessages } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 import type { UserApiKey, CreateUserApiKeyRequest } from "@/types/api";
-import type {
-    Conversation as LibreChatConversation,
-    ConversationWithTags,
-    Preset,
-    Agent,
-    AgentWithDetails,
-    Tag,
-    Tool,
-    EndpointOption,
-    Message as LibreChatMessage,
-    CreateConversationRequest,
-} from "@/types/librechat";
+import type { Chat as LibreChat, ChatWithTags, Preset, Agent, AgentWithDetails, Tag, Tool, EndpointOption, Message as LibreMessage, CreateChatRequest } from "@/types/librechat";
 import type { StartupConfigResponse } from "@/types/config";
 
 // ============================================================================
@@ -191,80 +180,14 @@ const createModelsSlice = (set: StoreSet, get: StoreGet): ModelsSlice => ({
 });
 
 // ============================================================================
-// Chats Slice
-// ============================================================================
-
-interface ChatsSlice {
-    // State
-    chats: ChatConversation[];
-    chatsLoading: boolean;
-    chatsError: Error | null;
-    chatsTotal: number;
-
-    // Actions
-    setChats: (chats: ChatConversation[]) => void;
-    setChatsLoading: (loading: boolean) => void;
-    setChatsError: (error: Error | null) => void;
-    setChatsTotal: (total: number) => void;
-    fetchChats: (page?: number, pageSize?: number) => Promise<void>;
-    addChat: (chat: ChatConversation) => void;
-    updateChat: (id: string, updates: Partial<ChatConversation>) => void;
-    removeChat: (id: string) => void;
-}
-
-const createChatsSlice = (set: StoreSet, get: StoreGet): ChatsSlice => ({
-    // Initial state
-    chats: [],
-    chatsLoading: false,
-    chatsError: null,
-    chatsTotal: 0,
-
-    // Actions
-    setChats: (chats) => set({ chats }),
-    setChatsLoading: (chatsLoading) => set({ chatsLoading }),
-    setChatsError: (chatsError) => set({ chatsError }),
-    setChatsTotal: (chatsTotal) => set({ chatsTotal }),
-
-    fetchChats: async (page = 1, pageSize = 20) => {
-        const state = get();
-        try {
-            state.setChatsLoading(true);
-            state.setChatsError(null);
-            const result = await t3ChatClient.listChats(page, pageSize);
-            state.setChats(result.data);
-            state.setChatsTotal(result.total);
-        } catch (error) {
-            state.setChatsError(error as Error);
-        } finally {
-            state.setChatsLoading(false);
-        }
-    },
-
-    addChat: (chat: ChatConversation) => {
-        const state = get();
-        state.setChats([chat, ...state.chats]);
-    },
-
-    updateChat: (id, updates) => {
-        const state = get();
-        state.setChats(state.chats.map((chat: ChatConversation) => (chat.id === id ? { ...chat, ...updates } : chat)));
-    },
-
-    removeChat: (id) => {
-        const state = get();
-        state.setChats(state.chats.filter((chat: ChatConversation) => chat.id !== id));
-    },
-});
-
-// ============================================================================
 // Chat Slice (Current Chat)
 // ============================================================================
 
 interface ChatSlice {
     // State
     currentChatId: string | null;
-    currentChat: ChatConversationWithMessages | null;
-    messages: ChatMessage[];
+    activeChat: ChatWithMessages | null;
+    messages: Message[];
     selectedModel: AIModel | null;
     webSearchEnabled: boolean;
     chatLoading: boolean;
@@ -272,10 +195,10 @@ interface ChatSlice {
 
     // Actions
     setCurrentChatId: (chatId: string | null) => void;
-    setCurrentChat: (chat: ChatConversationWithMessages | null) => void;
-    setMessages: (messages: ChatMessage[]) => void;
-    addMessage: (message: ChatMessage) => void;
-    updateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
+    setActiveChat: (chat: ChatWithMessages | null) => void;
+    setMessages: (messages: Message[]) => void;
+    addMessage: (message: Message) => void;
+    updateMessage: (messageId: string, updates: Partial<Message>) => void;
     removeMessage: (messageId: string) => void;
     setSelectedModel: (model: AIModel | null) => void;
     setWebSearchEnabled: (enabled: boolean) => void;
@@ -289,7 +212,7 @@ interface ChatSlice {
 const createChatSlice = (set: StoreSet, get: StoreGet): ChatSlice => ({
     // Initial state
     currentChatId: null,
-    currentChat: null,
+    activeChat: null,
     messages: [],
     selectedModel: null,
     webSearchEnabled: false,
@@ -298,11 +221,11 @@ const createChatSlice = (set: StoreSet, get: StoreGet): ChatSlice => ({
 
     // Actions
     setCurrentChatId: (currentChatId) => set({ currentChatId }),
-    setCurrentChat: (currentChat) =>
+    setActiveChat: (chat) =>
         set({
-            currentChat,
-            currentChatId: currentChat?.id ?? null,
-            messages: currentChat?.messages ?? [],
+            activeChat: chat ?? null,
+            currentChatId: chat?.id ?? null,
+            messages: chat?.messages ?? [],
         }),
     setMessages: (messages) => set({ messages }),
     addMessage: (message) =>
@@ -326,7 +249,7 @@ const createChatSlice = (set: StoreSet, get: StoreGet): ChatSlice => ({
             state.setChatLoading(true);
             state.setChatError(null);
             const chat = await t3ChatClient.getChat(chatId);
-            state.setCurrentChat(chat);
+            state.setActiveChat(chat ?? null);
         } catch (error) {
             state.setChatError(error as Error);
         } finally {
@@ -337,14 +260,14 @@ const createChatSlice = (set: StoreSet, get: StoreGet): ChatSlice => ({
     clearChat: () =>
         set({
             currentChatId: null,
-            currentChat: null,
+            activeChat: null,
             messages: [],
         }),
 
     resetChat: () =>
         set({
             currentChatId: null,
-            currentChat: null,
+            activeChat: null,
             messages: [],
             selectedModel: null,
             webSearchEnabled: false,
@@ -483,120 +406,121 @@ const createUserApiKeysSlice = (set: StoreSet, get: StoreGet): UserApiKeysSlice 
 });
 
 // ============================================================================
-// LibreChat Conversations Slice
+// Chats Slice
 // ============================================================================
 
-interface LibreChatConversationsSlice {
+interface ChatsSlice {
     // State
-    conversations: ConversationWithTags[];
-    conversationsLoading: boolean;
-    conversationsError: Error | null;
+    chats: ChatWithTags[];
+    chatsLoading: boolean;
+    chatsError: Error | null;
 
     // Actions
-    setConversations: (conversations: ConversationWithTags[]) => void;
-    setConversationsLoading: (loading: boolean) => void;
-    setConversationsError: (error: Error | null) => void;
-    fetchConversations: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => Promise<void>;
-    createConversation: (data: CreateConversationRequest) => Promise<ConversationWithTags | null>;
-    addConversation: (conversation: ConversationWithTags) => void;
-    updateConversation: (id: string, updates: Partial<LibreChatConversation>) => void;
-    removeConversation: (id: string) => void;
+    setChats: (chats: ChatWithTags[]) => void;
+    setChatsLoading: (loading: boolean) => void;
+    setChatsError: (error: Error | null) => void;
+    fetchChats: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => Promise<void>;
+    createChat: (data: CreateChatRequest) => Promise<ChatWithTags | null>;
+    addChat: (chat: ChatWithTags) => void;
+    updateChat: (id: string, updates: Partial<LibreChat>) => void;
+    removeChat: (id: string) => void;
 }
 
-const createLibreChatConversationsSlice = (set: StoreSet, get: StoreGet): LibreChatConversationsSlice => ({
+const createChatsSlice = (set: StoreSet, get: StoreGet): ChatsSlice => ({
     // Initial state
-    conversations: [],
-    conversationsLoading: false,
-    conversationsError: null,
+    chats: [],
+    chatsLoading: false,
+    chatsError: null,
 
     // Actions
-    setConversations: (conversations) => set({ conversations }),
-    setConversationsLoading: (conversationsLoading) => set({ conversationsLoading }),
-    setConversationsError: (conversationsError) => set({ conversationsError }),
+    setChats: (chats) => set({ chats }),
+    setChatsLoading: (loading) => set({ chatsLoading: loading }),
+    setChatsError: (error) => set({ chatsError: error }),
 
-    fetchConversations: async (params) => {
+    fetchChats: async (params) => {
         const state = get();
         try {
-            state.setConversationsLoading(true);
-            state.setConversationsError(null);
-            const result = await t3ChatClient.conversations.list(params);
-            state.setConversations(result.data);
+            state.setChatsLoading(true);
+            state.setChatsError(null);
+            const result = await t3ChatClient.chats.list(params);
+            state.setChats(result.data);
         } catch (error) {
-            state.setConversationsError(error as Error);
+            state.setChatsError(error as Error);
         } finally {
-            state.setConversationsLoading(false);
+            state.setChatsLoading(false);
         }
     },
 
-    createConversation: async (data: CreateConversationRequest) => {
+    createChat: async (data: CreateChatRequest) => {
         const state = get();
         try {
-            const conversation = await t3ChatClient.conversations.create(data);
-            state.addConversation(conversation);
-            return conversation;
+            const chat = await t3ChatClient.chats.create(data);
+            state.addChat(chat);
+            return chat;
         } catch (error) {
-            console.error("Failed to create conversation:", error);
+            console.error("Failed to create chat:", error);
             return null;
         }
     },
 
-    addConversation: (conversation: ConversationWithTags) => {
+    addChat: (chat: ChatWithTags) => {
         const state = get();
-        state.setConversations([conversation, ...state.conversations]);
+        state.setChats([chat, ...state.chats]);
     },
 
-    updateConversation: (id, updates) => {
+    updateChat: (id, updates) => {
         const state = get();
-        state.setConversations(state.conversations.map((conv: ConversationWithTags) => (conv.id === id ? { ...conv, ...updates } : conv)));
+        state.setChats(state.chats.map((conv: ChatWithTags) => (conv.id === id ? { ...conv, ...updates } : conv)));
     },
 
-    removeConversation: (id) => {
+    removeChat: (id) => {
         const state = get();
-        state.setConversations(state.conversations.filter((conv: ConversationWithTags) => conv.id !== id));
+        state.setChats(state.chats.filter((conv: ChatWithTags) => conv.id !== id));
     },
 });
 
 // ============================================================================
-// LibreChat Current Conversation Slice
+// Current Chat Slice
 // ============================================================================
 
-interface LibreChatCurrentConversationSlice {
+interface CurrentChatSlice {
     // State
-    currentConversation: ConversationWithTags | null;
-    currentMessages: LibreChatMessage[];
+    currentChat: ChatWithTags | null;
+    currentMessages: LibreMessage[];
     endpointOptions: EndpointOption | null;
-    currentConversationLoading: boolean;
-    currentConversationError: Error | null;
+    currentChatLoading: boolean;
+    currentChatError: Error | null;
 
     // Actions
-    setCurrentConversation: (conversation: ConversationWithTags | null) => void;
-    setCurrentMessages: (messages: LibreChatMessage[]) => void;
-    addCurrentMessage: (message: LibreChatMessage) => void;
-    updateCurrentMessage: (messageId: string, updates: Partial<LibreChatMessage>) => void;
+    setCurrentChat: (chat: ChatWithTags | null) => void;
+    setCurrentMessages: (messages: LibreMessage[]) => void;
+    addCurrentMessage: (message: LibreMessage) => void;
+    updateCurrentMessage: (messageId: string, updates: Partial<LibreMessage>) => void;
     removeCurrentMessage: (messageId: string) => void;
     setEndpointOptions: (options: EndpointOption | null) => void;
-    clearCurrentConversation: () => void;
-    loadConversation: (conversationId: string) => Promise<void>;
-    setCurrentConversationLoading: (loading: boolean) => void;
-    setCurrentConversationError: (error: Error | null) => void;
+    clearCurrentChat: () => void;
+    clearChat: () => void;
+    loadChat: (chatId: string) => Promise<void>;
+    setCurrentChatLoading: (loading: boolean) => void;
+    setCurrentChatError: (error: Error | null) => void;
 }
 
-const createLibreChatCurrentConversationSlice = (set: StoreSet, get: StoreGet): LibreChatCurrentConversationSlice => ({
+const createCurrentChatSlice = (set: StoreSet, get: StoreGet): CurrentChatSlice => ({
     // Initial state
-    currentConversation: null,
+    currentChat: null,
     currentMessages: [],
     endpointOptions: null,
-    currentConversationLoading: false,
-    currentConversationError: null,
+    currentChatLoading: false,
+    currentChatError: null,
 
     // Actions
-    setCurrentConversation: (currentConversation) =>
+    setCurrentChat: (chat) =>
         set({
-            currentConversation,
+            currentChat: chat ?? null,
             currentMessages: [],
         }),
 
-    setCurrentMessages: (currentMessages) => set({ currentMessages }),
+    setCurrentMessages: (messages) => set({ currentMessages: messages }),
 
     addCurrentMessage: (message) =>
         set((state) => ({
@@ -613,32 +537,38 @@ const createLibreChatCurrentConversationSlice = (set: StoreSet, get: StoreGet): 
             currentMessages: state.currentMessages.filter((msg) => msg.id !== messageId),
         })),
 
-    setEndpointOptions: (endpointOptions) => set({ endpointOptions }),
+    setEndpointOptions: (options) => set({ endpointOptions: options }),
 
-    clearCurrentConversation: () =>
+    clearCurrentChat: () =>
         set({
-            currentConversation: null,
+            currentChat: null,
             currentMessages: [],
         }),
 
-    loadConversation: async (conversationId: string) => {
+    clearChat: () =>
+        set({
+            currentChat: null,
+            currentMessages: [],
+        }),
+
+    loadChat: async (chatId: string) => {
         const state = get();
         try {
-            state.setCurrentConversationLoading(true);
-            state.setCurrentConversationError(null);
-            const conversation = await t3ChatClient.conversations.get(conversationId);
-            const messages = await t3ChatClient.messages.list(conversationId);
-            state.setCurrentConversation(conversation);
+            state.setCurrentChatLoading(true);
+            state.setCurrentChatError(null);
+            const chat = await t3ChatClient.chats.get(chatId);
+            const messages = await t3ChatClient.messages.list(chatId);
+            state.setCurrentChat(chat ?? null);
             state.setCurrentMessages(messages);
         } catch (error) {
-            state.setCurrentConversationError(error as Error);
+            state.setCurrentChatError(error as Error);
         } finally {
-            state.setCurrentConversationLoading(false);
+            state.setCurrentChatLoading(false);
         }
     },
 
-    setCurrentConversationLoading: (currentConversationLoading) => set({ currentConversationLoading }),
-    setCurrentConversationError: (currentConversationError) => set({ currentConversationError }),
+    setCurrentChatLoading: (loading) => set({ currentChatLoading: loading }),
+    setCurrentChatError: (error) => set({ currentChatError: error }),
 });
 
 // ============================================================================
@@ -890,7 +820,7 @@ const createToolsSlice = (set: StoreSet, get: StoreGet): ToolsSlice => ({
 // Combined Store
 // ============================================================================
 
-type AppStore = AuthSlice & ConfigSlice & ModelsSlice & ChatsSlice & ChatSlice & UserApiKeysSlice & FeaturesSlice & LibreChatConversationsSlice & LibreChatCurrentConversationSlice & PresetsSlice & AgentsSlice & TagsSlice & ToolsSlice;
+type AppStore = AuthSlice & ConfigSlice & ModelsSlice & ChatSlice & UserApiKeysSlice & FeaturesSlice & ChatsSlice & CurrentChatSlice & PresetsSlice & AgentsSlice & TagsSlice & ToolsSlice;
 
 type StoreSet = StoreApi<AppStore>["setState"];
 type StoreGet = StoreApi<AppStore>["getState"];
@@ -902,12 +832,11 @@ export const useAppStore = create<AppStore>()(
                 ...createAuthSlice(set, get),
                 ...createConfigSlice(set, get),
                 ...createModelsSlice(set, get),
-                ...createChatsSlice(set, get),
                 ...createChatSlice(set, get),
                 ...createUserApiKeysSlice(set, get),
                 ...createFeaturesSlice(set, get),
-                ...createLibreChatConversationsSlice(set, get),
-                ...createLibreChatCurrentConversationSlice(set, get),
+                ...createChatsSlice(set, get),
+                ...createCurrentChatSlice(set, get),
                 ...createPresetsSlice(set, get),
                 ...createAgentsSlice(set, get),
                 ...createTagsSlice(set, get),
@@ -970,8 +899,8 @@ export const useChats = () =>
             chats: state.chats,
             loading: state.chatsLoading,
             error: state.chatsError,
-            total: state.chatsTotal,
             fetchChats: state.fetchChats,
+            createChat: state.createChat,
             addChat: state.addChat,
             updateChat: state.updateChat,
             removeChat: state.removeChat,
@@ -982,14 +911,14 @@ export const useChat = () =>
     useAppStore(
         useShallow((state) => ({
             currentChatId: state.currentChatId,
-            currentChat: state.currentChat,
+            currentChat: state.activeChat,
             messages: state.messages,
             selectedModel: state.selectedModel,
             webSearchEnabled: state.webSearchEnabled,
             loading: state.chatLoading,
             error: state.chatError,
             setCurrentChatId: state.setCurrentChatId,
-            setCurrentChat: state.setCurrentChat,
+            setCurrentChat: state.setActiveChat,
             setMessages: state.setMessages,
             addMessage: state.addMessage,
             updateMessage: state.updateMessage,
@@ -997,7 +926,7 @@ export const useChat = () =>
             setSelectedModel: state.setSelectedModel,
             setWebSearchEnabled: state.setWebSearchEnabled,
             fetchChat: state.fetchChat,
-            clearChat: state.clearChat,
+            clearChat: state.clearChat ?? (() => {}),
             resetChat: state.resetChat,
         })),
     );
@@ -1018,30 +947,30 @@ export const useUserApiKeys = () =>
 // LibreChat Selectors
 // ============================================================================
 
-export const useLibreChatConversations = () =>
+export const useLibreChatChats = () =>
     useAppStore(
         useShallow((state) => ({
-            conversations: state.conversations,
-            loading: state.conversationsLoading,
-            error: state.conversationsError,
-            fetchConversations: state.fetchConversations,
-            createConversation: state.createConversation,
-            addConversation: state.addConversation,
-            updateConversation: state.updateConversation,
-            removeConversation: state.removeConversation,
+            chats: state.chats,
+            loading: state.chatsLoading,
+            error: state.chatsError,
+            fetchChats: state.fetchChats,
+            createChat: state.createChat,
+            addChat: state.addChat,
+            updateChat: state.updateChat,
+            removeChat: state.removeChat,
         })),
     );
 
-export const useLibreChatCurrentConversation = () =>
+export const useLibreChatCurrentChat = () =>
     useAppStore(
         useShallow((state) => ({
-            currentConversation: state.currentConversation,
+            currentChat: state.currentChat,
             currentMessages: state.currentMessages,
             messages: state.currentMessages,
             endpointOptions: state.endpointOptions,
-            loading: state.currentConversationLoading,
-            error: state.currentConversationError,
-            setCurrentConversation: state.setCurrentConversation,
+            loading: state.currentChatLoading,
+            error: state.currentChatError,
+            setCurrentChat: state.setCurrentChat,
             setCurrentMessages: state.setCurrentMessages,
             addCurrentMessage: state.addCurrentMessage,
             addMessage: state.addCurrentMessage,
@@ -1050,8 +979,8 @@ export const useLibreChatCurrentConversation = () =>
             removeCurrentMessage: state.removeCurrentMessage,
             removeMessage: state.removeCurrentMessage,
             setEndpointOptions: state.setEndpointOptions,
-            clearCurrentConversation: state.clearCurrentConversation,
-            loadConversation: state.loadConversation,
+            clearCurrentChat: state.clearCurrentChat,
+            loadChat: state.loadChat,
         })),
     );
 

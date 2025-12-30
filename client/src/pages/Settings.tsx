@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react";
 import { MasterLayout } from "@/components/master-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EndpointSettings } from "@/components/Endpoints/EndpointSettings";
-import { useLibreChatCurrentConversation } from "@/stores/appStore";
+import { useLibreChatCurrentChat } from "@/stores/appStore";
 import { createDefaultEndpointOptions } from "@/constants/endpoint-options";
 import type { EndpointOption } from "@/types/librechat";
 
 export function Settings() {
-    const { endpointOptions, setEndpointOptions } = useLibreChatCurrentConversation();
+    const { endpointOptions, setEndpointOptions } = useLibreChatCurrentChat();
     const defaultOptionsRef = useRef(createDefaultEndpointOptions());
     const activeOptions = endpointOptions ?? defaultOptionsRef.current;
 
@@ -26,7 +26,7 @@ export function Settings() {
             <div className="container mx-auto px-6 max-w-4xl space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold">Model Settings</h1>
-                    <p className="text-muted-foreground">Configure the default behavior for future AI conversations.</p>
+                    <p className="text-muted-foreground">Configure the default behavior for future AI chats.</p>
                 </div>
 
                 <Card>

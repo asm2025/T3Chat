@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::db::schema::presets;
 
-/// Preset model - saved conversation configurations
+/// Preset model - saved chat configurations
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = presets)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -23,7 +23,7 @@ pub struct Preset {
     pub model: String,
     pub model_label: Option<String>,
 
-    // AI Parameters (same structure as conversations)
+    // AI Parameters (same structure as chats)
     pub model_parameters: Option<JsonValue>,
 
     // System/Instructions

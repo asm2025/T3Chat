@@ -15,7 +15,7 @@ pub struct File {
     pub id: Uuid,
     pub file_id: String, // for API compatibility
     pub user_id: String,
-    pub conversation_id: Option<Uuid>,
+    pub chat_id: Option<Uuid>,
 
     // File info
     pub filename: String,
@@ -60,7 +60,7 @@ pub struct NewFile {
     pub file_id: String,
     pub user_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub conversation_id: Option<Uuid>,
+    pub chat_id: Option<Uuid>,
     pub filename: String,
     pub filepath: String,
     pub mime_type: String,
@@ -87,7 +87,7 @@ pub struct NewFile {
 #[diesel(table_name = files)]
 pub struct UpdateFile {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub conversation_id: Option<Option<Uuid>>,
+    pub chat_id: Option<Option<Uuid>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_content: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t3ChatClient } from "@/lib/t3-chat-client";
-import type { ConversationWithMessages } from "@/types/conversation";
+import type { ChatWithMessages } from "@/types/chat";
 
-export function useConversation(conversationId: string | null) {
-    const [conversation, setConversation] = useState<ConversationWithMessages | null>(null);
+export function useChat(chatId: string | null) {
+    const [chat, setChat] = useState<ChatWithMessages | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const mountedRef = useRef(true);
@@ -17,10 +17,10 @@ export function useConversation(conversationId: string | null) {
         };
     }, []);
 
-    const loadConversation = useCallback(async () => {
-        if (!conversationId) {
+    const loadChat = useCallback(async () => {
+        if (!chatId) {
             if (mountedRef.current) {
-                setConversation(null);
+                setChat(null);
                 setLoading(false);
                 setError(null);
             }
@@ -32,9 +32,9 @@ export function useConversation(conversationId: string | null) {
                 setLoading(true);
                 setError(null);
             }
-            const data = await t3ChatClient.getChat(conversationId);
+            const data = await t3ChatClient.getChat(chatId);
             if (mountedRef.current) {
-                setConversation(data);
+                setChat(data);
             }
         } catch (err) {
             if (mountedRef.current) {
@@ -45,11 +45,11 @@ export function useConversation(conversationId: string | null) {
                 setLoading(false);
             }
         }
-    }, [conversationId]);
+    }, [chatId]);
 
     useEffect(() => {
-        loadConversation();
-    }, [loadConversation]);
+        loadChat();
+    }, [loadChat]);
 
-    return { conversation, loading, error, refresh: loadConversation };
+    return { chat, loading, error, refresh: loadChat };
 }

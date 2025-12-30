@@ -1,7 +1,7 @@
-import type { AiProvider } from "./conversation";
+import type { AiProvider } from "./chat";
 import type { MessageRole } from "./librechat";
 
-export interface CreateConversationRequest {
+export interface CreateChatRequest {
     modelProvider: AiProvider;
     modelId: string;
     title?: string;
@@ -12,7 +12,7 @@ export interface CreateMessageRequest {
     role?: MessageRole;
 }
 
-export interface ConversationRequest {
+export interface ChatRequest {
     chatId: string;
     message: string;
     modelProvider: AiProvider;
@@ -22,7 +22,7 @@ export interface ConversationRequest {
     stream?: boolean;
 }
 
-export interface ConversationResponse {
+export interface ChatResponse {
     content: string;
     model: string;
     usage?: {

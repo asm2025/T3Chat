@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::db::{
     DbPool,
-    models::{NewConversationTag, NewTag, Tag, UpdateTag},
-    schema::{conversation_tags_map, tags},
+    models::{NewChatTag, NewTag, Tag, UpdateTag},
+    schema::{chat_tags_map, tags},
 };
 
 #[async_trait]
@@ -17,8 +17,8 @@ pub trait TTagRepository: Send + Sync {
     async fn list(&self, user_id: &str) -> Result<Vec<Tag>>;
     async fn update(&self, id: Uuid, user_id: &str, update: UpdateTag) -> Result<Tag>;
     async fn delete(&self, id: Uuid, user_id: &str) -> Result<bool>;
-    async fn add_to_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<()>;
-    async fn remove_from_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<bool>;
+    async fn add_to_chat(&self, chat_id: Uuid, tag_id: Uuid) -> Result<()>;
+    async fn remove_from_chat(&self, chat_id: Uuid, tag_id: Uuid) -> Result<bool>;
 }
 
 pub struct TagRepository {
@@ -116,46 +116,39 @@ impl TTagRepository for TagRepository {
         Ok(deleted > 0)
     }
 
-    /// Add tag to conversation
-    async fn add_to_conversation(&self, conversation_id: Uuid, tag_id: Uuid) -> Result<()> {
+    /// Add tag to chat
+    async fn add_to_chat(&self, chat_id: Uuid, tag_id: Uuid) -> Result<()> {
         let mut conn = self
             .pool
             .get()
             .await
             .context("Failed to get DB connection")?;
 
-        let new_mapping = NewConversationTag {
-            conversation_id,
-            tag_id,
-        };
+        let new_mapping = NewChatTag { chat_id, tag_id };
 
-        diesel::insert_into(conversation_tags_map::table)
+        diesel::insert_into(chat_tags_map::table)
             .values(&new_mapping)
             .execute(&mut conn)
             .await
-            .context("Failed to add tag to conversation")?;
+            .context("Failed to add tag to chat")?;
 
         Ok(())
     }
 
-    /// Remove tag from conversation
-    async fn remove_from_conversation(
-        &self,
-        conversation_id: Uuid,
-        tag_id: Uuid,
-    ) -> Result<bool> {
+    /// Remove tag from chat
+    async fn remove_from_chat(&self, chat_id: Uuid, tag_id: Uuid) -> Result<bool> {
         let mut conn = self
             .pool
             .get()
             .await
             .context("Failed to get DB connection")?;
 
-        let deleted = diesel::delete(conversation_tags_map::table)
-            .filter(conversation_tags_map::conversation_id.eq(conversation_id))
-            .filter(conversation_tags_map::tag_id.eq(tag_id))
+        let deleted = diesel::delete(chat_tags_map::table)
+            .filter(chat_tags_map::chat_id.eq(chat_id))
+            .filter(chat_tags_map::tag_id.eq(tag_id))
             .execute(&mut conn)
             .await
-            .context("Failed to remove tag from conversation")?;
+            .context("Failed to remove tag from chat")?;
 
         Ok(deleted > 0)
     }

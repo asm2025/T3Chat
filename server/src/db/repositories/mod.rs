@@ -6,7 +6,7 @@ pub mod user_repository;
 
 // New LibreChat repositories
 pub mod agent_repository;
-pub mod conversation_repository;
+pub mod chat_repository;
 pub mod file_repository;
 pub mod preset_repository;
 pub mod project_repository;
@@ -14,8 +14,6 @@ pub mod tag_repository;
 pub mod tool_repository;
 pub mod transaction_repository;
 
-// Legacy repositories (keeping for backward compatibility)
-pub mod chat_repository;
 pub mod user_feature_repository;
 
 // Re-export for convenience

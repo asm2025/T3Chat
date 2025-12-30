@@ -30,7 +30,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    agent_conversation_starters (id) {
+    agent_chat_starters (id) {
         id -> Uuid,
         agent_id -> Uuid,
         text -> Text,
@@ -130,7 +130,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    assistant_conversation_starters (id) {
+    assistant_chat_starters (id) {
         id -> Uuid,
         assistant_id -> Uuid,
         text -> Text,
@@ -183,17 +183,17 @@ diesel::table! {
 }
 
 diesel::table! {
-    conversation_tags_map (conversation_id, tag_id) {
-        conversation_id -> Uuid,
+    chat_tags_map (chat_id, tag_id) {
+        chat_id -> Uuid,
         tag_id -> Uuid,
         created_at -> Timestamptz,
     }
 }
 
 diesel::table! {
-    conversations (id) {
+    chats (id) {
         id -> Uuid,
-        conversation_id -> Text,
+        chat_id -> Text,
         user_id -> Text,
         title -> Nullable<Text>,
         endpoint -> Text,
@@ -217,7 +217,7 @@ diesel::table! {
         id -> Uuid,
         file_id -> Text,
         user_id -> Text,
-        conversation_id -> Nullable<Uuid>,
+        chat_id -> Nullable<Uuid>,
         filename -> Text,
         filepath -> Text,
         mime_type -> Text,
@@ -242,7 +242,7 @@ diesel::table! {
     messages (id) {
         id -> Uuid,
         message_id -> Text,
-        conversation_id -> Uuid,
+        chat_id -> Uuid,
         parent_message_id -> Nullable<Uuid>,
         role -> Text,
         text -> Nullable<Text>,
@@ -344,7 +344,7 @@ diesel::table! {
     shared_links (id) {
         id -> Uuid,
         share_id -> Text,
-        conversation_id -> Uuid,
+        chat_id -> Uuid,
         user_id -> Text,
         is_public -> Nullable<Bool>,
         is_anonymous -> Nullable<Bool>,
@@ -411,7 +411,7 @@ diesel::table! {
         id -> Uuid,
         user_id -> Text,
         message_id -> Nullable<Uuid>,
-        conversation_id -> Nullable<Uuid>,
+        chat_id -> Nullable<Uuid>,
         provider -> Text,
         model -> Text,
         input_tokens -> Nullable<Int4>,
@@ -492,24 +492,24 @@ diesel::table! {
 diesel::joinable!(actions -> users (user_id));
 diesel::joinable!(agent_actions -> actions (action_id));
 diesel::joinable!(agent_actions -> agents (agent_id));
-diesel::joinable!(agent_conversation_starters -> agents (agent_id));
+diesel::joinable!(agent_chat_starters -> agents (agent_id));
 diesel::joinable!(agent_tools -> agents (agent_id));
 diesel::joinable!(agent_tools -> tools (tool_id));
 diesel::joinable!(agents -> users (author_id));
 diesel::joinable!(ai_models -> ai_providers (provider_id));
-diesel::joinable!(assistant_conversation_starters -> assistants (assistant_id));
+diesel::joinable!(assistant_chat_starters -> assistants (assistant_id));
 diesel::joinable!(assistant_tools -> assistants (assistant_id));
 diesel::joinable!(assistant_tools -> tools (tool_id));
 diesel::joinable!(assistants -> users (user_id));
 diesel::joinable!(balances -> users (user_id));
-diesel::joinable!(conversation_tags_map -> conversations (conversation_id));
-diesel::joinable!(conversation_tags_map -> tags (tag_id));
-diesel::joinable!(conversations -> agents (agent_id));
-diesel::joinable!(conversations -> assistants (assistant_id));
-diesel::joinable!(conversations -> users (user_id));
-diesel::joinable!(files -> conversations (conversation_id));
+diesel::joinable!(chat_tags_map -> chats (chat_id));
+diesel::joinable!(chat_tags_map -> tags (tag_id));
+diesel::joinable!(chats -> agents (agent_id));
+diesel::joinable!(chats -> assistants (assistant_id));
+diesel::joinable!(chats -> users (user_id));
+diesel::joinable!(files -> chats (chat_id));
 diesel::joinable!(files -> users (user_id));
-diesel::joinable!(messages -> conversations (conversation_id));
+diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(presets -> agents (agent_id));
 diesel::joinable!(presets -> users (user_id));
 diesel::joinable!(project_agents -> agents (agent_id));
@@ -518,11 +518,11 @@ diesel::joinable!(projects -> users (owner_id));
 diesel::joinable!(prompt_groups -> projects (project_id));
 diesel::joinable!(prompt_groups -> users (author_id));
 diesel::joinable!(prompts -> prompt_groups (group_id));
-diesel::joinable!(shared_links -> conversations (conversation_id));
+diesel::joinable!(shared_links -> chats (chat_id));
 diesel::joinable!(shared_links -> users (user_id));
 diesel::joinable!(tags -> users (user_id));
 diesel::joinable!(tool_calls -> messages (message_id));
-diesel::joinable!(transactions -> conversations (conversation_id));
+diesel::joinable!(transactions -> chats (chat_id));
 diesel::joinable!(transactions -> messages (message_id));
 diesel::joinable!(transactions -> users (user_id));
 diesel::joinable!(user_api_keys -> users (user_id));
@@ -532,18 +532,18 @@ diesel::joinable!(user_roles -> roles (role_name));
 diesel::allow_tables_to_appear_in_same_query!(
     actions,
     agent_actions,
-    agent_conversation_starters,
+    agent_chat_starters,
     agent_hierarchy,
     agent_tools,
     agents,
     ai_models,
     ai_providers,
-    assistant_conversation_starters,
+    assistant_chat_starters,
     assistant_tools,
     assistants,
     balances,
-    conversation_tags_map,
-    conversations,
+    chat_tags_map,
+    chats,
     files,
     messages,
     presets,

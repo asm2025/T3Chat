@@ -105,7 +105,7 @@ function AuthenticatedLayout() {
                         <Sidebar variant="sidebar" collapsible="offcanvas" />
                         <SidebarInset className="h-screen">
                             <Routes>
-                                <Route path="/chat/:conversationId?" element={<Chat />} />
+                                <Route path="/chat/:chatId?" element={<Chat />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route
@@ -161,7 +161,7 @@ function AuthenticatedLayout() {
                             <SidebarInset className="h-screen overflow-hidden">
                                 <FloatingToolbar />
                                 <Routes>
-                                    <Route path="/chat/:conversationId?" element={<Chat />} />
+                                    <Route path="/chat/:chatId?" element={<Chat />} />
                                     <Route path="/profile" element={<Profile />} />
                                     <Route path="/settings" element={<Settings />} />
                                     <Route

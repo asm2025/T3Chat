@@ -2,38 +2,38 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
-import { useConversation } from "@/hooks/useConversation";
+import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useStreamingChat } from "@/hooks/useStreamingChat";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 import { useConfig } from "@/stores/appStore";
-import type { Message, AiProvider } from "@/types/conversation";
+import type { Message, AiProvider } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 
 interface ChatViewProps {
-    conversationId: string | null;
+    chatId: string | null;
 }
 
 const NEW_CONVERSATION_KEY = "__new__";
 
-export function ChatView({ conversationId }: ChatViewProps) {
+export function ChatView({ chatId }: ChatViewProps) {
     const navigate = useNavigate();
-    const { conversation, loading, error, refresh } = useConversation(conversationId);
+    const { chat, loading, error, refresh } = useChat(chatId);
     const { models: backendModels } = useModels();
     const { config } = useConfig();
     const { sendMessage, streaming } = useStreamingChat();
-    const [messagesByConversationId, setMessagesByConversationId] = useState<Record<string, Message[]>>({
+    const [messagesByChatId, setMessagesByChatId] = useState<Record<string, Message[]>>({
         [NEW_CONVERSATION_KEY]: [],
     });
     const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
 
-    const chatKey = conversationId ?? NEW_CONVERSATION_KEY;
+    const chatKey = chatId ?? NEW_CONVERSATION_KEY;
     // During the "/chat -> /chat/{id}" transition, React may render once with the new `chatId`
     // before our state has been migrated to that key. Fall back to the new-chat bucket to avoid
     // the placeholder flashing back in.
-    const messages = messagesByConversationId[chatKey] ?? (conversationId ? messagesByConversationId[NEW_CONVERSATION_KEY] ?? [] : []);
+    const messages = messagesByChatId[chatKey] ?? (chatId ? messagesByChatId[NEW_CONVERSATION_KEY] ?? [] : []);
 
     const modelSpecs = config?.modelSpecs || [];
     const useSpecs = modelSpecs.length > 0;
@@ -73,7 +73,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
     const modelSelectEnabled = config?.interface?.modelSelect ?? true;
 
     const setMessagesForChat = useCallback((key: string, updater: Message[] | ((prev: Message[]) => Message[])) => {
-        setMessagesByConversationId((prev) => {
+        setMessagesByChatId((prev) => {
             const prevForChat = prev[key] ?? [];
             const nextForChat = typeof updater === "function" ? (updater as (p: Message[]) => Message[])(prevForChat) : updater;
             return { ...prev, [key]: nextForChat };
@@ -84,39 +84,39 @@ export function ChatView({ conversationId }: ChatViewProps) {
     // Important: do NOT clear messages when `chat` is temporarily null during loading,
     // otherwise the placeholder reappears after the first optimistic bubble.
     useEffect(() => {
-        if (!conversation) {
+        if (!chat || !chat.id) {
             return;
         }
 
-        setMessagesByConversationId((prev) => {
+        setMessagesByChatId((prev) => {
             const next = { ...prev };
-            const nextMessages = conversation.messages ?? [];
+            const nextMessages = chat.messages ?? [];
 
             // Store under the internal id (what the API returns) and also the current route param
-            // (in case the user entered a URL using the external conversation_id).
-            next[conversation.id] = nextMessages;
-            if (conversationId) {
-                next[conversationId] = nextMessages;
+            // (in case the user entered a URL using the external chat_id).
+            next[chat.id] = nextMessages;
+            if (chatId) {
+                next[chatId] = nextMessages;
             }
             return next;
         });
-    }, [conversation, conversationId]);
+    }, [chat, chatId]);
 
     // When navigating to /chat (no id), reset the new-chat placeholder state.
     useEffect(() => {
-        if (conversationId !== null) {
+        if (chatId !== null) {
             return;
         }
         setMessagesForChat(NEW_CONVERSATION_KEY, []);
-    }, [conversationId, setMessagesForChat]);
+    }, [chatId, setMessagesForChat]);
 
     useEffect(() => {
         if (!models.length) {
             return;
         }
 
-        if (conversation) {
-            const activeModel = models.find((model) => model.provider === conversation.modelProvider && model.modelId === conversation.modelId);
+        if (chat) {
+            const activeModel = models.find((model) => model.provider === chat.modelProvider && model.modelId === chat.modelId);
             if (activeModel) {
                 if (selectedModel?.id !== activeModel.id) {
                     setSelectedModel(activeModel);
@@ -144,7 +144,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
             }
             setSelectedModel(models[0]);
         }
-    }, [conversation, models, selectedModel, config]);
+    }, [chat, models, selectedModel, config]);
 
     const handleSendMessage = async (content: string) => {
         if (!selectedModel) {
@@ -168,11 +168,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
             return;
         }
 
-        // Prefer the internal chat id once loaded (it always maps to messages.conversation_id).
-        let currentChatId = conversation?.id ?? conversationId;
+        // Prefer the internal chat id once loaded (it always maps to messages.chat_id).
+        let currentChatId = chat?.id ?? chatId;
 
         const timestamp = new Date().toISOString();
-        const nextSequence = (messages[messages.length - 1]?.sequenceNumber ?? 0) + 1;
+        // sequenceNumber is always 0 from backend, so we don't need to calculate it
         const userTempId = `temp-user-${Date.now()}`;
         const assistantTempId = `temp-assistant-${Date.now()}`;
 
@@ -181,7 +181,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
             chatId: currentChatId ?? NEW_CONVERSATION_KEY,
             role: "user",
             content,
-            sequenceNumber: nextSequence,
+            sequenceNumber: 0, // Backend always returns 0
             createdAt: timestamp,
         };
 
@@ -191,7 +191,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
             chatId: currentChatId ?? NEW_CONVERSATION_KEY,
             role: "assistant",
             content: "",
-            sequenceNumber: nextSequence + 1,
+            sequenceNumber: 0, // Backend always returns 0
             createdAt: new Date().toISOString(),
         };
 
@@ -209,10 +209,15 @@ export function ChatView({ conversationId }: ChatViewProps) {
                     modelProvider: normalizedProvider,
                     modelId,
                 });
+                
+                if (!newChat?.id) {
+                    throw new Error("Failed to create chat: No chat ID returned");
+                }
+                
                 currentChatId = newChat.id;
 
                 // Migrate optimistic messages from the new-chat key to the real chat id.
-                setMessagesByConversationId((prev) => {
+                setMessagesByChatId((prev) => {
                     const pending = prev[NEW_CONVERSATION_KEY] ?? [];
                     const migrated = pending.map((m) => ({ ...m, chatId: currentChatId! }));
                     return {
@@ -239,6 +244,12 @@ export function ChatView({ conversationId }: ChatViewProps) {
             setMessagesForChat(currentChatId, (prev) => [...prev, optimisticUser, optimisticAssistant]);
         }
 
+        // Ensure we have a valid chat ID before sending
+        if (!currentChatId) {
+            toast.error("Failed to send message", { description: "Chat ID is missing" });
+            return;
+        }
+
         try {
             await sendMessage(
                 {
@@ -256,13 +267,13 @@ export function ChatView({ conversationId }: ChatViewProps) {
                     try {
                         // `/v1/chat/stream` persists user + assistant messages on the server.
                         // Refresh to reconcile optimistic state with DB.
-                        if (conversationId === currentChatId) {
+                        if (chatId === currentChatId) {
                             await refresh();
                         } else {
                             // New chat navigation: `refresh` in this closure may be tied to the old chatId (null),
                             // so fetch directly and sync messages into the cache.
                             const latest = await t3ChatClient.getChat(currentChatId!);
-                            setMessagesByConversationId((prev) => ({
+                            setMessagesByChatId((prev) => ({
                                 ...prev,
                                 [currentChatId!]: latest.messages ?? prev[currentChatId!] ?? [],
                             }));
@@ -288,18 +299,18 @@ export function ChatView({ conversationId }: ChatViewProps) {
         return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border bg-card p-8 text-center text-red-500">Unable to load chat. {error.message}</div>;
     }
 
-    if (!loading && conversationId && !conversation) {
+    if (!loading && chatId && !chat) {
         return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Chat not found.</div>;
     }
 
     return (
         <div className="flex h-full flex-col">
-            {conversation && (
+            {chat && (
                 <div className="border-b border-border p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
-                            <h2 className="text-lg font-semibold">{conversation.title}</h2>
+                            <h2 className="text-lg font-semibold">{chat.title}</h2>
                         </div>
                     </div>
                 </div>

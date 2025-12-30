@@ -3,12 +3,12 @@ import { ChatView } from "@/components/chat/ChatView";
 import { MasterLayout } from "@/components/master-layout";
 
 export function Chat() {
-    const { conversationId } = useParams<{ conversationId?: string }>();
+    const { chatId } = useParams<{ chatId?: string }>();
 
     return (
         <MasterLayout contentClassName="h-full">
             <div className="h-full">
-                <ChatView conversationId={conversationId ?? null} />
+                <ChatView chatId={chatId ?? null} />
             </div>
         </MasterLayout>
     );

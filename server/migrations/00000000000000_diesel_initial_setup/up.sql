@@ -194,7 +194,7 @@ CREATE TABLE role_claims (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     claim_type TEXT NOT NULL,  -- e.g., 'permission', 'feature', 'scope'
-    claim_value TEXT NOT NULL,  -- e.g., 'conversations.delete', 'admin.panel.access'
+    claim_value TEXT NOT NULL,  -- e.g., 'chats.delete', 'admin.panel.access'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(role_id, claim_type, claim_value)
 );
@@ -347,7 +347,7 @@ CREATE INDEX idx_user_api_keys_default ON user_api_keys(user_id, is_default) WHE
 -- CONVERSATION & MESSAGE TABLES
 -- ==========================================
 
--- Agents table (must be created before conversations due to FK)
+-- Agents table (must be created before chats due to FK)
 CREATE TABLE agents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id TEXT UNIQUE NOT NULL,  -- for API compatibility
@@ -429,10 +429,10 @@ CREATE TABLE assistants (
 
 CREATE INDEX idx_assistants_user_id ON assistants(user_id);
 
--- Conversations table
-CREATE TABLE conversations (
+-- Chats table
+CREATE TABLE chats (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id TEXT UNIQUE NOT NULL,  -- for API compatibility
+    chat_id TEXT UNIQUE NOT NULL,  -- for API compatibility
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT DEFAULT 'New Chat',
     
@@ -464,19 +464,19 @@ CREATE TABLE conversations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-CREATE INDEX idx_conversations_user_updated ON conversations(user_id, updated_at DESC);
-CREATE INDEX idx_conversations_user_archived ON conversations(user_id, is_archived, updated_at DESC);
-CREATE INDEX idx_conversations_agent_id ON conversations(agent_id) WHERE agent_id IS NOT NULL;
-CREATE INDEX idx_conversations_assistant_id ON conversations(assistant_id) WHERE assistant_id IS NOT NULL;
-CREATE INDEX idx_conversations_title_fts ON conversations USING GIN(to_tsvector('english', title));
+CREATE INDEX idx_chats_user_id ON chats(user_id);
+CREATE INDEX idx_chats_user_updated ON chats(user_id, updated_at DESC);
+CREATE INDEX idx_chats_user_archived ON chats(user_id, is_archived, updated_at DESC);
+CREATE INDEX idx_chats_agent_id ON chats(agent_id) WHERE agent_id IS NOT NULL;
+CREATE INDEX idx_chats_assistant_id ON chats(assistant_id) WHERE assistant_id IS NOT NULL;
+CREATE INDEX idx_chats_title_fts ON chats USING GIN(to_tsvector('english', title));
 
--- Files table (independent entity) - MOVED AFTER conversations
+-- Files table (independent entity) - MOVED AFTER chats
 CREATE TABLE files (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     file_id TEXT UNIQUE NOT NULL,  -- for API compatibility
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL, -- Added FK
+    chat_id UUID REFERENCES chats(id) ON DELETE SET NULL, -- Added FK
     
     -- File info
     filename TEXT NOT NULL,
@@ -513,7 +513,7 @@ CREATE TABLE files (
 );
 
 CREATE INDEX idx_files_user_id ON files(user_id);
-CREATE INDEX idx_files_conversation_id ON files(conversation_id);
+CREATE INDEX idx_files_chat_id ON files(chat_id);
 CREATE INDEX idx_files_file_type ON files(file_type);
 CREATE INDEX idx_files_temporary ON files(expires_at) WHERE is_temporary = true;
 CREATE INDEX idx_files_filename_fts ON files USING GIN(to_tsvector('english', filename));
@@ -528,43 +528,43 @@ CREATE TABLE assistant_files (
 
 CREATE INDEX idx_assistant_files_file_id ON assistant_files(file_id);
 
--- Conversation model parameters table (Normalized AI parameters)
-CREATE TABLE conversation_model_parameters (
+-- Chat model parameters table (Normalized AI parameters)
+CREATE TABLE chat_model_parameters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     parameter_key TEXT NOT NULL,  -- temperature, top_p, top_k, max_tokens, presence_penalty, frequency_penalty, etc.
     parameter_value TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(conversation_id, parameter_key)
+    UNIQUE(chat_id, parameter_key)
 );
 
-CREATE INDEX idx_conversation_model_parameters_conversation_id ON conversation_model_parameters(conversation_id);
+CREATE INDEX idx_chat_model_parameters_chat_id ON chat_model_parameters(chat_id);
 
--- Conversation feature flags table (Provider-specific feature flags)
-CREATE TABLE conversation_feature_flags (
+-- Chat feature flags table (Provider-specific feature flags)
+CREATE TABLE chat_feature_flags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     flag_key TEXT NOT NULL,  -- resend_files, resend_images, image_detail, prompt_cache, thinking, etc.
     flag_value BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(conversation_id, flag_key)
+    UNIQUE(chat_id, flag_key)
 );
 
-CREATE INDEX idx_conversation_feature_flags_conversation_id ON conversation_feature_flags(conversation_id);
+CREATE INDEX idx_chat_feature_flags_chat_id ON chat_feature_flags(chat_id);
 
--- Conversation-Files junction table (Many-to-many: conversations ↔ files)
-CREATE TABLE conversation_files (
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+-- Chat-Files junction table (Many-to-many: chats ↔ files)
+CREATE TABLE chat_files (
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
     attached_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (conversation_id, file_id)
+    PRIMARY KEY (chat_id, file_id)
 );
 
-CREATE INDEX idx_conversation_files_file_id ON conversation_files(file_id);
+CREATE INDEX idx_chat_files_file_id ON chat_files(file_id);
 
--- Conversation-Tags junction table (Many-to-many) - Moved up as it depends on conversations
+-- Chat-Tags junction table (Many-to-many) - Moved up as it depends on chats
 -- Need tags table first. Tags depends on users.
 -- Tags table (User-defined tags for organization)
 CREATE TABLE tags (
@@ -584,21 +584,21 @@ CREATE TABLE tags (
 
 CREATE INDEX idx_tags_user_id ON tags(user_id, position);
 
-CREATE TABLE conversation_tags_map (
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+CREATE TABLE chat_tags_map (
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
-    PRIMARY KEY (conversation_id, tag_id)
+    PRIMARY KEY (chat_id, tag_id)
 );
 
-CREATE INDEX idx_conversation_tags_map_tag_id ON conversation_tags_map(tag_id);
+CREATE INDEX idx_chat_tags_map_tag_id ON chat_tags_map(tag_id);
 
 -- Messages table
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id TEXT UNIQUE NOT NULL,  -- for API compatibility
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     parent_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,  -- for branching
     
     -- Message basics
@@ -634,7 +634,7 @@ CREATE TABLE messages (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_messages_conversation_id ON messages(conversation_id, created_at);
+CREATE INDEX idx_messages_chat_id ON messages(chat_id, created_at);
 CREATE INDEX idx_messages_parent ON messages(parent_message_id) WHERE parent_message_id IS NOT NULL;
 CREATE INDEX idx_messages_role ON messages(role);
 CREATE INDEX idx_messages_text_fts ON messages USING GIN(to_tsvector('english', COALESCE(text, '')));
@@ -668,7 +668,7 @@ CREATE INDEX idx_message_content_blocks_message_id ON message_content_blocks(mes
 -- PRESETS & CONFIGURATION
 -- ==========================================
 
--- Presets (Saved conversation configurations)
+-- Presets (Saved chat configurations)
 CREATE TABLE presets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     preset_id TEXT UNIQUE NOT NULL,  -- for API compatibility
@@ -988,8 +988,8 @@ CREATE TABLE agent_hierarchy (
 CREATE INDEX idx_agent_hierarchy_sub_agent ON agent_hierarchy(sub_agent_id);
 CREATE INDEX idx_agent_hierarchy_order ON agent_hierarchy(parent_agent_id, order_index);
 
--- Agent conversation starters table
-CREATE TABLE agent_conversation_starters (
+-- Agent chat starters table
+CREATE TABLE agent_chat_starters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
     text TEXT NOT NULL,
@@ -997,10 +997,10 @@ CREATE TABLE agent_conversation_starters (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_agent_conv_starters_agent ON agent_conversation_starters(agent_id, order_index);
+CREATE INDEX idx_agent_conv_starters_agent ON agent_chat_starters(agent_id, order_index);
 
--- Assistant conversation starters table
-CREATE TABLE assistant_conversation_starters (
+-- Assistant chat starters table
+CREATE TABLE assistant_chat_starters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     assistant_id UUID NOT NULL REFERENCES assistants(id) ON DELETE CASCADE,
     text TEXT NOT NULL,
@@ -1008,7 +1008,7 @@ CREATE TABLE assistant_conversation_starters (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_assistant_conv_starters ON assistant_conversation_starters(assistant_id, order_index);
+CREATE INDEX idx_assistant_conv_starters ON assistant_chat_starters(assistant_id, order_index);
 
 -- ==========================================
 -- TOOL CALLS & EXECUTION
@@ -1082,7 +1082,7 @@ CREATE TABLE transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
-    conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+    chat_id UUID REFERENCES chats(id) ON DELETE SET NULL,
     
     -- Model info
     provider TEXT NOT NULL,
@@ -1108,7 +1108,7 @@ CREATE TABLE transactions (
 
 CREATE INDEX idx_transactions_user_id ON transactions(user_id, created_at DESC);
 CREATE INDEX idx_transactions_message_id ON transactions(message_id) WHERE message_id IS NOT NULL;
-CREATE INDEX idx_transactions_conversation_id ON transactions(conversation_id) WHERE conversation_id IS NOT NULL;
+CREATE INDEX idx_transactions_chat_id ON transactions(chat_id) WHERE chat_id IS NOT NULL;
 CREATE INDEX idx_transactions_created_at ON transactions(created_at DESC);
 CREATE INDEX idx_transactions_type ON transactions(transaction_type);
 
@@ -1116,11 +1116,11 @@ CREATE INDEX idx_transactions_type ON transactions(transaction_type);
 -- SHARING
 -- ==========================================
 
--- Shared links table (Conversation sharing)
+-- Shared links table (Chat sharing)
 CREATE TABLE shared_links (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     share_id TEXT UNIQUE NOT NULL,  -- public share ID, e.g., 'abc123xyz'
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    chat_id UUID NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     -- Sharing settings
@@ -1141,7 +1141,7 @@ CREATE TABLE shared_links (
 );
 
 CREATE INDEX idx_shared_links_user_id ON shared_links(user_id);
-CREATE INDEX idx_shared_links_conversation_id ON shared_links(conversation_id);
+CREATE INDEX idx_shared_links_chat_id ON shared_links(chat_id);
 CREATE INDEX idx_shared_links_expires ON shared_links(expires_at) WHERE expires_at IS NOT NULL;
 
 -- ==========================================

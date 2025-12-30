@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-use crate::db::schema::{
-    agent_conversation_starters, agents, assistant_conversation_starters, assistants,
-};
+use crate::db::schema::{agent_chat_starters, agents, assistant_chat_starters, assistants};
 
 /// Agent model
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -204,11 +202,11 @@ pub struct UpdateAssistant {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Agent conversation starter
+/// Agent chat starter
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = agent_conversation_starters)]
+#[diesel(table_name = agent_chat_starters)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AgentConversationStarter {
+pub struct AgentChatStarter {
     pub id: Uuid,
     pub agent_id: Uuid,
     pub text: String,
@@ -216,10 +214,10 @@ pub struct AgentConversationStarter {
     pub created_at: DateTime<Utc>,
 }
 
-/// New agent conversation starter
+/// New agent chat starter
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = agent_conversation_starters)]
-pub struct NewAgentConversationStarter {
+#[diesel(table_name = agent_chat_starters)]
+pub struct NewAgentChatStarter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<Uuid>,
     pub agent_id: Uuid,
@@ -228,11 +226,11 @@ pub struct NewAgentConversationStarter {
     pub order_index: Option<i32>,
 }
 
-/// Assistant conversation starter
+/// Assistant chat starter
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = assistant_conversation_starters)]
+#[diesel(table_name = assistant_chat_starters)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct AssistantConversationStarter {
+pub struct AssistantChatStarter {
     pub id: Uuid,
     pub assistant_id: Uuid,
     pub text: String,
@@ -240,10 +238,10 @@ pub struct AssistantConversationStarter {
     pub created_at: DateTime<Utc>,
 }
 
-/// New assistant conversation starter
+/// New assistant chat starter
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = assistant_conversation_starters)]
-pub struct NewAssistantConversationStarter {
+#[diesel(table_name = assistant_chat_starters)]
+pub struct NewAssistantChatStarter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<Uuid>,
     pub assistant_id: Uuid,

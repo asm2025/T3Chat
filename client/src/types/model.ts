@@ -1,4 +1,4 @@
-import type { AiProvider } from "./conversation";
+import type { AiProvider } from "./chat";
 
 export interface AIModel {
     id: string;

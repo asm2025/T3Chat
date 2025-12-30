@@ -1,21 +1,15 @@
 import { ApiClient, type ApiClientError } from "./api-client";
-import type {
-    ConversationRequest as ChatConversationRequest,
-    ConversationResponse as ChatConversationResponse,
-    CreateConversationRequest as CreateChatRequest,
-    CreateMessageRequest as CreateChatMessageRequest,
-    CreateUserApiKeyRequest,
-    UserApiKey,
-} from "@/types/api";
+import type { ChatRequest, ChatResponse, CreateChatRequest, CreateMessageRequest as ApiCreateMessageRequest, CreateUserApiKeyRequest, UserApiKey } from "@/types/api";
 import type { AIModel } from "@/types/model";
-import type { Conversation as ChatConversation, ConversationWithMessages as ChatConversationWithMessages, Message as ChatMessage } from "@/types/conversation";
+import type { Chat, ChatWithMessages, Message, AiProvider } from "@/types/chat";
 import type {
-    Conversation as LibreChatConversation,
-    ConversationWithTags,
-    CreateConversationRequest as LibreCreateConversationRequest,
-    UpdateConversationRequest,
-    Message as LibreConversationMessage,
-    CreateMessageRequest as LibreCreateMessageRequest,
+    Chat as LibreChat,
+    ChatWithTags,
+    CreateChatRequest as LibreCreateChatRequest,
+    UpdateChatRequest,
+    Message as LibreMessage,
+    MessageRole,
+    CreateMessageRequest,
     Preset,
     CreatePresetRequest,
     UpdatePresetRequest,
@@ -26,9 +20,10 @@ import type {
     Tag,
     CreateTagRequest,
     Tool,
-    File as LibreFile,
+    File,
     ChatCompletionRequest,
     ChatCompletionResponse,
+    Endpoint,
 } from "@/types/librechat";
 import type { StartupConfigResponse } from "@/types/config";
 
@@ -38,8 +33,97 @@ export type { ApiClientError };
 export interface PaginatedResponse<T> {
     data: T[];
     total: number;
-    page: number;
-    pageSize: number;
+    page?: number;
+    pageSize?: number;
+}
+
+// Backend API response types (matching Rust backend)
+interface BackendChatResponse {
+    id: string;
+    userId: string;
+    title: string;
+    modelProvider: string;
+    modelId: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface BackendMessageResponse {
+    id: string;
+    chatId: string;
+    role: string;
+    content: string;
+    metadata?: any;
+    parentMessageId?: string;
+    sequenceNumber: number;
+    createdAt: string;
+    tokensUsed?: number;
+    modelUsed?: string;
+}
+
+interface BackendChatWithMessagesResponse {
+    chat: BackendChatResponse;
+    messages: BackendMessageResponse[];
+}
+
+// Mapping functions to convert backend responses to client types
+function mapBackendChatToClient(backendChat: BackendChatResponse): ChatWithTags {
+    return {
+        id: backendChat.id,
+        chatId: backendChat.id, // For API compatibility
+        userId: backendChat.userId,
+        title: backendChat.title,
+        endpoint: backendChat.modelProvider as Endpoint,
+        model: backendChat.modelId,
+        isArchived: false, // Backend doesn't return this in list, default to false
+        createdAt: backendChat.createdAt,
+        updatedAt: backendChat.updatedAt,
+        tags: [], // Backend doesn't return tags in list response
+    };
+}
+
+function mapBackendMessageToClient(backendMessage: BackendMessageResponse): LibreMessage {
+    return {
+        id: backendMessage.id,
+        messageId: backendMessage.id, // For API compatibility
+        chatId: backendMessage.chatId,
+        parentMessageId: backendMessage.parentMessageId,
+        role: backendMessage.role as MessageRole,
+        text: backendMessage.content, // Map content to text
+        isCreatedByUser: backendMessage.role === "user",
+        model: backendMessage.modelUsed,
+        endpoint: undefined, // Not provided in backend response
+        tokenCount: backendMessage.tokensUsed,
+        createdAt: backendMessage.createdAt,
+        updatedAt: backendMessage.createdAt, // Backend doesn't return updatedAt, use createdAt
+    };
+}
+
+function mapBackendMessageToChatType(backendMessage: BackendMessageResponse): Message {
+    return {
+        id: backendMessage.id,
+        chatId: backendMessage.chatId,
+        role: backendMessage.role as MessageRole,
+        content: backendMessage.content,
+        metadata: backendMessage.metadata,
+        parentMessageId: backendMessage.parentMessageId,
+        sequenceNumber: backendMessage.sequenceNumber,
+        createdAt: backendMessage.createdAt,
+        tokensUsed: backendMessage.tokensUsed,
+        modelUsed: backendMessage.modelUsed,
+    };
+}
+
+function mapBackendChatToChatType(backendChat: BackendChatResponse): Chat {
+    return {
+        id: backendChat.id,
+        userId: backendChat.userId,
+        title: backendChat.title,
+        modelProvider: backendChat.modelProvider as AiProvider,
+        modelId: backendChat.modelId,
+        createdAt: backendChat.createdAt,
+        updatedAt: backendChat.updatedAt,
+    };
 }
 
 interface UserProfile {
@@ -79,20 +163,25 @@ export class T3ChatClient extends ApiClient {
     }
 
     // Chats endpoints
-    async listChats(page = 1, pageSize = 20): Promise<{ data: ChatConversation[]; total: number }> {
-        return this.list<{ data: ChatConversation[]; total: number }>("/v1/chats", { page, pageSize });
+    async listChats(page = 1, pageSize = 20): Promise<{ data: Chat[]; total: number }> {
+        return this.list<{ data: Chat[]; total: number }>("/v1/chats", { page, pageSize });
     }
 
-    async getChat(id: string): Promise<ChatConversationWithMessages> {
-        return this.get<ChatConversationWithMessages>(`/v1/chats/${id}`);
+    async getChat(id: string): Promise<ChatWithMessages> {
+        const backendResponse = await this.get<BackendChatWithMessagesResponse>(`/v1/chats/${id}`);
+        return {
+            ...mapBackendChatToChatType(backendResponse.chat),
+            messages: backendResponse.messages.map(mapBackendMessageToChatType),
+        };
     }
 
-    async createChat(data: CreateChatRequest): Promise<ChatConversation> {
-        return this.post<ChatConversation>("/v1/chats", data);
+    async createChat(data: CreateChatRequest): Promise<Chat> {
+        const backendChat = await this.post<BackendChatResponse>("/v1/chats", data);
+        return mapBackendChatToChatType(backendChat);
     }
 
-    async updateChat(id: string, data: { title?: string }): Promise<ChatConversation> {
-        return this.update<ChatConversation>(`/v1/chats/${id}`, data);
+    async updateChat(id: string, data: { title?: string }): Promise<Chat> {
+        return this.update<Chat>(`/v1/chats/${id}`, data);
     }
 
     async deleteChat(id: string): Promise<void> {
@@ -109,20 +198,20 @@ export class T3ChatClient extends ApiClient {
     }
 
     // Messages endpoints
-    async getMessages(chatId: string): Promise<ChatMessage[]> {
-        return this.get<ChatMessage[]>(`/v1/chats/${chatId}/messages`);
+    async getMessages(chatId: string): Promise<Message[]> {
+        return this.get<Message[]>(`/v1/chats/${chatId}/messages`);
     }
 
-    async createMessage(chatId: string, data: CreateChatMessageRequest): Promise<ChatMessage> {
-        return this.post<ChatMessage>(`/v1/chats/${chatId}/messages`, data);
+    async createMessage(chatId: string, data: ApiCreateMessageRequest): Promise<Message> {
+        return this.post<Message>(`/v1/chats/${chatId}/messages`, data);
     }
 
     // Chat endpoints
-    async sendChat(data: ChatConversationRequest): Promise<ChatConversationResponse> {
-        return this.post<ChatConversationResponse>("/v1/chat", data);
+    async sendChat(data: ChatRequest): Promise<ChatResponse> {
+        return this.post<ChatResponse>("/v1/chat", data);
     }
 
-    async *streamChat(data: ChatConversationRequest): AsyncGenerator<string, void, unknown> {
+    async *streamChat(data: ChatRequest): AsyncGenerator<string, void, unknown> {
         const response = await this.stream("/v1/chat/stream", { ...data, stream: true });
 
         if (!response.body) {
@@ -196,31 +285,48 @@ export class T3ChatClient extends ApiClient {
         return this.update<{ feature: string; enabled: boolean }>(`/v1/features/${feature}`, { enabled });
     }
 
-    conversations = {
-        list: (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => this.list<PaginatedResponse<ConversationWithTags>>("/v1/conversations", params),
-        get: (id: string) => this.get<ConversationWithTags>(`/v1/conversations/${id}`),
-        create: (data: LibreCreateConversationRequest) => this.post<LibreChatConversation>("/v1/conversations", data),
-        update: (id: string, data: UpdateConversationRequest) => this.update<LibreChatConversation>(`/v1/conversations/${id}`, data),
-        delete: (id: string) => this.delete(`/v1/conversations/${id}`),
-        archive: (id: string, isArchived: boolean) => this.update<LibreChatConversation>(`/v1/conversations/${id}`, { isArchived }),
-        addTags: (id: string, tagIds: string[]) => this.post<void>(`/v1/conversations/${id}/tags`, { tagIds }),
-        removeTags: (id: string, tagIds: string[]) => this.delete(`/v1/conversations/${id}/tags`, { body: { tagIds } }),
+    chats = {
+        list: async (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => {
+            const response = await this.list<{ data: BackendChatResponse[]; total: number }>("/v1/chats", params);
+            return {
+                data: response.data.map(mapBackendChatToClient),
+                total: response.total,
+                page: params?.page,
+                pageSize: params?.pageSize,
+            } as PaginatedResponse<ChatWithTags>;
+        },
+        get: async (id: string) => {
+            const backendChat = await this.get<BackendChatResponse>(`/v1/chats/${id}`);
+            return mapBackendChatToClient(backendChat);
+        },
+        create: (data: LibreCreateChatRequest) => this.post<LibreChat>("/v1/chats", data),
+        update: (id: string, data: UpdateChatRequest) => this.update<LibreChat>(`/v1/chats/${id}`, data),
+        delete: (id: string) => this.delete(`/v1/chats/${id}`),
+        archive: (id: string, isArchived: boolean) => this.update<LibreChat>(`/v1/chats/${id}`, { isArchived }),
+        addTags: (id: string, tagIds: string[]) => this.post<void>(`/v1/chats/${id}/tags`, { tagIds }),
+        removeTags: (id: string, tagIds: string[]) => this.delete(`/v1/chats/${id}/tags`, { body: { tagIds } }),
     };
 
     messages = {
-        list: (conversationId: string) => this.list<LibreConversationMessage[]>(`/v1/conversations/${conversationId}/messages`),
-        get: (conversationId: string, messageId: string) => this.get<LibreConversationMessage>(`/v1/conversations/${conversationId}/messages/${messageId}`),
-        create: (conversationId: string, data: LibreCreateMessageRequest) => this.post<LibreConversationMessage>(`/v1/conversations/${conversationId}/messages`, data),
-        delete: (conversationId: string, messageId: string) => this.delete(`/v1/conversations/${conversationId}/messages/${messageId}`),
+        list: async (chatId: string) => {
+            const backendMessages = await this.list<BackendMessageResponse[]>(`/v1/chats/${chatId}/messages`);
+            return backendMessages.map(mapBackendMessageToClient);
+        },
+        get: async (chatId: string, messageId: string) => {
+            const backendMessage = await this.get<BackendMessageResponse>(`/v1/chats/${chatId}/messages/${messageId}`);
+            return mapBackendMessageToClient(backendMessage);
+        },
+        create: (chatId: string, data: CreateMessageRequest) => this.post<LibreMessage>(`/v1/chats/${chatId}/messages`, data),
+        delete: (chatId: string, messageId: string) => this.delete(`/v1/chats/${chatId}/messages/${messageId}`),
     };
 
     chat = {
         sendMessage: (data: ChatCompletionRequest) => this.post<ChatCompletionResponse>("/v1/chat", data),
         streamMessage: (data: ChatCompletionRequest) => this.stream("/v1/chat/stream", data),
-        regenerate: (conversationId: string, messageId: string) => this.post<ChatCompletionResponse>("/v1/chat/regenerate", { conversationId, messageId }),
-        continueFrom: (conversationId: string, messageId: string, message: string) =>
+        regenerate: (chatId: string, messageId: string) => this.post<ChatCompletionResponse>("/v1/chat/regenerate", { chatId, messageId }),
+        continueFrom: (chatId: string, messageId: string, message: string) =>
             this.post<ChatCompletionResponse>("/v1/chat/continue", {
-                conversationId,
+                chatId,
                 messageId,
                 message,
             }),
@@ -244,8 +350,8 @@ export class T3ChatClient extends ApiClient {
         delete: (id: string) => this.delete(`/v1/agents/${id}`),
         addTools: (id: string, toolIds: string[], configuration?: Record<string, unknown>) => this.post<void>(`/v1/agents/${id}/tools`, { toolIds, configuration }),
         removeTools: (id: string, toolIds: string[]) => this.delete(`/v1/agents/${id}/tools`, { body: { toolIds } }),
-        addConversationStarters: (id: string, starters: string[]) => this.post<void>(`/v1/agents/${id}/conversation-starters`, { starters }),
-        updateConversationStarters: (id: string, starters: { id?: string; text: string; orderIndex: number }[]) => this.update<void>(`/v1/agents/${id}/conversation-starters`, { starters }),
+        addChatStarters: (id: string, starters: string[]) => this.post<void>(`/v1/agents/${id}/chat-starters`, { starters }),
+        updateChatStarters: (id: string, starters: { id?: string; text: string; orderIndex: number }[]) => this.update<void>(`/v1/agents/${id}/chat-starters`, { starters }),
     };
 
     assistants = {
@@ -269,15 +375,15 @@ export class T3ChatClient extends ApiClient {
     };
 
     files = {
-        list: (params?: { conversationId?: string; fileType?: string }) => this.list<LibreFile[]>("/v1/files", params),
-        get: (id: string) => this.get<LibreFile>(`/v1/files/${id}`),
-        upload: async (file: globalThis.File, conversationId?: string) => {
+        list: (params?: { chatId?: string; fileType?: string }) => this.list<File[]>("/v1/files", params),
+        get: (id: string) => this.get<File>(`/v1/files/${id}`),
+        upload: async (file: globalThis.File, chatId?: string) => {
             const formData = new FormData();
             formData.append("file", file);
-            if (conversationId) {
-                formData.append("conversation_id", conversationId);
+            if (chatId) {
+                formData.append("chat_id", chatId);
             }
-            return this.post<LibreFile>("/v1/files", formData);
+            return this.post<File>("/v1/files", formData);
         },
         stt: async (file: globalThis.File, opts?: { language?: string; model?: string }) => {
             const formData = new FormData();

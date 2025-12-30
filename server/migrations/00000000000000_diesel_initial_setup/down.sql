@@ -19,8 +19,8 @@ DROP TABLE IF EXISTS tool_call_output_files CASCADE;
 DROP TABLE IF EXISTS tool_calls CASCADE;
 
 -- Agent & Assistant Relationships
-DROP TABLE IF EXISTS assistant_conversation_starters CASCADE;
-DROP TABLE IF EXISTS agent_conversation_starters CASCADE;
+DROP TABLE IF EXISTS assistant_chat_starters CASCADE;
+DROP TABLE IF EXISTS agent_chat_starters CASCADE;
 DROP TABLE IF EXISTS agent_hierarchy CASCADE;
 DROP TABLE IF EXISTS project_agents CASCADE;
 
@@ -46,18 +46,18 @@ DROP TABLE IF EXISTS preset_feature_flags CASCADE;
 DROP TABLE IF EXISTS preset_model_parameters CASCADE;
 DROP TABLE IF EXISTS presets CASCADE;
 
--- Messages & Conversations
+-- Messages & Chats
 DROP TABLE IF EXISTS message_content_blocks CASCADE;
 DROP TABLE IF EXISTS message_files CASCADE;
 DROP TABLE IF EXISTS messages CASCADE;
-DROP TABLE IF EXISTS conversation_tags_map CASCADE;
+DROP TABLE IF EXISTS chat_tags_map CASCADE;
 DROP TABLE IF EXISTS tags CASCADE;
-DROP TABLE IF EXISTS conversation_files CASCADE;
-DROP TABLE IF EXISTS conversation_feature_flags CASCADE;
-DROP TABLE IF EXISTS conversation_model_parameters CASCADE;
+DROP TABLE IF EXISTS chat_files CASCADE;
+DROP TABLE IF EXISTS chat_feature_flags CASCADE;
+DROP TABLE IF EXISTS chat_model_parameters CASCADE;
 DROP TABLE IF EXISTS assistant_files CASCADE;
 DROP TABLE IF EXISTS files CASCADE;
-DROP TABLE IF EXISTS conversations CASCADE;
+DROP TABLE IF EXISTS chats CASCADE;
 DROP TABLE IF EXISTS assistants CASCADE;
 DROP TABLE IF EXISTS agent_model_parameters CASCADE;
 DROP TABLE IF EXISTS agents CASCADE;

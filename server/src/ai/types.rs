@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Model parameters for AI completion requests
-/// Corresponds to the JSONB model_parameters field in conversations/presets
+/// Corresponds to the JSONB model_parameters field in chats/presets
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelParameters {
     pub temperature: Option<f32>,
@@ -19,7 +19,7 @@ pub struct ModelParameters {
 }
 
 /// Feature flags for provider-specific capabilities
-/// Corresponds to the JSONB feature_flags field in conversations/presets
+/// Corresponds to the JSONB feature_flags field in chats/presets
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FeatureFlags {
     pub resend_files: Option<bool>,

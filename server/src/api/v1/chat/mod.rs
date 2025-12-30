@@ -567,10 +567,6 @@ pub async fn stream_chat(
             match chunk_result {
                 Ok(chunk) => {
                     full_response.push_str(&chunk.delta);
-                    if chunk.done {
-                        _finish_reason = chunk.finish_reason.clone();
-                    }
-
                     // Send chunk as SSE event
                     let event = Event::default()
                         .json_data(&chunk)
@@ -613,7 +609,7 @@ pub async fn stream_chat(
                     let error_payload = serde_json::json!({
                         "error": true,
                         "messageId": uuid::Uuid::new_v4().to_string(),
-                        "conversationId": chat_id,
+                        "chatId": chat_id,
                         "parentMessageId": user_msg_id,
                         "sender": "Assistant",
                         "text": format!("Error: {}", e),

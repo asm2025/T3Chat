@@ -32,7 +32,7 @@ Start with everything running locally on your machine, then progressively connec
 
 -   🤖 AI Provider abstraction system (trait-based, extensible)
 
--   📊 Comprehensive database schema for conversations, messages, agents, presets, and more
+-   📊 Comprehensive database schema for chats, messages, agents, presets, and more
 
 **Local Development (Default):**
 
@@ -46,11 +46,11 @@ Start with everything running locally on your machine, then progressively connec
 
 -   💾 Normalized PostgreSQL schema with proper relationships
 
--   🎯 Agent system with tools and conversation starters
+-   🎯 Agent system with tools and chat starters
 
--   📝 Preset system for saved conversation configurations
+-   📝 Preset system for saved chat configurations
 
--   🏷️ Tag system for organizing conversations
+-   🏷️ Tag system for organizing chats
 
 -   📁 File upload and management
 
@@ -416,24 +416,26 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 
 ### Supported Providers
 
-- **OpenAI** - GPT‑4o, GPT‑4 Turbo, and other OpenAI models
-- **Anthropic** - Claude 3.5, Claude 3
-- **Google** - Gemini 1.5
-- **OpenRouter** - Aggregated models via OpenRouter
-- **ChatLLM** - An OpenAI-compatible provider backed by a single backend-managed key from `t3chat.yaml` (e.g. `ABACUS_API_KEY`)
-- **Custom** - Additional OpenAI‑compatible providers via `custom` entries in `t3chat.yaml`
+-   **OpenAI** - GPT‑4o, GPT‑4 Turbo, and other OpenAI models
+-   **Anthropic** - Claude 3.5, Claude 3
+-   **Google** - Gemini 1.5
+-   **OpenRouter** - Aggregated models via OpenRouter
+-   **ChatLLM** - An OpenAI-compatible provider backed by a single backend-managed key from `t3chat.yaml` (e.g. `ABACUS_API_KEY`)
+-   **Custom** - Additional OpenAI‑compatible providers via `custom` entries in `t3chat.yaml`
 
 ### Architecture
 
 **Backend (Rust):**
-- `ai/providers/mod.rs` defines the `AIProvider` trait and concrete providers (OpenAI, Anthropic, Google, OpenRouter, ChatLLM)
-- `ai/model_catalog.rs` builds a provider/model catalog from `t3chat.yaml`
-- Streaming support via Server-Sent Events (SSE) and typed chat request/response types in `ai/types.rs`
+
+-   `ai/providers/mod.rs` defines the `AIProvider` trait and concrete providers (OpenAI, Anthropic, Google, OpenRouter, ChatLLM)
+-   `ai/model_catalog.rs` builds a provider/model catalog from `t3chat.yaml`
+-   Streaming support via Server-Sent Events (SSE) and typed chat request/response types in `ai/types.rs`
 
 **Frontend (React):**
-- Endpoint/model selectors for switching between providers and models
-- Settings panel for provider-specific parameters (temperature, max tokens, etc.)
-- Streaming message display driven by `/api/v1/chat/stream`
+
+-   Endpoint/model selectors for switching between providers and models
+-   Settings panel for provider-specific parameters (temperature, max tokens, etc.)
+-   Streaming message display driven by `/api/v1/chat/stream`
 
 ### Adding a New Provider
 
@@ -515,9 +517,10 @@ To add a new AI provider:
 The backend uses Diesel with async connection pooling. Migrations are SQL files embedded from `server/migrations`.
 
 **Important**: Follow the normalization principles in `SCHEMA_CHANGES_SUMMARY.md`:
-- Use proper tables and foreign keys for lookup/reference data
-- Use JSONB only for truly dynamic/provider-specific fields
-- Use junction tables for many-to-many relationships
+
+-   Use proper tables and foreign keys for lookup/reference data
+-   Use JSONB only for truly dynamic/provider-specific fields
+-   Use junction tables for many-to-many relationships
 
 1. Install Diesel CLI (PostgreSQL) if you haven't: `cargo install diesel_cli --no-default-features --features postgres`
 
@@ -652,17 +655,16 @@ Your app includes a complete authentication system with **local username/passwor
 
 5. **Protection**: Protected routes automatically have user context
 
-
 OIDC authentication is optional and only appears in the login form if OIDC is configured. To enable OIDC, set the following environment variables: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `OIDC_REDIRECT_URI`.
 
 ### Default Admin User
 
 The database includes a seeded admin user for local authentication:
 
-- **Username**: `admin`
-- **Password**: `P@$$w0rd`
-- **Email**: `admin@localhost`
-- **Role**: Administrator
+-   **Username**: `admin`
+-   **Password**: `P@$$w0rd`
+-   **Email**: `admin@localhost`
+-   **Role**: Administrator
 
 **⚠️ Security Note**: Change the default admin password immediately after first login!
 
@@ -683,53 +685,60 @@ The backend uses Diesel with async pooling (`diesel_async`) and repository helpe
 The database includes comprehensive tables for a multi-AI chat platform:
 
 **Core Tables:**
-- `users` - User accounts with OIDC authentication
-- `conversations` - Chat conversations with multi-provider support
-- `messages` - Individual messages with model/endpoint tracking
-- `ai_models` - Reference table for AI model metadata
-- `user_api_keys` - Encrypted API key storage per user/provider
+
+-   `users` - User accounts with OIDC authentication
+-   `chats` - Chat chats with multi-provider support
+-   `messages` - Individual messages with model/endpoint tracking
+-   `ai_models` - Reference table for AI model metadata
+-   `user_api_keys` - Encrypted API key storage per user/provider
 
 **Organization & Configuration:**
-- `presets` - Saved conversation configurations
-- `agents` - AI agent definitions with tools and instructions
-- `assistants` - OpenAI Assistants API compatibility
-- `tags` - User-defined tags for conversation organization
-- `files` - File uploads and attachments
+
+-   `presets` - Saved chat configurations
+-   `agents` - AI agent definitions with tools and instructions
+-   `assistants` - OpenAI Assistants API compatibility
+-   `tags` - User-defined tags for chat organization
+-   `files` - File uploads and attachments
 
 **Relationships (Junction Tables):**
-- `conversation_tags_map` - Many-to-many: conversations ↔ tags
-- `agent_tools` - Many-to-many: agents ↔ tools with per-agent configuration
-- `assistant_tools` - Many-to-many: assistants ↔ tools
-- `agent_actions` - Many-to-many: agents ↔ custom actions
-- `project_agents` - Many-to-many: projects ↔ agents
-- `agent_hierarchy` - Many-to-many: parent agents ↔ sub-agents
+
+-   `chat_tags_map` - Many-to-many: chats ↔ tags
+-   `agent_tools` - Many-to-many: agents ↔ tools with per-agent configuration
+-   `assistant_tools` - Many-to-many: assistants ↔ tools
+-   `agent_actions` - Many-to-many: agents ↔ custom actions
+-   `project_agents` - Many-to-many: projects ↔ agents
+-   `agent_hierarchy` - Many-to-many: parent agents ↔ sub-agents
 
 **Additional Tables:**
-- `tools` - System and user-defined tool catalog
-- `actions` - Custom tools/plugins (OpenAPI, functions, webhooks)
-- `tool_calls` - Function/tool execution logs
-- `transactions` - Token usage tracking for billing/analytics
-- `shared_links` - Conversation sharing functionality
-- `projects`, `prompt_groups`, `prompts` - Advanced organization features
+
+-   `tools` - System and user-defined tool catalog
+-   `actions` - Custom tools/plugins (OpenAPI, functions, webhooks)
+-   `tool_calls` - Function/tool execution logs
+-   `transactions` - Token usage tracking for billing/analytics
+-   `shared_links` - Chat sharing functionality
+-   `projects`, `prompt_groups`, `prompts` - Advanced organization features
 
 ### Schema Design Principles
 
 ✅ **Proper Normalization:**
-- All lookup/reference data uses proper tables and foreign keys
-- Junction tables for many-to-many relationships
-- No redundant fields (e.g., `user_id` removed from messages)
+
+-   All lookup/reference data uses proper tables and foreign keys
+-   Junction tables for many-to-many relationships
+-   No redundant fields (e.g., `user_id` removed from messages)
 
 ✅ **JSONB for Dynamic Data:**
-- `model_parameters` - Provider-specific AI settings (varies by provider)
-- `feature_flags` - Optional boolean flags, provider-specific
-- `tool_resources` - Provider-specific tool configuration
-- `metadata` - Extension points for future features
+
+-   `model_parameters` - Provider-specific AI settings (varies by provider)
+-   `feature_flags` - Optional boolean flags, provider-specific
+-   `tool_resources` - Provider-specific tool configuration
+-   `metadata` - Extension points for future features
 
 ✅ **Performance Optimizations:**
-- Strategic composite indexes for common queries
-- Partial indexes for filtered queries
-- GIN indexes for arrays and full-text search
-- Denormalized `model`/`endpoint` in messages for historical accuracy
+
+-   Strategic composite indexes for common queries
+-   Partial indexes for filtered queries
+-   GIN indexes for arrays and full-text search
+-   Denormalized `model`/`endpoint` in messages for historical accuracy
 
 📖 **For detailed schema documentation**, see [`SCHEMA_CHANGES_SUMMARY.md`](SCHEMA_CHANGES_SUMMARY.md)
 
@@ -849,20 +858,23 @@ pnpm install
 T3Chat follows a phased development approach to transform into a full LibreChat-inspired platform:
 
 **Phase 1: Database Foundation & Core Backend Infrastructure**
-- ✅ Database schema design (fully normalized PostgreSQL)
-- ⏭️ Database migrations and Rust models
-- ⏭️ Frontend project structure and base components
+
+-   ✅ Database schema design (fully normalized PostgreSQL)
+-   ⏭️ Database migrations and Rust models
+-   ⏭️ Frontend project structure and base components
 
 **Phase 2: AI Provider Abstraction & Chat Functionality**
-- ⏭️ AI Provider trait system (OpenAI, Anthropic, Google)
-- ⏭️ Multi-provider chat interface
-- ⏭️ Streaming message support
+
+-   ⏭️ AI Provider trait system (OpenAI, Anthropic, Google)
+-   ⏭️ Multi-provider chat interface
+-   ⏭️ Streaming message support
 
 **Future Phases:**
-- Agent system with tools
-- Preset management
-- File upload and multimodal support
-- Advanced features (search, branching, etc.)
+
+-   Agent system with tools
+-   Preset management
+-   File upload and multimodal support
+-   Advanced features (search, branching, etc.)
 
 📖 **For the complete development plan**, see [`plan.md`](plan.md)
 
@@ -901,11 +913,12 @@ For detailed information about the Rust backend, including:
 See `[server/README.md](server/README.md)` for comprehensive documentation.
 
 **Key Backend Features:**
-- Trait-based AI provider system for extensibility
-- Fully normalized PostgreSQL schema with proper relationships
-- Repository pattern for data access
-- Encrypted API key storage (AES-256-GCM)
-- Streaming support via Server-Sent Events (SSE)
+
+-   Trait-based AI provider system for extensibility
+-   Fully normalized PostgreSQL schema with proper relationships
+-   Repository pattern for data access
+-   Encrypted API key storage (AES-256-GCM)
+-   Streaming support via Server-Sent Events (SSE)
 
 ---
 

@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use diesel::sql_types::Text;
 use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
@@ -58,63 +57,8 @@ where
     }
 }
 
-// Legacy message model - kept for API compatibility
-// Note: This doesn't directly map to the database anymore
-// Use conversation::Message instead for database operations
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct MessageModel {
-    pub id: Uuid,
-    pub chat_id: Uuid,
-    pub role: MessageRole,
-    pub content: String,
-    pub metadata: Option<serde_json::Value>,
-    pub parent_message_id: Option<Uuid>,
-    pub sequence_number: i32,
-    pub created_at: DateTime<Utc>,
-    pub tokens_used: Option<i32>,
-    pub model_used: Option<String>,
-}
-
-// Legacy - not used for database inserts
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewMessage {
-    pub id: Uuid,
-    pub chat_id: Uuid,
-    pub role: MessageRole,
-    pub content: String,
-    pub metadata: Option<serde_json::Value>,
-    pub parent_message_id: Option<Uuid>,
-    pub sequence_number: i32,
-    pub created_at: DateTime<Utc>,
-    pub tokens_used: Option<i32>,
-    pub model_used: Option<String>,
-}
-
-// Legacy - not used for database updates
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateMessage {
-    pub content: Option<String>,
-    pub metadata: Option<Option<serde_json::Value>>,
-    pub tokens_used: Option<i32>,
-    pub model_used: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateMessageDto {
-    pub content: Option<String>,
-    pub metadata: Option<serde_json::Value>,
-}
-
-impl From<UpdateMessageDto> for UpdateMessage {
-    fn from(dto: UpdateMessageDto) -> Self {
-        Self {
-            content: dto.content,
-            metadata: dto.metadata.map(Some),
-            tokens_used: None,
-            model_used: None,
-        }
-    }
-}
+// DTOs for message operations
+// Note: Use chat::Message, chat::NewMessage, and chat::UpdateMessage for database operations
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateMessageDto {
@@ -126,19 +70,8 @@ pub struct CreateMessageDto {
     pub sequence_number: i32,
 }
 
-impl From<CreateMessageDto> for NewMessage {
-    fn from(dto: CreateMessageDto) -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            chat_id: dto.chat_id,
-            role: dto.role,
-            content: dto.content,
-            metadata: dto.metadata,
-            parent_message_id: dto.parent_message_id,
-            sequence_number: dto.sequence_number,
-            created_at: Utc::now(),
-            tokens_used: None,
-            model_used: None,
-        }
-    }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateMessageDto {
+    pub content: Option<String>,
+    pub metadata: Option<serde_json::Value>,
 }

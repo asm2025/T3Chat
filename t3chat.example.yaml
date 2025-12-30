@@ -131,11 +131,11 @@ interface:
 #     ipWindowInMinutes: 60  # Rate limit window for file uploads per IP
 #     userMax: 50
 #     userWindowInMinutes: 60  # Rate limit window for file uploads per user
-#   conversationsImport:
+#   chatsImport:
 #     ipMax: 100
-#     ipWindowInMinutes: 60  # Rate limit window for conversation imports per IP
+#     ipWindowInMinutes: 60  # Rate limit window for chat imports per IP
 #     userMax: 50
-#     userWindowInMinutes: 60  # Rate limit window for conversation imports per user
+#     userWindowInMinutes: 60  # Rate limit window for chat imports per user
 
 # Example Actions Object Structure
 # actions:
@@ -268,8 +268,8 @@ endpoints:
 
           # Optional configurations
 
-          # Title Conversation setting
-          titleConvo: true # Set to true to enable title conversation
+          # Title Chat setting
+          titleConvo: true # Set to true to enable title chat
 
           # Title Method: Choose between "completion" or "functions".
           # titleMethod: "completion"  # Defaults to "completion" if omitted.

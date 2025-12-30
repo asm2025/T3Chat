@@ -1,7 +1,7 @@
 // ============================================================================
 // FileUpload Component - Phase 1B
 // ============================================================================
-// Drag-and-drop file upload component for multimodal conversations
+// Drag-and-drop file upload component for multimodal chats
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -83,20 +83,12 @@ export function FileUpload({ onFilesSelected, maxFiles = 10, maxSize = 10 * 1024
     return (
         <div className={cn("space-y-4", className)}>
             {/* Dropzone */}
-            <Card
-                {...getRootProps()}
-                className={cn(
-                    "cursor-pointer border-2 border-dashed p-8 text-center transition-colors",
-                    isDragActive && "border-primary bg-primary/5",
-                )}
-            >
+            <Card {...getRootProps()} className={cn("cursor-pointer border-2 border-dashed p-8 text-center transition-colors", isDragActive && "border-primary bg-primary/5")}>
                 <input {...getInputProps()} />
                 <div className="flex flex-col items-center gap-2">
                     <UploadIcon className={cn("h-10 w-10 text-muted-foreground", isDragActive && "text-primary")} />
                     <div>
-                        <p className="font-medium">
-                            {isDragActive ? "Drop files here" : "Drag & drop files here"}
-                        </p>
+                        <p className="font-medium">{isDragActive ? "Drop files here" : "Drag & drop files here"}</p>
                         <p className="text-sm text-muted-foreground">or click to browse</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -113,13 +105,7 @@ export function FileUpload({ onFilesSelected, maxFiles = 10, maxSize = 10 * 1024
                         {selectedFiles.map((file, index) => (
                             <Card key={`${file.name}-${index}`} className="flex items-center gap-3 p-3">
                                 {/* Icon */}
-                                <div className="flex-shrink-0">
-                                    {isImage(file) ? (
-                                        <ImageIcon className="h-8 w-8 text-blue-500" />
-                                    ) : (
-                                        <FileIcon className="h-8 w-8 text-muted-foreground" />
-                                    )}
-                                </div>
+                                <div className="flex-shrink-0">{isImage(file) ? <ImageIcon className="h-8 w-8 text-blue-500" /> : <FileIcon className="h-8 w-8 text-muted-foreground" />}</div>
 
                                 {/* File Info */}
                                 <div className="flex-1 min-w-0">
@@ -137,8 +123,7 @@ export function FileUpload({ onFilesSelected, maxFiles = 10, maxSize = 10 * 1024
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         removeFile(index);
-                                    }}
-                                >
+                                    }}>
                                     <XIcon className="h-4 w-4" />
                                 </Button>
                             </Card>
@@ -149,4 +134,3 @@ export function FileUpload({ onFilesSelected, maxFiles = 10, maxSize = 10 * 1024
         </div>
     );
 }
-

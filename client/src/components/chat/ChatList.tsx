@@ -3,12 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
-import { useConversations } from "@/hooks/useConversations";
+import { useChats } from "@/hooks/useChats";
 
-export function ConversationList() {
-    const { chats, loading } = useConversations();
+export function ChatList() {
+    const { chats, loading } = useChats();
     const navigate = useNavigate();
-    const { conversationId } = useParams<{ conversationId?: string }>();
+    const { chatId } = useParams<{ chatId?: string }>();
     const [query, setQuery] = useState("");
 
     const filteredChats = useMemo(() => {
@@ -47,11 +47,11 @@ export function ConversationList() {
 
             <div className="flex-1 overflow-y-auto px-2">
                 {filteredChats.length === 0 ? (
-                    <div className="px-2 py-8 text-center text-xs text-muted-foreground">{query ? "No conversations match your search." : "No chats yet."}</div>
+                    <div className="px-2 py-8 text-center text-xs text-muted-foreground">{query ? "No chats match your search." : "No chats yet."}</div>
                 ) : (
                     <div className="space-y-1">
                         {filteredChats.map((chat) => {
-                            const active = chat.id === conversationId;
+                            const active = chat.id === chatId;
                             return (
                                 <button
                                     key={chat.id}

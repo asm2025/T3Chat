@@ -137,30 +137,21 @@ export function PresetEditor({ open, onOpenChange, presetId }: PresetEditorProps
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{isEditMode ? "Edit Preset" : "Create Preset"}</DialogTitle>
-                    <DialogDescription>
-                        {isEditMode
-                            ? "Update your preset configuration"
-                            : "Save your current configuration as a preset for quick access"}
-                    </DialogDescription>
+                    <DialogDescription>{isEditMode ? "Update your preset configuration" : "Save your current configuration as a preset for quick access"}</DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     {/* Preset Name */}
                     <div className="space-y-2">
                         <Label htmlFor="preset-name">Preset Name</Label>
-                        <Input
-                            id="preset-name"
-                            placeholder="My GPT-4 Preset"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                        />
+                        <Input id="preset-name" placeholder="My GPT-4 Preset" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
 
                     {/* Set as Default */}
                     <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                             <Label htmlFor="default-preset">Set as Default</Label>
-                            <p className="text-xs text-muted-foreground">Use this preset for new conversations</p>
+                            <p className="text-xs text-muted-foreground">Use this preset for new chats</p>
                         </div>
                         <Switch id="default-preset" checked={isDefault} onCheckedChange={setIsDefault} />
                     </div>
@@ -176,26 +167,22 @@ export function PresetEditor({ open, onOpenChange, presetId }: PresetEditorProps
                             {/* Endpoint Selector */}
                             <div className="space-y-2">
                                 <Label>AI Provider</Label>
-                                <EndpointSelector
-                                    value={endpointOptions.endpoint}
-                                    onChange={(endpoint: Endpoint) =>
-                                        setEndpointOptions({ ...endpointOptions, endpoint })
-                                    }
-                                    className="w-full"
-                                />
+                                <EndpointSelector value={endpointOptions.endpoint} onChange={(endpoint: Endpoint) => setEndpointOptions({ ...endpointOptions, endpoint })} className="w-full" />
                             </div>
 
                             {/* Model Selector */}
                             <div className="space-y-2">
                                 <Label>Model</Label>
                                 <ModelSelector
-                                    models={models.filter((m) => m.provider === endpointOptions.endpoint as string)}
+                                    models={models.filter((m) => m.provider === (endpointOptions.endpoint as string))}
                                     selectedModel={models.find((m) => m.modelId === endpointOptions.model) || null}
-                                    onSelect={(model) => setEndpointOptions({ 
-                                        ...endpointOptions, 
-                                        model: model.modelId,
-                                        modelLabel: model.displayName
-                                    })}
+                                    onSelect={(model) =>
+                                        setEndpointOptions({
+                                            ...endpointOptions,
+                                            model: model.modelId,
+                                            modelLabel: model.displayName,
+                                        })
+                                    }
                                 />
                             </div>
                         </TabsContent>
@@ -218,4 +205,3 @@ export function PresetEditor({ open, onOpenChange, presetId }: PresetEditorProps
         </Dialog>
     );
 }
-

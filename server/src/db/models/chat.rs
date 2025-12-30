@@ -1,64 +1,205 @@
 use chrono::{DateTime, Utc};
+use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use uuid::Uuid;
 
-use crate::db::models::{AiProvider, Conversation};
+use crate::db::schema::{chats, messages};
 
-// Legacy ChatModel - plain struct for API compatibility
-// Note: No longer directly queryable from database (chats table doesn't exist)
-// Use Conversation model for database operations and convert to ChatModel for API responses
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ChatModel {
+/// Chat model
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = chats)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Chat {
     pub id: Uuid,
+    pub chat_id: String, // for API compatibility
     pub user_id: String,
-    pub title: String,
-    pub model_provider: AiProvider,
-    pub model_id: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub deleted_at: Option<DateTime<Utc>>,
-}
-
-// Convert from Conversation to ChatModel for API compatibility
-impl From<Conversation> for ChatModel {
-    fn from(conv: Conversation) -> Self {
-        // Parse provider from endpoint string
-        let model_provider = AiProvider::from_str(&conv.endpoint).unwrap_or(AiProvider::OpenAI);
-
-        Self {
-            id: conv.id,
-            user_id: conv.user_id,
-            title: conv.title.unwrap_or_else(|| "New Chat".to_string()),
-            model_provider,
-            model_id: conv.model,
-            created_at: conv.created_at,
-            updated_at: conv.updated_at,
-            deleted_at: None, // Conversations use is_archived instead
-        }
-    }
-}
-
-// Legacy NewChat - not used for database inserts
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewChat {
-    pub id: Uuid,
-    pub user_id: String,
-    pub title: String,
-    pub model_provider: AiProvider,
-    pub model_id: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub deleted_at: Option<DateTime<Utc>>,
-}
-
-// Legacy UpdateChat - not used for database updates
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateChat {
     pub title: Option<String>,
-    pub model_provider: Option<AiProvider>,
-    pub model_id: Option<String>,
+
+    // Current provider/model (user's last selection, can change per message)
+    pub endpoint: String, // openai, anthropic, google, custom, etc.
+    pub model: String,
+    pub model_label: Option<String>,
+
+    // AI Parameters (JSONB - dynamic, varies by provider)
+    pub model_parameters: Option<JsonValue>,
+
+    // System/Instructions
+    pub system_message: Option<String>,
+    pub instructions: Option<String>,
+
+    // Feature Flags (JSONB - optional boolean flags, varies by provider)
+    pub feature_flags: Option<JsonValue>,
+
+    // Agent/Assistant references (optional)
+    pub agent_id: Option<Uuid>,
+    pub assistant_id: Option<Uuid>,
+    pub agent_options: Option<JsonValue>,
+
+    // Metadata
+    pub is_archived: Option<bool>,
+
+    // Timestamps
+    pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+/// New chat creation
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = chats)]
+pub struct NewChat {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
+    pub chat_id: String,
+    pub user_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    pub endpoint: String,
+    pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_parameters: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feature_flags: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assistant_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_options: Option<JsonValue>,
+}
+
+/// Chat update
+#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = chats)]
+pub struct UpdateChat {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_label: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_parameters: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_message: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feature_flags: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<Option<Uuid>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assistant_id: Option<Option<Uuid>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_options: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_archived: Option<bool>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Message model
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[diesel(table_name = messages)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct Message {
+    pub id: Uuid,
+    pub message_id: String, // for API compatibility
+    pub chat_id: Uuid,
+    pub parent_message_id: Option<Uuid>,
+
+    // Message basics
+    pub role: String, // user, assistant, system, tool
+    pub text: Option<String>,
+    pub is_created_by_user: bool,
+
+    // AI/Model info (stored for historical accuracy)
+    pub model: Option<String>,
+    pub endpoint: Option<String>,
+
+    // Content (for multimodal messages)
+    pub content: Option<JsonValue>,
+
+    // Completion info
+    pub token_count: Option<i32>,
+    pub finish_reason: Option<String>,
+    pub error: Option<bool>,
+
+    // File attachments
+    pub file_ids: Option<Vec<Option<Uuid>>>,
+
+    // Tool/Plugin data
+    pub tool_call_id: Option<String>,
+    pub plugin_data: Option<JsonValue>,
+
+    // Metadata
+    pub thread_id: Option<String>,
+
+    // Timestamps
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// New message creation
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = messages)]
+pub struct NewMessage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
+    pub message_id: String,
+    pub chat_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_message_id: Option<Uuid>,
+    pub role: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    pub is_created_by_user: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_count: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub finish_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_ids: Option<Vec<Option<Uuid>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_data: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<String>,
+}
+
+/// Message update
+#[derive(Debug, Clone, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = messages)]
+pub struct UpdateMessage {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<JsonValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_count: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub finish_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<bool>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// DTOs for chat operations
+use crate::db::models::AiProvider;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateChatDto {
@@ -70,16 +211,21 @@ pub struct CreateChatDto {
 
 impl From<CreateChatDto> for NewChat {
     fn from(dto: CreateChatDto) -> Self {
-        let now = Utc::now();
         Self {
-            id: Uuid::new_v4(),
+            id: None,
+            chat_id: Uuid::new_v4().to_string(),
             user_id: dto.user_id,
-            title: dto.title,
-            model_provider: dto.model_provider,
-            model_id: dto.model_id,
-            created_at: now,
-            updated_at: now,
-            deleted_at: None,
+            title: Some(dto.title),
+            endpoint: dto.model_provider.as_str().to_string(),
+            model: dto.model_id,
+            model_label: None,
+            model_parameters: None,
+            system_message: None,
+            instructions: None,
+            feature_flags: None,
+            agent_id: None,
+            assistant_id: None,
+            agent_options: None,
         }
     }
 }
@@ -95,8 +241,56 @@ impl From<UpdateChatDto> for UpdateChat {
     fn from(dto: UpdateChatDto) -> Self {
         Self {
             title: dto.title,
-            model_provider: dto.model_provider,
-            model_id: dto.model_id,
+            endpoint: dto.model_provider.map(|p| p.as_str().to_string()),
+            model: dto.model_id,
+            model_label: None,
+            model_parameters: None,
+            system_message: None,
+            instructions: None,
+            feature_flags: None,
+            agent_id: None,
+            assistant_id: None,
+            agent_options: None,
+            is_archived: None,
+            updated_at: Utc::now(),
+        }
+    }
+}
+
+// DTOs for message operations
+use crate::db::models::message::{CreateMessageDto, UpdateMessageDto};
+
+impl From<CreateMessageDto> for NewMessage {
+    fn from(dto: CreateMessageDto) -> Self {
+        Self {
+            id: Some(Uuid::new_v4()),
+            message_id: Uuid::new_v4().to_string(),
+            chat_id: dto.chat_id,
+            parent_message_id: dto.parent_message_id,
+            role: dto.role.as_str().to_string(),
+            text: Some(dto.content),
+            is_created_by_user: dto.role == crate::db::models::message::MessageRole::User,
+            model: None,
+            endpoint: None,
+            content: dto.metadata,
+            token_count: None,
+            finish_reason: None,
+            file_ids: None,
+            tool_call_id: None,
+            plugin_data: None,
+            thread_id: None,
+        }
+    }
+}
+
+impl From<UpdateMessageDto> for UpdateMessage {
+    fn from(dto: UpdateMessageDto) -> Self {
+        Self {
+            text: dto.content.map(Some),
+            content: dto.metadata,
+            token_count: None,
+            finish_reason: None,
+            error: None,
             updated_at: Utc::now(),
         }
     }

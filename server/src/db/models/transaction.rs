@@ -14,7 +14,7 @@ pub struct Transaction {
     pub id: Uuid,
     pub user_id: String,
     pub message_id: Option<Uuid>,
-    pub conversation_id: Option<Uuid>,
+    pub chat_id: Option<Uuid>,
 
     // Model info (denormalized for historical accuracy)
     pub provider: String,
@@ -48,7 +48,7 @@ pub struct NewTransaction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub conversation_id: Option<Uuid>,
+    pub chat_id: Option<Uuid>,
     pub provider: String,
     pub model: String,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -81,7 +81,7 @@ pub async fn upload_file(
             id: Some(file_id),
             file_id: file_id.to_string(),
             user_id: user.0.id.clone(),
-            conversation_id: None,
+            chat_id: None,
             filename,
             filepath: filepath.to_string_lossy().to_string(),
             mime_type: content_type.clone(),

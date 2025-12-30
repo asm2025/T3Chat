@@ -1,6 +1,6 @@
 import type { MessageRole } from "./librechat";
 
-export interface Conversation {
+export interface Chat {
     id: string;
     userId: string;
     title: string;
@@ -24,7 +24,7 @@ export interface Message {
     modelUsed?: string;
 }
 
-export interface ConversationWithMessages extends Conversation {
+export interface ChatWithMessages extends Chat {
     messages: Message[];
 }
 

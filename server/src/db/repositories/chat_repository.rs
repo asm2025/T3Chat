@@ -1,62 +1,42 @@
+use anyhow::{Context, Result};
 use async_trait::async_trait;
+use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-use emixdiesel::{Error, Result};
 use uuid::Uuid;
 
-use crate::db::dto::{Pagination, ResultSet};
-use crate::db::models::{
-    ChatModel,
-    // Use conversation models from the actual schema
-    Conversation,
-    CreateChatDto,
-    CreateMessageDto,
-    Message,
-    NewConversation,
-    UpdateChatDto,
-    UpdateConversation,
-    UpdateMessageDto,
-    conversation::NewMessage, // Explicitly use conversation types
-    conversation::UpdateMessage,
-};
-
-// Aliases for legacy API compatibility
-type UpdateChat = UpdateConversation;
 use crate::db::{
     DbPool,
-    schema::{conversations as chats, messages}, // Map conversations to chats for legacy compatibility
+    dto::{Pagination, ResultSet},
+    models::{
+        Chat, Message, NewChat, UpdateChat, 
+        chat::{CreateChatDto, UpdateChatDto, NewMessage, UpdateMessage},
+        message::{CreateMessageDto, UpdateMessageDto},
+    },
+    schema::{chats, messages},
 };
-
-// Type alias for API compatibility - the repository now returns conversation Message model
-type MessageModel = Message;
 
 #[async_trait]
 pub trait TChatRepository: Send + Sync {
     // Chat methods
-    async fn list(
-        &self,
-        user_id: &str,
-        pagination: Option<Pagination>,
-    ) -> Result<ResultSet<ChatModel>>;
-    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<ChatModel>>;
-    async fn create(&self, model: CreateChatDto) -> Result<ChatModel>;
-    async fn update(&self, id: Uuid, user_id: &str, model: UpdateChatDto) -> Result<ChatModel>;
+    async fn create(&self, dto: CreateChatDto) -> Result<Chat>;
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Chat>>;
+    async fn get_by_chat_id(&self, chat_id: &str, user_id: &str) -> Result<Option<Chat>>;
+    async fn list(&self, user_id: &str, pagination: Option<Pagination>) -> Result<ResultSet<Chat>>;
+    async fn update(&self, id: Uuid, user_id: &str, dto: UpdateChatDto) -> Result<Chat>;
     async fn delete(&self, id: Uuid, user_id: &str) -> Result<()>;
+    async fn archive(&self, id: Uuid, user_id: &str) -> Result<Chat>;
+    async fn unarchive(&self, id: Uuid, user_id: &str) -> Result<Chat>;
 
     // Message methods
-    async fn list_messages(&self, chat_id: Uuid, user_id: &str) -> Result<Vec<MessageModel>>;
-    async fn create_message(&self, model: CreateMessageDto) -> Result<MessageModel>;
-    async fn get_next_sequence_number(&self, chat_id: Uuid) -> Result<i32>;
-    async fn update_tokens_used(&self, id: Uuid, tokens: i32, model: &str) -> Result<()>;
-    async fn update_message(
-        &self,
-        id: Uuid,
-        chat_id: Uuid,
-        user_id: &str,
-        model: UpdateMessageDto,
-    ) -> Result<MessageModel>;
+    async fn create_message(&self, dto: CreateMessageDto) -> Result<Message>;
+    async fn get_message(&self, id: Uuid) -> Result<Option<Message>>;
+    async fn list_messages(&self, chat_id: Uuid, user_id: &str) -> Result<Vec<Message>>;
+    async fn update_message(&self, id: Uuid, chat_id: Uuid, user_id: &str, dto: UpdateMessageDto) -> Result<Message>;
     async fn delete_message(&self, id: Uuid, chat_id: Uuid, user_id: &str) -> Result<()>;
     async fn clear_messages(&self, chat_id: Uuid, user_id: &str) -> Result<()>;
+    async fn get_next_sequence_number(&self, chat_id: Uuid) -> Result<i32>;
+    async fn update_tokens_used(&self, id: Uuid, tokens: i32, model: &str) -> Result<()>;
 }
 
 pub struct ChatRepository {
@@ -71,18 +51,71 @@ impl ChatRepository {
 
 #[async_trait]
 impl TChatRepository for ChatRepository {
-    async fn list(
-        &self,
-        user_id: &str,
-        pagination: Option<Pagination>,
-    ) -> Result<ResultSet<ChatModel>> {
+    /// Create a new chat
+    async fn create(&self, dto: CreateChatDto) -> Result<Chat> {
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
-        // Count total non-archived conversations for this user
+        let new_chat: NewChat = dto.into();
+        diesel::insert_into(chats::table)
+            .values(&new_chat)
+            .get_result(&mut conn)
+            .await
+            .context("Failed to create chat")
+    }
+
+    /// Get chat by ID (supports both internal UUID and external chat_id)
+    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<Chat>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        let id_str = id.to_string();
+        chats::table
+            .filter(chats::user_id.eq(user_id))
+            .filter(chats::id.eq(id).or(chats::chat_id.eq(&id_str)))
+            .filter(
+                chats::is_archived
+                    .eq(false)
+                    .or(chats::is_archived.is_null()),
+            )
+            .first(&mut conn)
+            .await
+            .optional()
+            .context("Failed to get chat")
+    }
+
+    /// Get chat by chat_id
+    async fn get_by_chat_id(&self, chat_id: &str, user_id: &str) -> Result<Option<Chat>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        chats::table
+            .filter(chats::chat_id.eq(chat_id))
+            .filter(chats::user_id.eq(user_id))
+            .first(&mut conn)
+            .await
+            .optional()
+            .context("Failed to get chat")
+    }
+
+    /// List chats for a user
+    async fn list(&self, user_id: &str, pagination: Option<Pagination>) -> Result<ResultSet<Chat>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        // Count total non-archived chats for this user
         let total = chats::table
             .filter(chats::user_id.eq(user_id))
             .filter(
@@ -93,7 +126,7 @@ impl TChatRepository for ChatRepository {
             .count()
             .get_result::<i64>(&mut conn)
             .await
-            .map_err(Error::from_std_error)? as u64;
+            .context("Failed to count chats")? as u64;
 
         if total == 0 {
             return Ok(ResultSet {
@@ -103,7 +136,7 @@ impl TChatRepository for ChatRepository {
             });
         }
 
-        // Build query - returns Conversation, convert to ChatModel
+        // Build query
         let mut query = chats::table
             .filter(chats::user_id.eq(user_id))
             .filter(
@@ -120,13 +153,10 @@ impl TChatRepository for ChatRepository {
                 .limit(p.page_size as i64);
         }
 
-        let conversations = query
-            .load::<Conversation>(&mut conn)
+        let data = query
+            .load::<Chat>(&mut conn)
             .await
-            .map_err(Error::from_std_error)?;
-
-        // Convert Conversation to ChatModel for API compatibility
-        let data = conversations.into_iter().map(ChatModel::from).collect();
+            .context("Failed to list chats")?;
 
         Ok(ResultSet {
             data,
@@ -135,74 +165,13 @@ impl TChatRepository for ChatRepository {
         })
     }
 
-    async fn get(&self, id: Uuid, user_id: &str) -> Result<Option<ChatModel>> {
+    /// Update chat
+    async fn update(&self, id: Uuid, user_id: &str, dto: UpdateChatDto) -> Result<Chat> {
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
-
-        // NOTE: We support looking up conversations by either the internal UUID primary key (`id`)
-        // or the external LibreChat-compatible identifier (`conversation_id`), which is stored as TEXT.
-        // Both are UUID-shaped strings in practice, but they may not be equal.
-        let id_str = id.to_string();
-
-        let conversation = chats::table
-            .filter(chats::user_id.eq(user_id))
-            .filter(chats::id.eq(id).or(chats::conversation_id.eq(&id_str)))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
-            .first::<Conversation>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?;
-
-        Ok(conversation.map(ChatModel::from))
-    }
-
-    async fn create(&self, model: CreateChatDto) -> Result<ChatModel> {
-        let mut conn = self
-            .pool
-            .get()
-            .await
-            .map_err(|e| Error::from_std_error(e))?;
-
-        // Convert CreateChatDto to NewConversation
-        let new_conversation = NewConversation {
-            id: Some(Uuid::new_v4()),
-            conversation_id: Uuid::new_v4().to_string(),
-            user_id: model.user_id,
-            title: Some(model.title),
-            endpoint: model.model_provider.as_str().to_string(),
-            model: model.model_id,
-            model_label: None,
-            model_parameters: None,
-            system_message: None,
-            instructions: None,
-            feature_flags: None,
-            agent_id: None,
-            assistant_id: None,
-            agent_options: None,
-        };
-
-        let conversation = diesel::insert_into(chats::table)
-            .values(&new_conversation)
-            .get_result::<Conversation>(&mut conn)
-            .await
-            .map_err(Error::from_std_error)?;
-
-        Ok(ChatModel::from(conversation))
-    }
-
-    async fn update(&self, id: Uuid, user_id: &str, model: UpdateChatDto) -> Result<ChatModel> {
-        let mut conn = self
-            .pool
-            .get()
-            .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
         // Check if chat exists and belongs to user
         let _existing = chats::table
@@ -213,44 +182,29 @@ impl TChatRepository for ChatRepository {
                     .eq(false)
                     .or(chats::is_archived.is_null()),
             )
-            .first::<Conversation>(&mut conn)
+            .first::<Chat>(&mut conn)
             .await
             .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
+            .context("Failed to check chat")?
+            .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
 
-        // Convert UpdateChatDto to UpdateConversation
-        let update_conversation = UpdateConversation {
-            title: model.title,
-            endpoint: model.model_provider.map(|p| p.as_str().to_string()),
-            model: model.model_id,
-            model_label: None,
-            model_parameters: None,
-            system_message: None,
-            instructions: None,
-            feature_flags: None,
-            agent_id: None,
-            assistant_id: None,
-            agent_options: None,
-            is_archived: None,
-            updated_at: chrono::Utc::now(),
-        };
-
-        let conversation = diesel::update(chats::table.filter(chats::id.eq(id)))
-            .set(&update_conversation)
-            .get_result::<Conversation>(&mut conn)
+        let update: UpdateChat = dto.into();
+        diesel::update(chats::table)
+            .filter(chats::id.eq(id))
+            .filter(chats::user_id.eq(user_id))
+            .set(&update)
+            .get_result(&mut conn)
             .await
-            .map_err(Error::from_std_error)?;
-
-        Ok(ChatModel::from(conversation))
+            .context("Failed to update chat")
     }
 
+    /// Delete chat (soft delete by archiving)
     async fn delete(&self, id: Uuid, user_id: &str) -> Result<()> {
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
         // Check if chat exists and belongs to user
         let _existing = chats::table
@@ -261,95 +215,264 @@ impl TChatRepository for ChatRepository {
                     .eq(false)
                     .or(chats::is_archived.is_null()),
             )
-            .first::<Conversation>(&mut conn)
+            .first::<Chat>(&mut conn)
             .await
             .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
+            .context("Failed to check chat")?
+            .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
 
         // Soft delete by setting is_archived
-        diesel::update(chats::table.filter(chats::id.eq(id)))
+        diesel::update(chats::table)
+            .filter(chats::id.eq(id))
+            .filter(chats::user_id.eq(user_id))
             .set(chats::is_archived.eq(Some(true)))
             .execute(&mut conn)
             .await
-            .map_err(Error::from_std_error)?;
+            .context("Failed to delete chat")?;
 
         Ok(())
     }
 
-    async fn list_messages(&self, chat_id: Uuid, user_id: &str) -> Result<Vec<MessageModel>> {
-        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
-        // or the external LibreChat-compatible identifier (`conversation_id`).
-        let chat = self
-            .get(chat_id, user_id)
-            .await?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
+    /// Archive chat
+    async fn archive(&self, id: Uuid, user_id: &str) -> Result<Chat> {
+        let dto = UpdateChatDto {
+            title: None,
+            model_provider: None,
+            model_id: None,
+        };
+        let mut update: UpdateChat = dto.into();
+        update.is_archived = Some(true);
+        update.updated_at = Utc::now();
+        
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
-        // Query messages from conversation - returns Message (conversation model), which is aliased as MessageModel
-        messages::table
-            .filter(messages::conversation_id.eq(chat.id))
-            .order(messages::created_at.asc())
-            .load::<MessageModel>(&mut conn)
+        diesel::update(chats::table)
+            .filter(chats::id.eq(id))
+            .filter(chats::user_id.eq(user_id))
+            .set(&update)
+            .get_result(&mut conn)
             .await
-            .map_err(Error::from_std_error)
+            .context("Failed to archive chat")
     }
 
-    async fn create_message(&self, model: CreateMessageDto) -> Result<MessageModel> {
+    /// Unarchive chat
+    async fn unarchive(&self, id: Uuid, user_id: &str) -> Result<Chat> {
+        let dto = UpdateChatDto {
+            title: None,
+            model_provider: None,
+            model_id: None,
+        };
+        let mut update: UpdateChat = dto.into();
+        update.is_archived = Some(false);
+        update.updated_at = Utc::now();
+        
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
-        let new_message: NewMessage = model.into();
+        diesel::update(chats::table)
+            .filter(chats::id.eq(id))
+            .filter(chats::user_id.eq(user_id))
+            .set(&update)
+            .get_result(&mut conn)
+            .await
+            .context("Failed to unarchive chat")
+    }
 
+    // ==========================================
+    // MESSAGE OPERATIONS
+    // ==========================================
+
+    /// Create a new message
+    async fn create_message(&self, dto: CreateMessageDto) -> Result<Message> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        let new_message: NewMessage = dto.into();
         diesel::insert_into(messages::table)
             .values(&new_message)
             .get_result(&mut conn)
             .await
-            .map_err(Error::from_std_error)
+            .context("Failed to create message")
     }
 
+    /// Get message by ID
+    async fn get_message(&self, id: Uuid) -> Result<Option<Message>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        messages::table
+            .filter(messages::id.eq(id))
+            .first(&mut conn)
+            .await
+            .optional()
+            .context("Failed to get message")
+    }
+
+    /// List messages for a chat
+    async fn list_messages(&self, chat_id: Uuid, _user_id: &str) -> Result<Vec<Message>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        messages::table
+            .filter(messages::chat_id.eq(chat_id))
+            .order(messages::created_at.asc())
+            .load(&mut conn)
+            .await
+            .context("Failed to list messages")
+    }
+
+    /// Update message
+    async fn update_message(&self, id: Uuid, chat_id: Uuid, user_id: &str, dto: UpdateMessageDto) -> Result<Message> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        // Verify chat belongs to user
+        let _chat = chats::table
+            .filter(chats::id.eq(chat_id))
+            .filter(chats::user_id.eq(user_id))
+            .first::<Chat>(&mut conn)
+            .await
+            .optional()
+            .context("Failed to verify chat")?
+            .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
+
+        // Check if message exists and belongs to the chat
+        let _existing = messages::table
+            .filter(messages::id.eq(id))
+            .filter(messages::chat_id.eq(chat_id))
+            .first::<Message>(&mut conn)
+            .await
+            .optional()
+            .context("Failed to check message")?
+            .ok_or_else(|| anyhow::anyhow!("Message not found"))?;
+
+        let update: UpdateMessage = dto.into();
+        diesel::update(messages::table)
+            .filter(messages::id.eq(id))
+            .filter(messages::chat_id.eq(chat_id))
+            .set(&update)
+            .get_result(&mut conn)
+            .await
+            .context("Failed to update message")
+    }
+
+    /// Delete message
+    async fn delete_message(&self, id: Uuid, chat_id: Uuid, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        // Verify chat belongs to user
+        let _chat = chats::table
+            .filter(chats::id.eq(chat_id))
+            .filter(chats::user_id.eq(user_id))
+            .first::<Chat>(&mut conn)
+            .await
+            .optional()
+            .context("Failed to verify chat")?
+            .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
+
+        // Check if message exists and belongs to the chat
+        let _existing = messages::table
+            .filter(messages::id.eq(id))
+            .filter(messages::chat_id.eq(chat_id))
+            .first::<Message>(&mut conn)
+            .await
+            .optional()
+            .context("Failed to check message")?
+            .ok_or_else(|| anyhow::anyhow!("Message not found"))?;
+
+        diesel::delete(messages::table)
+            .filter(messages::id.eq(id))
+            .execute(&mut conn)
+            .await
+            .context("Failed to delete message")?;
+
+        Ok(())
+    }
+
+    /// Clear all messages in a chat
+    async fn clear_messages(&self, chat_id: Uuid, user_id: &str) -> Result<()> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        // Verify chat belongs to user
+        let _chat = chats::table
+            .filter(chats::id.eq(chat_id))
+            .filter(chats::user_id.eq(user_id))
+            .first::<Chat>(&mut conn)
+            .await
+            .optional()
+            .context("Failed to verify chat")?
+            .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
+
+        diesel::delete(messages::table)
+            .filter(messages::chat_id.eq(chat_id))
+            .execute(&mut conn)
+            .await
+            .context("Failed to clear messages")?;
+
+        Ok(())
+    }
+
+    /// Get next sequence number for a chat (counts existing messages + 1)
     async fn get_next_sequence_number(&self, chat_id: Uuid) -> Result<i32> {
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
-        // Note: messages table doesn't have sequence_number in the new schema
-        // We'll just count existing messages + 1 for legacy API compatibility
         let count: i64 = messages::table
-            .filter(messages::conversation_id.eq(chat_id))
+            .filter(messages::chat_id.eq(chat_id))
             .count()
-            .first::<i64>(&mut conn)
+            .get_result::<i64>(&mut conn)
             .await
-            .map_err(Error::from_std_error)?;
+            .context("Failed to count messages")?;
 
         Ok((count + 1) as i32)
     }
 
+    /// Update token count for a message
     async fn update_tokens_used(&self, id: Uuid, tokens: i32, _model: &str) -> Result<()> {
         let mut conn = self
             .pool
             .get()
             .await
-            .map_err(|e| Error::from_std_error(e))?;
+            .context("Failed to get DB connection")?;
 
         // Check if message exists
         let _existing = messages::table
             .find(id)
-            .first::<MessageModel>(&mut conn)
+            .first::<Message>(&mut conn)
             .await
             .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Message not found".to_string()))?;
+            .context("Failed to check message")?
+            .ok_or_else(|| anyhow::anyhow!("Message not found"))?;
 
         let update = UpdateMessage {
             text: None,
@@ -357,111 +480,14 @@ impl TChatRepository for ChatRepository {
             token_count: Some(tokens),
             finish_reason: None,
             error: None,
-            updated_at: chrono::Utc::now(),
+            updated_at: Utc::now(),
         };
 
         diesel::update(messages::table.find(id))
             .set(&update)
             .execute(&mut conn)
             .await
-            .map_err(Error::from_std_error)?;
-
-        Ok(())
-    }
-
-    async fn update_message(
-        &self,
-        id: Uuid,
-        chat_id: Uuid,
-        user_id: &str,
-        model: UpdateMessageDto,
-    ) -> Result<MessageModel> {
-        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
-        // or the external LibreChat-compatible identifier (`conversation_id`).
-        let chat = self
-            .get(chat_id, user_id)
-            .await?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
-        let mut conn = self
-            .pool
-            .get()
-            .await
-            .map_err(|e| Error::from_std_error(e))?;
-
-        // Check if message exists and belongs to the chat
-        let _existing = messages::table
-            .filter(messages::id.eq(id))
-            .filter(messages::conversation_id.eq(chat.id))
-            .first::<Message>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Message not found".to_string()))?;
-
-        let update: UpdateMessage = model.into();
-
-        diesel::update(
-            messages::table
-                .filter(messages::id.eq(id))
-                .filter(messages::conversation_id.eq(chat.id)),
-        )
-            .set(&update)
-            .get_result(&mut conn)
-            .await
-            .map_err(Error::from_std_error)
-    }
-
-    async fn delete_message(&self, id: Uuid, chat_id: Uuid, user_id: &str) -> Result<()> {
-        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
-        // or the external LibreChat-compatible identifier (`conversation_id`).
-        let chat = self
-            .get(chat_id, user_id)
-            .await?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
-        let mut conn = self
-            .pool
-            .get()
-            .await
-            .map_err(|e| Error::from_std_error(e))?;
-
-        // Check if message exists and belongs to the chat
-        let _existing = messages::table
-            .filter(messages::id.eq(id))
-            .filter(messages::conversation_id.eq(chat.id))
-            .first::<Message>(&mut conn)
-            .await
-            .optional()
-            .map_err(Error::from_std_error)?
-            .ok_or_else(|| Error::NotFound("Message not found".to_string()))?;
-
-        diesel::delete(messages::table.filter(messages::id.eq(id)))
-            .execute(&mut conn)
-            .await
-            .map_err(Error::from_std_error)?;
-
-        Ok(())
-    }
-
-    async fn clear_messages(&self, chat_id: Uuid, user_id: &str) -> Result<()> {
-        // Resolve `chat_id` which might be either the internal UUID primary key (`id`)
-        // or the external LibreChat-compatible identifier (`conversation_id`).
-        let chat = self
-            .get(chat_id, user_id)
-            .await?
-            .ok_or_else(|| Error::NotFound("Chat not found".to_string()))?;
-
-        let mut conn = self
-            .pool
-            .get()
-            .await
-            .map_err(|e| Error::from_std_error(e))?;
-
-        diesel::delete(messages::table.filter(messages::conversation_id.eq(chat.id)))
-            .execute(&mut conn)
-            .await
-            .map_err(Error::from_std_error)?;
+            .context("Failed to update tokens")?;
 
         Ok(())
     }

@@ -94,10 +94,10 @@ The Rust backend reads provider and model configuration from a YAML file.
 
 If you want to use ChatLLM (an OpenAI-compatible provider) as a backend-managed provider:
 
-- Ensure your `t3chat.yaml` has a custom endpoint named `ChatLLM` with:
-  - `apiKey: "${ABACUS_API_KEY}"`
-- `baseURL` set directly in the YAML.
-- Restart the backend so the provider appears in the UI.
+-   Ensure your `t3chat.yaml` has a custom endpoint named `ChatLLM` with:
+    -   `apiKey: "${ABACUS_API_KEY}"`
+-   `baseURL` set directly in the YAML.
+-   Restart the backend so the provider appears in the UI.
 
 ## Step 4: Configure Environment Variables
 
@@ -211,7 +211,7 @@ If you configured OIDC in Step 2, you'll see an "Or" separator and a "Login with
 
 -   **Change Admin Password**: If using local auth, change the default admin password immediately
 -   **Add AI Provider Keys**: Go to Settings to add your OpenAI, Anthropic, or Google AI API keys
--   **Start Chatting**: Create a new conversation and select an AI model
+-   **Start Chatting**: Create a new chat and select an AI model
 -   **Explore Features**: Try agents, presets, file uploads, and more
 
 ## Troubleshooting

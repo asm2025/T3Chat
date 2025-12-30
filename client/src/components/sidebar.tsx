@@ -6,7 +6,7 @@ import { User, History, Brain, Key, Paperclip, Settings, LogOut, PanelLeft } fro
 import { Sidebar as ShadcnSidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar-context";
 import { useAuth } from "@/lib/use-auth";
-import { ConversationList } from "@/components/chat/ConversationList";
+import { ChatList } from "@/components/chat/ChatList";
 
 interface AppSidebarProps {
     variant?: "sidebar" | "floating" | "inset";
@@ -58,7 +58,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
                 </div>
             </SidebarHeader>
             <SidebarContent className="overflow-hidden">
-                <ConversationList />
+                <ChatList />
             </SidebarContent>
             <SidebarFooter>
                 {user ? (

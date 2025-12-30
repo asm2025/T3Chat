@@ -5,14 +5,14 @@ use uuid::Uuid;
 
 use crate::db::schema::shared_links;
 
-/// Shared link model (conversation sharing)
+/// Shared link model (chat sharing)
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = shared_links)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct SharedLink {
     pub id: Uuid,
     pub share_id: String, // public share ID
-    pub conversation_id: Uuid,
+    pub chat_id: Uuid,
     pub user_id: String,
 
     // Sharing settings
@@ -39,7 +39,7 @@ pub struct NewSharedLink {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<Uuid>,
     pub share_id: String,
-    pub conversation_id: Uuid,
+    pub chat_id: Uuid,
     pub user_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_public: Option<bool>,

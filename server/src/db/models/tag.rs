@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db::schema::{conversation_tags_map, tags};
+use crate::db::schema::{chat_tags_map, tags};
 
 /// Tag model
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
@@ -53,20 +53,20 @@ pub struct UpdateTag {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Conversation-Tag relationship (junction table)
+/// Chat-Tag relationship (junction table)
 #[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
-#[diesel(table_name = conversation_tags_map)]
+#[diesel(table_name = chat_tags_map)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct ConversationTag {
-    pub conversation_id: Uuid,
+pub struct ChatTag {
+    pub chat_id: Uuid,
     pub tag_id: Uuid,
     pub created_at: DateTime<Utc>,
 }
 
-/// New conversation-tag relationship
+/// New chat-tag relationship
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
-#[diesel(table_name = conversation_tags_map)]
-pub struct NewConversationTag {
-    pub conversation_id: Uuid,
+#[diesel(table_name = chat_tags_map)]
+pub struct NewChatTag {
+    pub chat_id: Uuid,
     pub tag_id: Uuid,
 }
