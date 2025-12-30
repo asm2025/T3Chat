@@ -9,8 +9,8 @@ use crate::db::{
     DbPool,
     dto::{Pagination, ResultSet},
     models::{
-        Chat, Message, NewChat, UpdateChat, 
-        chat::{CreateChatDto, UpdateChatDto, NewMessage, UpdateMessage},
+        Chat, Message, NewChat, UpdateChat,
+        chat::{CreateChatDto, NewMessage, UpdateChatDto, UpdateMessage},
         message::{CreateMessageDto, UpdateMessageDto},
     },
     schema::{chats, messages},
@@ -32,7 +32,13 @@ pub trait TChatRepository: Send + Sync {
     async fn create_message(&self, dto: CreateMessageDto) -> Result<Message>;
     async fn get_message(&self, id: Uuid) -> Result<Option<Message>>;
     async fn list_messages(&self, chat_id: Uuid, user_id: &str) -> Result<Vec<Message>>;
-    async fn update_message(&self, id: Uuid, chat_id: Uuid, user_id: &str, dto: UpdateMessageDto) -> Result<Message>;
+    async fn update_message(
+        &self,
+        id: Uuid,
+        chat_id: Uuid,
+        user_id: &str,
+        dto: UpdateMessageDto,
+    ) -> Result<Message>;
     async fn delete_message(&self, id: Uuid, chat_id: Uuid, user_id: &str) -> Result<()>;
     async fn clear_messages(&self, chat_id: Uuid, user_id: &str) -> Result<()>;
     async fn get_next_sequence_number(&self, chat_id: Uuid) -> Result<i32>;
@@ -79,11 +85,7 @@ impl TChatRepository for ChatRepository {
         chats::table
             .filter(chats::user_id.eq(user_id))
             .filter(chats::id.eq(id).or(chats::chat_id.eq(&id_str)))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
+            .filter(chats::is_archived.ne(Some(true)))
             .first(&mut conn)
             .await
             .optional()
@@ -118,11 +120,7 @@ impl TChatRepository for ChatRepository {
         // Count total non-archived chats for this user
         let total = chats::table
             .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
+            .filter(chats::is_archived.ne(Some(true)))
             .count()
             .get_result::<i64>(&mut conn)
             .await
@@ -139,11 +137,7 @@ impl TChatRepository for ChatRepository {
         // Build query
         let mut query = chats::table
             .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
+            .filter(chats::is_archived.ne(Some(true)))
             .order(chats::updated_at.desc())
             .into_boxed();
 
@@ -177,11 +171,7 @@ impl TChatRepository for ChatRepository {
         let _existing = chats::table
             .filter(chats::id.eq(id))
             .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
+            .filter(chats::is_archived.ne(Some(true)))
             .first::<Chat>(&mut conn)
             .await
             .optional()
@@ -210,11 +200,7 @@ impl TChatRepository for ChatRepository {
         let _existing = chats::table
             .filter(chats::id.eq(id))
             .filter(chats::user_id.eq(user_id))
-            .filter(
-                chats::is_archived
-                    .eq(false)
-                    .or(chats::is_archived.is_null()),
-            )
+            .filter(chats::is_archived.ne(Some(true)))
             .first::<Chat>(&mut conn)
             .await
             .optional()
@@ -243,7 +229,7 @@ impl TChatRepository for ChatRepository {
         let mut update: UpdateChat = dto.into();
         update.is_archived = Some(true);
         update.updated_at = Utc::now();
-        
+
         let mut conn = self
             .pool
             .get()
@@ -269,7 +255,7 @@ impl TChatRepository for ChatRepository {
         let mut update: UpdateChat = dto.into();
         update.is_archived = Some(false);
         update.updated_at = Utc::now();
-        
+
         let mut conn = self
             .pool
             .get()
@@ -338,7 +324,13 @@ impl TChatRepository for ChatRepository {
     }
 
     /// Update message
-    async fn update_message(&self, id: Uuid, chat_id: Uuid, user_id: &str, dto: UpdateMessageDto) -> Result<Message> {
+    async fn update_message(
+        &self,
+        id: Uuid,
+        chat_id: Uuid,
+        user_id: &str,
+        dto: UpdateMessageDto,
+    ) -> Result<Message> {
         let mut conn = self
             .pool
             .get()

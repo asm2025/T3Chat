@@ -77,7 +77,6 @@ impl From<Message> for MessageResponse {
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatWithMessagesResponse {
-    #[serde(flatten)]
     pub chat: ChatResponse,
     pub messages: Vec<MessageResponse>,
 }

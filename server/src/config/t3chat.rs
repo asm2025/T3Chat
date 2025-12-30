@@ -33,6 +33,9 @@ pub struct InterfaceConfig {
     pub parameters_menu: Option<bool>,
     pub side_panel: Option<bool>,
     pub presets: Option<bool>,
+    pub default_model_spec: Option<String>,
+    pub default_provider: Option<String>,
+    pub default_model: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

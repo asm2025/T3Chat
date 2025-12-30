@@ -70,6 +70,12 @@ interface:
     bookmarks: true
     multiConvo: true
     agents: true
+    # Default model selection (optional)
+    # Option 1: Specify by model spec name
+    # defaultModelSpec: "claude-sonnet"
+    # Option 2: Specify by provider and model
+    defaultProvider: "chatllm"
+    defaultModel: "default"
     # peoplePicker:
     #   users: true
     #   groups: true
@@ -328,7 +334,7 @@ endpoints:
 
         # Portkey AI Example
         - name: "Portkey"
-          apiKey: "dummy"
+          apiKey: "PORTKEY_KEY"
           baseURL: "https://api.portkey.ai/v1"
           headers:
               x-portkey-api-key: "${PORTKEY_API_KEY}"
@@ -355,7 +361,7 @@ endpoints:
 
         # AWS Bedrock Example
         - name: "AWS Bedrock"
-          apiKey: "dummy"
+          apiKey: "AWS_BEDROCK_KEY"
           baseURL: "https://bedrock-runtime.amazonaws.com"
           models:
               fetch: false

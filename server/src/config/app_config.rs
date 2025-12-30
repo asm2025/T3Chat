@@ -20,6 +20,9 @@ pub struct DerivedInterfaceConfig {
     pub parameters_menu: bool,
     pub side_panel: bool,
     pub presets: bool,
+    pub default_model_spec: Option<String>,
+    pub default_provider: Option<String>,
+    pub default_model: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -90,6 +93,9 @@ impl DerivedAppConfig {
             parameters_menu: true,
             side_panel: true,
             presets: true,
+            default_model_spec: None,
+            default_provider: None,
+            default_model: None,
         };
 
         let app_title = None; // Could extract if present in librechat yaml (not standard field but maybe useful)
@@ -111,6 +117,15 @@ impl DerivedAppConfig {
                 }
                 if let Some(val) = iface.presets {
                     interface.presets = val;
+                }
+                if let Some(val) = iface.default_model_spec {
+                    interface.default_model_spec = Some(val);
+                }
+                if let Some(val) = iface.default_provider {
+                    interface.default_provider = Some(val);
+                }
+                if let Some(val) = iface.default_model {
+                    interface.default_model = Some(val);
                 }
             }
 

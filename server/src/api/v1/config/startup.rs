@@ -22,6 +22,9 @@ pub struct InterfaceConfigResponse {
     pub parameters_menu: bool,
     pub side_panel: bool,
     pub presets: bool,
+    pub default_model_spec: Option<String>,
+    pub default_provider: Option<String>,
+    pub default_model: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -85,6 +88,9 @@ pub async fn get_startup_config(state: State<AppState>) -> Json<StartupConfigRes
             parameters_menu: config.interface.parameters_menu,
             side_panel: config.interface.side_panel,
             presets: config.interface.presets,
+            default_model_spec: config.interface.default_model_spec.clone(),
+            default_provider: config.interface.default_provider.clone(),
+            default_model: config.interface.default_model.clone(),
         },
         providers,
         model_specs: specs,
