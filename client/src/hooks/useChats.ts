@@ -1,30 +1,40 @@
-import { useCallback, useEffect, useState } from "react";
-import { t3ChatClient } from "@/lib/t3-chat-client";
+import { useEffect, useCallback } from "react";
+import { useChats as useChatsStore } from "@/stores/appStore";
 import type { Chat } from "@/types/chat";
+import type { AiProvider } from "@/types/chat";
 
 export function useChats(page = 1, pageSize = 20) {
-    const [chats, setChats] = useState<Chat[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+    const { chats, loading, error, fetchChats } = useChatsStore();
 
-    const loadChats = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const result = await t3ChatClient.listChats(page, pageSize);
-            setChats(result.data);
-            setTotal(result.total);
-        } catch (err) {
-            setError(err as Error);
-        } finally {
-            setLoading(false);
-        }
-    }, [page, pageSize]);
-
+    // Load chats on mount and when page/pageSize changes
     useEffect(() => {
-        loadChats();
-    }, [loadChats]);
+        fetchChats({ page, pageSize });
+    }, [page, pageSize, fetchChats]);
 
-    return { chats, total, loading, error, refresh: loadChats };
+    // Map ChatWithTags[] to Chat[] for compatibility
+    // ChatWithTags extends LibreChat Chat, but we need the simpler Chat type
+    // The endpoint field contains the provider string value (cast as Endpoint, but actually any AiProvider)
+    const mappedChats: Chat[] = chats.map((chat) => ({
+        id: chat.id,
+        userId: chat.userId,
+        title: chat.title,
+        modelProvider: chat.endpoint as AiProvider, // endpoint contains provider value, cast to AiProvider
+        modelId: chat.model,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+        deletedAt: undefined,
+    }));
+
+    // Create a stable refresh function
+    const refresh = useCallback(() => {
+        fetchChats({ page, pageSize });
+    }, [fetchChats, page, pageSize]);
+
+    return {
+        chats: mappedChats,
+        total: chats.length, // Approximate total, could be improved with pagination info
+        loading,
+        error,
+        refresh,
+    };
 }

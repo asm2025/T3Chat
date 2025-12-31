@@ -12,10 +12,22 @@ interface MessageInputProps {
     selectedModel?: AIModel | null;
     onModelSelect?: (model: AIModel) => void;
     modelSelectEnabled?: boolean;
+    onContentChange?: (hasContent: boolean) => void;
+    value?: string;
+    onValueChange?: (value: string) => void;
 }
 
-export function MessageInput({ onSend, disabled, models = [], selectedModel, onModelSelect, modelSelectEnabled = true }: MessageInputProps) {
-    const [content, setContent] = useState("");
+export function MessageInput({ onSend, disabled, models = [], selectedModel, onModelSelect, modelSelectEnabled = true, onContentChange, value: controlledValue, onValueChange }: MessageInputProps) {
+    const [internalContent, setInternalContent] = useState("");
+    const isControlled = controlledValue !== undefined;
+    const content = isControlled ? controlledValue : internalContent;
+    const setContent = (newContent: string) => {
+        if (isControlled) {
+            onValueChange?.(newContent);
+        } else {
+            setInternalContent(newContent);
+        }
+    };
     const [hasAcceptedPolicies, setHasAcceptedPolicies] = useState(() => {
         if (typeof window === "undefined") {
             return false;
@@ -94,8 +106,8 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
     const isSubmitDisabled = disabled || !content.trim();
 
     return (
-        <div className="pointer-events-none w-full sm:px-2">
-            <div className="mx-auto flex w-full max-w-3xl flex-col text-center">
+        <div className="fixed bottom-0 pointer-events-none w-full sm:px-2">
+            <div className="flex w-full max-w-3xl flex-col text-center">
                 {!hasAcceptedPolicies && (
                     <div className="pointer-events-auto mx-auto mb-2 w-full sm:w-auto">
                         <div className="border-secondary/40 bg-chat-background/70 text-secondary-foreground/80 flex flex-col items-center justify-center gap-3 rounded-t-md border p-4 text-sm backdrop-blur-md sm:flex-row sm:text-left">
@@ -119,16 +131,20 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
                     </div>
                 )}
 
-                <div className="pointer-events-auto border-reflect min-w-0 overflow-hidden rounded-t-[20px] bg-chat-input-background/80 p-2 pb-0 backdrop-blur-lg">
+                <div className="bg-chat-background pointer-events-auto border-reflect min-w-0 overflow-hidden rounded-t-[20px] bg-chat-input-background/80 p-2 pb-0">
                     <form
                         id="chat-input-form"
                         onSubmit={handleSubmit}
-                        className="pointer-events-auto relative flex w-full min-w-0 flex-col items-stretch gap-2 rounded-t-xl border border-b-0 border-white/70 bg-chat-input-background/90 px-3 pt-3 pb-safe-offset-3 text-secondary-foreground outline-2 outline-chat-input-gradient/50 dark:border-white/10">
+                        className="pointer-events-auto relative flex w-full min-w-0 flex-col items-stretch gap-2 rounded-t-xl border-t border-l border-r border-gray-300 dark:border-gray-600 bg-chat-input-background/90 px-3 pt-3 pb-safe-offset-3 text-secondary-foreground">
                         <div className="flex min-w-0 flex-row items-start">
                             <textarea
                                 ref={textareaRef}
                                 value={content}
-                                onChange={(event) => setContent(event.target.value)}
+                                onChange={(event) => {
+                                    const newContent = event.target.value;
+                                    setContent(newContent);
+                                    onContentChange?.(newContent.trim().length > 0);
+                                }}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Type your message here..."
                                 aria-label="Message input"

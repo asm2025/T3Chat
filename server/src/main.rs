@@ -339,12 +339,12 @@ fn setup_router(state: AppState) -> Result<Router> {
         ]))
         .allow_credentials(true);
     let models_routes = Router::new()
-        .route("/", get(api::v1::models::list_models))
-        .route("/all", get(api::v1::models::list_all_models))
-        .route("/{id}", get(api::v1::models::get_model))
-        .route("/my", get(api::v1::models::list_my_models))
-        .route("/{id}/enable", post(api::v1::models::enable_model))
-        .route("/{id}/disable", post(api::v1::models::disable_model))
+        .route("/", get(api::models::list_models))
+        .route("/all", get(api::models::list_all_models))
+        .route("/{id}", get(api::models::get_model))
+        .route("/my", get(api::models::list_my_models))
+        .route("/{id}/enable", post(api::models::enable_model))
+        .route("/{id}/disable", post(api::models::disable_model))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
@@ -353,31 +353,31 @@ fn setup_router(state: AppState) -> Result<Router> {
     let config_routes = Router::new()
         .route(
             "/startup",
-            get(api::v1::config::startup::get_startup_config),
+            get(api::config::startup::get_startup_config),
         )
-        .route("/models", get(api::v1::config::models::list_models));
+        .route("/models", get(api::config::models::list_models));
 
     let chats_routes = Router::new()
         .route(
             "/",
-            get(api::v1::chats::list_chats).post(api::v1::chats::create_chat),
+            get(api::chats::list_chats).post(api::chats::create_chat),
         )
         .route(
             "/{id}",
-            get(api::v1::chats::get_chat)
-                .put(api::v1::chats::update_chat)
-                .delete(api::v1::chats::delete_chat),
+            get(api::chats::get_chat)
+                .put(api::chats::update_chat)
+                .delete(api::chats::delete_chat),
         )
         .route(
             "/{id}/messages",
-            get(api::v1::chats::messages::get_messages)
-                .post(api::v1::chats::messages::create_message)
-                .delete(api::v1::chats::messages::clear_messages),
+            get(api::chats::messages::get_messages)
+                .post(api::chats::messages::create_message)
+                .delete(api::chats::messages::clear_messages),
         )
         .route(
             "/{chat_id}/messages/{id}",
-            put(api::v1::chats::messages::update_message)
-                .delete(api::v1::chats::messages::delete_message),
+            put(api::chats::messages::update_message)
+                .delete(api::chats::messages::delete_message),
         )
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -385,8 +385,8 @@ fn setup_router(state: AppState) -> Result<Router> {
         ));
 
     let chat_routes = Router::new()
-        .route("/", post(api::v1::chat::chat))
-        .route("/stream", post(api::v1::chat::stream_chat))
+        .route("/", post(api::chat::chat))
+        .route("/stream", post(api::chat::stream_chat))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
@@ -395,17 +395,17 @@ fn setup_router(state: AppState) -> Result<Router> {
     let user_api_keys_routes = Router::new()
         .route(
             "/",
-            get(api::v1::user_api_keys::list_keys).post(api::v1::user_api_keys::create_key),
+            get(api::user_api_keys::list_keys).post(api::user_api_keys::create_key),
         )
-        .route("/{id}", delete(api::v1::user_api_keys::delete_key))
+        .route("/{id}", delete(api::user_api_keys::delete_key))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
         ));
 
     let features_routes = Router::new()
-        .route("/", get(api::v1::features::list_features))
-        .route("/{feature}", put(api::v1::features::update_feature))
+        .route("/", get(api::features::list_features))
+        .route("/{feature}", put(api::features::update_feature))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
@@ -414,15 +414,15 @@ fn setup_router(state: AppState) -> Result<Router> {
     let files_routes = Router::new()
         .route(
             "/",
-            get(api::v1::files::list_files).post(api::v1::files::upload_file),
+            get(api::files::list_files).post(api::files::upload_file),
         )
-        .route("/stt", post(api::v1::files::stt::transcribe_audio))
+        .route("/stt", post(api::files::stt::transcribe_audio))
         .route(
             "/{id}",
-            get(api::v1::files::get_file).delete(api::v1::files::delete_file),
+            get(api::files::get_file).delete(api::files::delete_file),
         )
-        .route("/{id}/content", get(api::v1::files::get_file_content))
-        .route("/{id}/download", get(api::v1::files::get_download_url))
+        .route("/{id}/content", get(api::files::get_file_content))
+        .route("/{id}/download", get(api::files::get_download_url))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
@@ -431,7 +431,7 @@ fn setup_router(state: AppState) -> Result<Router> {
     let user_routes = Router::new()
         .route(
             "/me",
-            get(api::v1::user::profile).put(api::v1::user::update_profile),
+            get(api::user::profile).put(api::user::update_profile),
         )
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -440,7 +440,7 @@ fn setup_router(state: AppState) -> Result<Router> {
 
     // Auth routes - /me requires authentication
     let auth_me_route = Router::new()
-        .route("/me", get(api::v1::auth::me))
+        .route("/me", get(api::auth::me))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
@@ -448,10 +448,10 @@ fn setup_router(state: AppState) -> Result<Router> {
 
     // Admin routes
     let admin_routes = Router::new()
-        .nest("/users", api::v1::admin::users::router())
-        .nest("/providers", api::v1::admin::providers::router())
-        .nest("/models", api::v1::admin::models::router())
-        .nest("/dashboard", api::v1::admin::dashboard::router())
+        .nest("/users", api::admin::users::router())
+        .nest("/providers", api::admin::providers::router())
+        .nest("/models", api::admin::models::router())
+        .nest("/dashboard", api::admin::dashboard::router())
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::auth::auth_middleware,
@@ -462,8 +462,8 @@ fn setup_router(state: AppState) -> Result<Router> {
         ));
 
     let api_router = Router::new()
-        .route("/health", get(api::v1::health::health_check))
-        .nest("/api/v1/auth", api::v1::auth::router().merge(auth_me_route))
+        .route("/health", get(api::health::health_check))
+        .nest("/api/v1/auth", api::auth::router().merge(auth_me_route))
         .nest("/api/v1/models", models_routes)
         .nest("/api/v1/chats", chats_routes)
         .nest("/api/v1/chat", chat_routes)

@@ -14,7 +14,6 @@ export function AuthCallback() {
     if (token) {
       handleCallback(token)
         .then(() => {
-          toast.success('Successfully logged in');
           navigate('/chat', { replace: true });
           // Reload page to refresh auth state
           window.location.reload();

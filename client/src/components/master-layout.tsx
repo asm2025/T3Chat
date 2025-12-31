@@ -80,7 +80,7 @@ export function MasterLayout({ children, footer, contentClassName }: MasterLayou
 
                 <div
                     id="chat-scroll-container"
-                    className="absolute inset-0 overflow-y-auto pt-8 sm:pt-3.5 print:visible print:static print:inset-auto print:block print:h-auto print:scroll-pb-0! print:overflow-visible print:pt-2 print:pb-0!"
+                    className="absolute inset-0 overflow-y-auto overflow-x-hidden pt-8 sm:pt-3.5 print:visible print:static print:inset-auto print:block print:h-auto print:scroll-pb-0! print:overflow-visible print:pt-2 print:pb-0!"
                     style={{ scrollbarGutter: "stable both-edges", scrollPaddingBottom: "112px" }}>
                     {/* Decorative curve inside scroll container */}
                     {!isCollapsed && (

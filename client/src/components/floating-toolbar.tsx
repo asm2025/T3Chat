@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar-context";
 import { PanelLeft, Search, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
@@ -14,9 +14,32 @@ export function FloatingToolbar() {
     const [searchQuery, setSearchQuery] = useState("");
     const navigate = useNavigate();
     const { clearChat } = useChat();
+    const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-    // Only show when sidebar is collapsed (and not on mobile where it's always offcanvas)
-    if (open || isMobile) {
+    // Check if sidebar is actually visible considering viewport size
+    // The sidebar panel uses "hidden md:flex" class, which hides it below md breakpoint (768px)
+    useEffect(() => {
+        if (isMobile) {
+            setIsSidebarVisible(false);
+            return;
+        }
+
+        // Use matchMedia to detect md breakpoint (768px), same as Tailwind's md breakpoint
+        const mediaQuery = window.matchMedia("(min-width: 768px)");
+        
+        const checkVisibility = () => {
+            // Sidebar is visible if: we're at md breakpoint or above AND sidebar is open
+            setIsSidebarVisible(mediaQuery.matches && open);
+        };
+
+        checkVisibility();
+        mediaQuery.addEventListener("change", checkVisibility);
+        return () => mediaQuery.removeEventListener("change", checkVisibility);
+    }, [open, isMobile]);
+
+    // Only show when sidebar is not visible (either closed or hidden due to viewport resize)
+    // and not on mobile where it's always offcanvas
+    if (isMobile || isSidebarVisible) {
         return null;
     }
 
@@ -41,7 +64,7 @@ export function FloatingToolbar() {
                 data-sidebar="trigger"
                 variant="ghost"
                 size="icon"
-                className="size-9 text-muted-foreground z-10 h-8 w-8 hover:bg-muted/40 hover:text-foreground"
+                className="size-9 text-muted-foreground z-10 h-8 w-8 hover:bg-muted/40 hover:text-foreground rounded-lg shadow-lg border border-border/50 bg-background/80 backdrop-blur-sm"
                 onClick={toggleSidebar}>
                 <PanelLeft className="h-4 w-4" />
                 <span className="sr-only">Toggle Sidebar</span>

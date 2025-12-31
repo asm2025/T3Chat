@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { useChat } from "@/hooks/useChat";
@@ -9,6 +10,10 @@ import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 import { useConfig } from "@/stores/appStore";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useChats } from "@/hooks/useChats";
+import { useStreamingContext } from "@/contexts/streaming-context";
 import type { Message, AiProvider } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 
@@ -24,10 +29,16 @@ export function ChatView({ chatId }: ChatViewProps) {
     const { models: backendModels } = useModels();
     const { config } = useConfig();
     const { sendMessage, streaming } = useStreamingChat();
+    const { refresh: refreshChats } = useChats();
+    const { setStreamingChatId } = useStreamingContext();
     const [messagesByChatId, setMessagesByChatId] = useState<Record<string, Message[]>>({
         [NEW_CONVERSATION_KEY]: [],
     });
     const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+    // Track input content to control placeholder visibility
+    const [inputContent, setInputContent] = useState("");
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const chatKey = chatId ?? NEW_CONVERSATION_KEY;
     // During the "/chat -> /chat/{id}" transition, React may render once with the new `chatId`
@@ -102,12 +113,16 @@ export function ChatView({ chatId }: ChatViewProps) {
         });
     }, [chat, chatId]);
 
-    // When navigating to /chat (no id), reset the new-chat placeholder state.
+    // When navigating to /chat (no id), reset the new-chat state.
     useEffect(() => {
         if (chatId !== null) {
+            // Clear input when navigating to an existing chat
+            setInputContent("");
             return;
         }
+        // Reset messages and input for new chat
         setMessagesForChat(NEW_CONVERSATION_KEY, []);
+        setInputContent("");
     }, [chatId, setMessagesForChat]);
 
     useEffect(() => {
@@ -127,24 +142,42 @@ export function ChatView({ chatId }: ChatViewProps) {
                     setSelectedModel(models[0]);
                 }
             }
-        } else if (!selectedModel) {
+        } else {
+            // For new chats (no chatId), always try to use the configured default
+            // This overrides any persisted selectedModel to ensure the admin's default is respected
             if (config?.interface?.defaultModelSpec) {
                 const defaultSpec = models.find((m) => m.id === config.interface!.defaultModelSpec);
                 if (defaultSpec) {
-                    setSelectedModel(defaultSpec);
+                    if (selectedModel?.id !== defaultSpec.id) {
+                        setSelectedModel(defaultSpec);
+                    }
                     return;
                 }
             }
             if (config?.interface?.defaultProvider && config?.interface?.defaultModel) {
                 const defaultModel = models.find((m) => m.provider === config.interface!.defaultProvider && m.modelId === config.interface!.defaultModel);
                 if (defaultModel) {
-                    setSelectedModel(defaultModel);
+                    if (selectedModel?.id !== defaultModel.id) {
+                        setSelectedModel(defaultModel);
+                    }
                     return;
                 }
             }
-            setSelectedModel(models[0]);
+            // Fallback to first model only if no default is configured
+            if (!selectedModel) {
+                setSelectedModel(models[0]);
+            }
         }
     }, [chat, models, selectedModel, config]);
+
+    // Update streaming context when streaming state or chatId changes
+    useEffect(() => {
+        if (streaming && chatId) {
+            setStreamingChatId(chatId);
+        } else {
+            setStreamingChatId(null);
+        }
+    }, [streaming, chatId, setStreamingChatId]);
 
     const handleSendMessage = async (content: string) => {
         if (!selectedModel) {
@@ -185,7 +218,6 @@ export function ChatView({ chatId }: ChatViewProps) {
             createdAt: timestamp,
         };
 
-        let assistantContent = "";
         const optimisticAssistantBase: Message = {
             id: assistantTempId,
             chatId: currentChatId ?? NEW_CONVERSATION_KEY,
@@ -198,6 +230,7 @@ export function ChatView({ chatId }: ChatViewProps) {
         // If we don't have a chat id yet, show the first bubbles immediately under the new-chat key
         // so the placeholder is removed instantly.
         if (!currentChatId) {
+            setInputContent(""); // Clear input when sending message
             setMessagesForChat(NEW_CONVERSATION_KEY, (prev) => [...prev, optimisticUserBase, optimisticAssistantBase]);
 
             // Create new chat before streaming (stream endpoint requires a chat id)
@@ -205,16 +238,31 @@ export function ChatView({ chatId }: ChatViewProps) {
                 const normalizedProvider = provider.toLowerCase() as AiProvider;
 
                 const newChat = await t3ChatClient.createChat({
-                    title: content.slice(0, 30) + (content.length > 30 ? "..." : ""),
+                    title: "New Chat",
                     modelProvider: normalizedProvider,
                     modelId,
                 });
-                
+
                 if (!newChat?.id) {
                     throw new Error("Failed to create chat: No chat ID returned");
                 }
-                
+
                 currentChatId = newChat.id;
+
+                // Refresh chat list immediately so the new chat appears in sidebar
+                refreshChats();
+
+                // Update chat title after creation with actual content (non-blocking)
+                const chatTitle = content.slice(0, 30) + (content.length > 30 ? "..." : "");
+                t3ChatClient
+                    .updateChat(currentChatId, { title: chatTitle })
+                    .then(() => {
+                        refreshChats();
+                    })
+                    .catch((err) => {
+                        // Non-critical error, continue
+                        console.error("Failed to update chat title:", err);
+                    });
 
                 // Migrate optimistic messages from the new-chat key to the real chat id.
                 setMessagesByChatId((prev) => {
@@ -239,6 +287,7 @@ export function ChatView({ chatId }: ChatViewProps) {
             }
         } else {
             // Existing chat: append optimistic bubbles directly under the resolved chat id.
+            // Do this IMMEDIATELY so user sees their message right away
             const optimisticUser: Message = { ...optimisticUserBase, chatId: currentChatId };
             const optimisticAssistant: Message = { ...optimisticAssistantBase, chatId: currentChatId };
             setMessagesForChat(currentChatId, (prev) => [...prev, optimisticUser, optimisticAssistant]);
@@ -250,6 +299,9 @@ export function ChatView({ chatId }: ChatViewProps) {
             return;
         }
 
+        // Clear input when sending message
+        setInputContent("");
+
         try {
             await sendMessage(
                 {
@@ -260,8 +312,12 @@ export function ChatView({ chatId }: ChatViewProps) {
                     stream: true,
                 },
                 (chunk) => {
-                    assistantContent += chunk;
-                    setMessagesForChat(currentChatId!, (prev) => prev.map((message) => (message.id === assistantTempId ? { ...message, content: assistantContent } : message)));
+                    // Use functional update to ensure each chunk is appended immediately
+                    setMessagesForChat(currentChatId!, (prev) => {
+                        const assistantMsg = prev.find((m) => m.id === assistantTempId);
+                        const currentContent = assistantMsg?.content || "";
+                        return prev.map((message) => (message.id === assistantTempId ? { ...message, content: currentContent + chunk } : message));
+                    });
                 },
                 async () => {
                     try {
@@ -303,22 +359,88 @@ export function ChatView({ chatId }: ChatViewProps) {
         return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Chat not found.</div>;
     }
 
+    const handleDeleteChat = async () => {
+        if (!chatId || !chat) return;
+
+        setIsDeleting(true);
+        try {
+            await t3ChatClient.deleteChat(chatId);
+            toast.success("Chat deleted successfully");
+            // Navigate away from the deleted chat first, then refresh the chat list
+            navigate("/chat");
+            refreshChats();
+        } catch (err) {
+            toast.error("Failed to delete chat", {
+                description: getErrorMessage(err),
+            });
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteDialog(false);
+        }
+    };
+
+    // Only show chat title if we have a chat and it matches the current chatId
+    const showChatTitle = chat && chat.id === chatId;
+
     return (
         <div className="flex h-full flex-col">
-            {chat && (
+            {showChatTitle && (
                 <div className="border-b border-border p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
                             <h2 className="text-lg font-semibold">{chat.title}</h2>
                         </div>
+                        <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete chat</span>
+                        </Button>
                     </div>
                 </div>
             )}
+
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Chat</DialogTitle>
+                        <DialogDescription>Are you sure you want to delete this chat? This action cannot be undone. All messages in this chat will be permanently deleted.</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteChat} disabled={isDeleting}>
+                            {isDeleting ? "Deleting..." : "Delete"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <div className="flex-1 min-h-0">
-                <MessageList messages={messages} streaming={streaming} onPromptClick={handleSendMessage} />
+                <MessageList
+                    messages={messages}
+                    streaming={streaming}
+                    showPlaceholder={chatId === null && !streaming && messages.length === 0 && inputContent.trim().length === 0}
+                    onPromptClick={(prompt) => {
+                        // Set the prompt text in the input instead of sending
+                        setInputContent(prompt);
+                    }}
+                />
             </div>
-            <MessageInput onSend={handleSendMessage} disabled={streaming || !selectedModel} models={models} selectedModel={selectedModel} onModelSelect={setSelectedModel} modelSelectEnabled={modelSelectEnabled} />
+            <MessageInput
+                onSend={handleSendMessage}
+                disabled={streaming || !selectedModel}
+                models={models}
+                selectedModel={selectedModel}
+                onModelSelect={setSelectedModel}
+                modelSelectEnabled={modelSelectEnabled}
+                value={inputContent}
+                onValueChange={(value) => {
+                    setInputContent(value);
+                }}
+                onContentChange={(_hasContent) => {
+                    // This callback is kept for backward compatibility but not used for placeholder control
+                }}
+            />
         </div>
     );
 }

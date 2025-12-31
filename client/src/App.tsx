@@ -26,6 +26,7 @@ import { FloatingToolbar } from "@/components/floating-toolbar";
 import { useIsMobile } from "@/hooks/useMobile";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfigWarningBanner } from "@/components/config-warning-banner";
+import { StreamingProvider } from "@/contexts/streaming-context";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "t3chat-sidebar-width";
 const DEFAULT_SIDEBAR_WIDTH = 20; // 20% of viewport width
@@ -81,7 +82,7 @@ function AuthenticatedLayout() {
         }
     };
 
-    // Cleanup timeout on unmount
+    // Cleanup timeouts on unmount
     useEffect(() => {
         return () => {
             if (saveTimeoutRef.current) {
@@ -204,68 +205,70 @@ function App() {
 
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange storageKey="t3chat-theme">
-            <Router>
-                <ConfigWarningBanner />
-                {loading ? (
-                    <div className="flex items-center justify-center min-h-screen">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                ) : (
-                    <Routes>
-                        {/* Public routes */}
-                        <Route path="/" element={<Home />} />
-                        <Route path="/about" element={<About />} />
-                        <Route path="/health" element={<Health />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/auth/callback" element={<AuthCallback />} />
+            <StreamingProvider>
+                <Router>
+                    <ConfigWarningBanner />
+                    {loading ? (
+                        <div className="flex items-center justify-center min-h-screen">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <Routes>
+                            {/* Public routes */}
+                            <Route path="/" element={<Home />} />
+                            <Route path="/about" element={<About />} />
+                            <Route path="/health" element={<Health />} />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/auth/callback" element={<AuthCallback />} />
 
-                        {/* Admin routes */}
-                        <Route
-                            path="/admin"
-                            element={
-                                <AdminRoute>
-                                    <AdminDashboard />
-                                </AdminRoute>
-                            }
-                        />
-                        <Route
-                            path="/admin/users"
-                            element={
-                                <AdminRoute>
-                                    <AdminUsers />
-                                </AdminRoute>
-                            }
-                        />
-                        <Route
-                            path="/admin/providers"
-                            element={
-                                <AdminRoute>
-                                    <AdminProviders />
-                                </AdminRoute>
-                            }
-                        />
-                        <Route
-                            path="/admin/models"
-                            element={
-                                <AdminRoute>
-                                    <AdminModels />
-                                </AdminRoute>
-                            }
-                        />
+                            {/* Admin routes */}
+                            <Route
+                                path="/admin"
+                                element={
+                                    <AdminRoute>
+                                        <AdminDashboard />
+                                    </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/users"
+                                element={
+                                    <AdminRoute>
+                                        <AdminUsers />
+                                    </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/providers"
+                                element={
+                                    <AdminRoute>
+                                        <AdminProviders />
+                                    </AdminRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/models"
+                                element={
+                                    <AdminRoute>
+                                        <AdminModels />
+                                    </AdminRoute>
+                                }
+                            />
 
-                        {/* Protected routes */}
-                        <Route
-                            path="/*"
-                            element={
-                                <ProtectedRoute>
-                                    <AuthenticatedLayout />
-                                </ProtectedRoute>
-                            }
-                        />
-                    </Routes>
-                )}
-                <Toaster />
-            </Router>
+                            {/* Protected routes */}
+                            <Route
+                                path="/*"
+                                element={
+                                    <ProtectedRoute>
+                                        <AuthenticatedLayout />
+                                    </ProtectedRoute>
+                                }
+                            />
+                        </Routes>
+                    )}
+                    <Toaster />
+                </Router>
+            </StreamingProvider>
         </ThemeProvider>
     );
 }

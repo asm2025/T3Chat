@@ -222,17 +222,69 @@ export class T3ChatClient extends ApiClient {
         const decoder = new TextDecoder();
 
         try {
+            let buffer = "";
+            let streamDone = false;
+
             while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
+                if (done) {
+                    // Process any remaining buffered data before exiting
+                    if (buffer.trim()) {
+                        const lines = buffer.split("\n");
+                        for (const line of lines) {
+                            if (line.trim() && line.startsWith("data: ")) {
+                                const data = line.slice(6);
+                                if (data === "[DONE]") {
+                                    streamDone = true;
+                                    break;
+                                }
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    if (parsed && typeof parsed === "object") {
+                                        const maybeError = parsed as Record<string, unknown>;
+                                        if (maybeError.error === true) {
+                                            const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
+                                            throw new Error(message);
+                                        }
+                                    }
+                                    let content: string | null = null;
+                                    if (typeof parsed?.content === "string") {
+                                        content = parsed.content;
+                                    } else if (typeof parsed?.delta === "string") {
+                                        content = parsed.delta;
+                                    }
+                                    // Filter out empty deltas and standalone "0" characters
+                                    // Filter out standalone "0" which appears to be a marker/sentinel value, not actual content
+                                    if (content && content !== "" && content !== "0") {
+                                        yield content;
+                                    }
+                                } catch {
+                                    // Skip invalid JSON
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split("\n").filter((line) => line.trim());
+                // Decode and accumulate chunks
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
 
+                // Keep the last incomplete line in buffer
+                buffer = lines.pop() || "";
+
+                // Process complete lines immediately - yield chunks as they arrive
                 for (const line of lines) {
+                    if (!line.trim()) continue;
+
                     if (line.startsWith("data: ")) {
                         const data = line.slice(6);
-                        if (data === "[DONE]") return;
+                        if (data === "[DONE]") {
+                            streamDone = true;
+                            // Still process remaining lines in current batch before returning
+                            continue;
+                        }
                         try {
                             const parsed = JSON.parse(data);
                             // Server may emit structured errors on the stream.
@@ -243,19 +295,36 @@ export class T3ChatClient extends ApiClient {
                                     throw new Error(message);
                                 }
                             }
+
+                            // Mark stream as done if this chunk indicates completion
+                            const isDone = parsed?.done === true;
+                            if (isDone) {
+                                streamDone = true;
+                            }
+
                             // Server emits chunks like { delta, done, ... } (ChatResponseChunk).
                             // Some providers may emit { content } - support both.
+                            let content: string | null = null;
                             if (typeof parsed?.content === "string") {
-                                yield parsed.content;
+                                content = parsed.content;
                             } else if (typeof parsed?.delta === "string") {
-                                yield parsed.delta;
-                            } else {
-                                yield "";
+                                content = parsed.delta;
+                            }
+
+                            // Yield content immediately if present (filter out empty strings and standalone "0" characters)
+                            // Filter out standalone "0" which appears to be a marker/sentinel value, not actual content
+                            if (content !== null && content !== undefined && content !== "" && content !== "0") {
+                                yield content;
                             }
                         } catch {
                             // Skip invalid JSON
                         }
                     }
+                }
+
+                // If stream is done, break after processing current batch
+                if (streamDone) {
+                    break;
                 }
             }
         } finally {

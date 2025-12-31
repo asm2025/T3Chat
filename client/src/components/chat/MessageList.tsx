@@ -16,15 +16,25 @@ export function MessageList({ messages, streaming, showPlaceholder = true, place
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        // Use the MasterLayout's scroll container for scrolling
+        const scrollContainer = document.getElementById("chat-scroll-container");
+        if (messagesEndRef.current && scrollContainer) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        } else if (messagesEndRef.current) {
+            // Fallback to default behavior if scroll container not found
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
     }, [messages]);
 
     const filteredMessages = messages.filter((message) => message.role === "user" || message.role === "assistant");
 
-    if (filteredMessages.length === 0 && showPlaceholder) {
+    // Don't show placeholder if streaming is active or if there are messages
+    const shouldShowPlaceholder = showPlaceholder && !streaming && filteredMessages.length === 0;
+
+    if (shouldShowPlaceholder) {
         return (
-            <div className="flex h-full flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+            <div className="flex h-full flex-col">
+                <div className="px-4 py-6 sm:px-8">
                     <MessagePlaceholder userName={placeholderUserName} onPromptClick={onPromptClick} />
                 </div>
             </div>
@@ -32,8 +42,8 @@ export function MessageList({ messages, streaming, showPlaceholder = true, place
     }
 
     return (
-        <div className="flex h-full flex-col overflow-hidden">
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 scroll-smooth">
+        <div className="flex h-full flex-col">
+            <div ref={scrollContainerRef} className="px-4 py-6 sm:px-8 pb-[140px]">
                 <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
                     {filteredMessages.map((message, index) => {
                         const isLastMessage = index === filteredMessages.length - 1;

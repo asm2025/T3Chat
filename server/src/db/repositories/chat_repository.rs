@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::Utc;
 use diesel::prelude::*;
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl, scoped_futures::ScopedFutureExt};
 use uuid::Uuid;
 
 use crate::db::{
@@ -188,7 +188,7 @@ impl TChatRepository for ChatRepository {
             .context("Failed to update chat")
     }
 
-    /// Delete chat (soft delete by archiving)
+    /// Delete chat (hard delete: delete messages first, then chat, in a transaction)
     async fn delete(&self, id: Uuid, user_id: &str) -> Result<()> {
         let mut conn = self
             .pool
@@ -196,25 +196,39 @@ impl TChatRepository for ChatRepository {
             .await
             .context("Failed to get DB connection")?;
 
-        // Check if chat exists and belongs to user
-        let _existing = chats::table
-            .filter(chats::id.eq(id))
-            .filter(chats::user_id.eq(user_id))
-            .filter(chats::is_archived.ne(Some(true)))
-            .first::<Chat>(&mut conn)
-            .await
-            .optional()
-            .context("Failed to check chat")?
-            .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
+        // Use a transaction to ensure atomicity: delete messages first, then chat
+        conn.transaction::<_, anyhow::Error, _>(|conn| async move {
+            // Check if chat exists and belongs to user
+            let _existing = chats::table
+                .filter(chats::id.eq(id))
+                .filter(chats::user_id.eq(user_id))
+                .filter(chats::is_archived.ne(Some(true)))
+                .first::<Chat>(conn)
+                .await
+                .optional()
+                .context("Failed to check chat")?
+                .ok_or_else(|| anyhow::anyhow!("Chat not found"))?;
 
-        // Soft delete by setting is_archived
-        diesel::update(chats::table)
-            .filter(chats::id.eq(id))
-            .filter(chats::user_id.eq(user_id))
-            .set(chats::is_archived.eq(Some(true)))
-            .execute(&mut conn)
-            .await
-            .context("Failed to delete chat")?;
+            // Delete all messages for this chat first
+            diesel::delete(messages::table)
+                .filter(messages::chat_id.eq(id))
+                .execute(conn)
+                .await
+                .context("Failed to delete messages")?;
+
+            // Then delete the chat
+            diesel::delete(chats::table)
+                .filter(chats::id.eq(id))
+                .filter(chats::user_id.eq(user_id))
+                .execute(conn)
+                .await
+                .context("Failed to delete chat")?;
+
+            Ok(())
+        }
+        .scope_boxed())
+        .await
+        .context("Failed to delete chat in transaction")?;
 
         Ok(())
     }

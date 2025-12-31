@@ -33,7 +33,6 @@ export function LoginForm() {
             setIsLoading(true);
             handleCallback(token)
                 .then(() => {
-                    toast.success("Successfully logged in");
                     navigate("/chat", { replace: true });
                     // Reload page to refresh auth state
                     window.location.reload();
@@ -60,7 +59,6 @@ export function LoginForm() {
 
         try {
             await localLogin(username, password);
-            toast.success("Successfully logged in");
             navigate("/chat", { replace: true });
             // Reload page to refresh auth state
             window.location.reload();
