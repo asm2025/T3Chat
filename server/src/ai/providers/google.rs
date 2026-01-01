@@ -343,41 +343,30 @@ impl AIProvider for GoogleProvider {
             anyhow::bail!("Google API error ({}): {}", status, error_text);
         }
 
-        let stream = response
-            .bytes_stream()
+        let stream = crate::utils::stream::sse_stream(response.bytes_stream())
             .map(move |result| {
                 match result {
-                    Ok(bytes) => {
-                        let text = String::from_utf8_lossy(bytes.as_ref());
+                    Ok(line) => {
                         let mut chunks = Vec::new();
+                        if line.starts_with("data: ") {
+                            let data = &line[6..];
 
-                        // Parse SSE format
-                        for line in text.lines() {
-                            if line.starts_with("data: ") {
-                                let data = &line[6..];
-
-                                if let Ok(parsed) =
-                                    serde_json::from_str::<GoogleStreamResponse>(data)
-                                {
-                                    if let Some(candidate) = parsed.candidates.first() {
-                                        if let Some(part) = candidate.content.parts.first() {
-                                            chunks.push(Ok(ChatResponseChunk {
-                                                delta: part.text.clone(),
-                                                done: candidate.finish_reason.is_some(),
-                                                model: Some(model.clone()),
-                                                finish_reason: candidate.finish_reason.clone(),
-                                            }));
-                                        }
+                            if let Ok(parsed) = serde_json::from_str::<GoogleStreamResponse>(data) {
+                                if let Some(candidate) = parsed.candidates.first() {
+                                    if let Some(part) = candidate.content.parts.first() {
+                                        chunks.push(Ok(ChatResponseChunk {
+                                            delta: part.text.clone(),
+                                            done: candidate.finish_reason.is_some(),
+                                            model: Some(model.clone()),
+                                            finish_reason: candidate.finish_reason.clone(),
+                                        }));
                                     }
                                 }
                             }
                         }
-
                         futures::stream::iter(chunks)
                     }
-                    Err(e) => {
-                        futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
-                    }
+                    Err(e) => futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))]),
                 }
             })
             .flatten();

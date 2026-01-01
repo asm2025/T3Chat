@@ -370,14 +370,11 @@ impl AIProvider for ChatLLMProvider {
             anyhow::bail!("ChatLLM API error ({}): {}", status, error_text);
         }
 
-        let stream = response
-            .bytes_stream()
-            .map(move |result| match result {
-                Ok(bytes) => {
-                    let text = String::from_utf8_lossy(bytes.as_ref());
-
-                    let mut chunks = Vec::new();
-                    for line in text.lines() {
+        let stream = crate::utils::stream::sse_stream(response.bytes_stream())
+            .map(move |result| {
+                match result {
+                    Ok(line) => {
+                        let mut chunks = Vec::new();
                         if line.starts_with("data: ") {
                             let data = &line[6..];
                             if data == "[DONE]" {
@@ -387,10 +384,7 @@ impl AIProvider for ChatLLMProvider {
                                     model: Some(model_clone.clone()),
                                     finish_reason: Some("stop".to_string()),
                                 }));
-                                break;
-                            }
-
-                            if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data) {
+                            } else if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data) {
                                 if let Some(choice) = parsed.choices.first() {
                                     chunks.push(Ok(ChatResponseChunk {
                                         delta: choice.delta.content.clone(),
@@ -401,11 +395,10 @@ impl AIProvider for ChatLLMProvider {
                                 }
                             }
                         }
+                        futures::stream::iter(chunks)
                     }
-
-                    futures::stream::iter(chunks)
+                    Err(e) => futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))]),
                 }
-                Err(e) => futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))]),
             })
             .flatten();
 

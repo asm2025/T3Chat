@@ -295,50 +295,41 @@ impl AIProvider for AnthropicProvider {
             anyhow::bail!("Anthropic API error ({}): {}", status, error_text);
         }
 
-        let stream = response
-            .bytes_stream()
+        let stream = crate::utils::stream::sse_stream(response.bytes_stream())
             .map(move |result| {
                 match result {
-                    Ok(bytes) => {
-                        let text = String::from_utf8_lossy(bytes.as_ref());
+                    Ok(line) => {
                         let mut chunks = Vec::new();
+                        if line.starts_with("data: ") {
+                            let data = &line[6..];
 
-                        // Parse SSE format
-                        for line in text.lines() {
-                            if line.starts_with("data: ") {
-                                let data = &line[6..];
-
-                                if let Ok(event) = serde_json::from_str::<StreamEvent>(data) {
-                                    match event.event_type.as_str() {
-                                        "content_block_delta" => {
-                                            if let Some(delta) = event.delta {
-                                                chunks.push(Ok(ChatResponseChunk {
-                                                    delta: delta.text,
-                                                    done: delta.stop_reason.is_some(),
-                                                    model: Some(model.clone()),
-                                                    finish_reason: delta.stop_reason,
-                                                }));
-                                            }
-                                        }
-                                        "message_stop" => {
+                            if let Ok(event) = serde_json::from_str::<StreamEvent>(data) {
+                                match event.event_type.as_str() {
+                                    "content_block_delta" => {
+                                        if let Some(delta) = event.delta {
                                             chunks.push(Ok(ChatResponseChunk {
-                                                delta: String::new(),
-                                                done: true,
+                                                delta: delta.text,
+                                                done: delta.stop_reason.is_some(),
                                                 model: Some(model.clone()),
-                                                finish_reason: Some("end_turn".to_string()),
+                                                finish_reason: delta.stop_reason,
                                             }));
                                         }
-                                        _ => {}
                                     }
+                                    "message_stop" => {
+                                        chunks.push(Ok(ChatResponseChunk {
+                                            delta: String::new(),
+                                            done: true,
+                                            model: Some(model.clone()),
+                                            finish_reason: Some("end_turn".to_string()),
+                                        }));
+                                    }
+                                    _ => {}
                                 }
                             }
                         }
-
                         futures::stream::iter(chunks)
                     }
-                    Err(e) => {
-                        futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
-                    }
+                    Err(e) => futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))]),
                 }
             })
             .flatten();

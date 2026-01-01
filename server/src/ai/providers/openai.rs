@@ -321,46 +321,34 @@ impl AIProvider for OpenAIProvider {
             anyhow::bail!("OpenAI API error ({}): {}", status, error_text);
         }
 
-        let stream = response
-            .bytes_stream()
+        let stream = crate::utils::stream::sse_stream(response.bytes_stream())
             .map(move |result| {
                 match result {
-                    Ok(bytes) => {
-                        let text = String::from_utf8_lossy(bytes.as_ref());
-
-                        // Parse SSE format
+                    Ok(line) => {
                         let mut chunks = Vec::new();
-                        for line in text.lines() {
-                            if line.starts_with("data: ") {
-                                let data = &line[6..];
-                                if data == "[DONE]" {
+                        if line.starts_with("data: ") {
+                            let data = &line[6..];
+                            if data == "[DONE]" {
+                                chunks.push(Ok(ChatResponseChunk {
+                                    delta: String::new(),
+                                    done: true,
+                                    model: Some(model.clone()),
+                                    finish_reason: Some("stop".to_string()),
+                                }));
+                            } else if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data) {
+                                if let Some(choice) = parsed.choices.first() {
                                     chunks.push(Ok(ChatResponseChunk {
-                                        delta: String::new(),
-                                        done: true,
-                                        model: Some(model.clone()),
-                                        finish_reason: Some("stop".to_string()),
+                                        delta: choice.delta.content.clone(),
+                                        done: choice.finish_reason.is_some(),
+                                        model: Some(parsed.model.clone()),
+                                        finish_reason: choice.finish_reason.clone(),
                                     }));
-                                    break;
-                                }
-
-                                if let Ok(parsed) = serde_json::from_str::<StreamResponse>(data) {
-                                    if let Some(choice) = parsed.choices.first() {
-                                        chunks.push(Ok(ChatResponseChunk {
-                                            delta: choice.delta.content.clone(),
-                                            done: choice.finish_reason.is_some(),
-                                            model: Some(parsed.model.clone()),
-                                            finish_reason: choice.finish_reason.clone(),
-                                        }));
-                                    }
                                 }
                             }
                         }
-
                         futures::stream::iter(chunks)
                     }
-                    Err(e) => {
-                        futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))])
-                    }
+                    Err(e) => futures::stream::iter(vec![Err(anyhow::anyhow!("Stream error: {}", e))]),
                 }
             })
             .flatten();
