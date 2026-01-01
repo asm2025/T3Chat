@@ -14,7 +14,7 @@ export function AuthCallback() {
     if (token) {
       handleCallback(token)
         .then(() => {
-          navigate('/chat', { replace: true });
+          navigate('/', { replace: true });
           // Reload page to refresh auth state
           window.location.reload();
         })

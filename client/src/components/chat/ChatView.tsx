@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
@@ -18,13 +18,16 @@ import type { Message, AiProvider } from "@/types/chat";
 import type { AIModel } from "@/types/model";
 
 interface ChatViewProps {
-    chatId: string | null;
+    chatId?: string | null;
 }
 
 const NEW_CONVERSATION_KEY = "__new__";
 
-export function ChatView({ chatId }: ChatViewProps) {
+export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    // Use prop if provided, otherwise get from search params
+    const chatId = chatIdProp !== undefined ? chatIdProp : searchParams.get("chatId");
     const { chat, loading, error, refresh } = useChat(chatId);
     const { models: backendModels } = useModels();
     const { config } = useConfig();
@@ -41,7 +44,7 @@ export function ChatView({ chatId }: ChatViewProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const chatKey = chatId ?? NEW_CONVERSATION_KEY;
-    // During the "/chat -> /chat/{id}" transition, React may render once with the new `chatId`
+    // During the transition from no chatId to chatId, React may render once with the new `chatId`
     // before our state has been migrated to that key. Fall back to the new-chat bucket to avoid
     // the placeholder flashing back in.
     const messages = messagesByChatId[chatKey] ?? (chatId ? messagesByChatId[NEW_CONVERSATION_KEY] ?? [] : []);
@@ -113,7 +116,7 @@ export function ChatView({ chatId }: ChatViewProps) {
         });
     }, [chat, chatId]);
 
-    // When navigating to /chat (no id), reset the new-chat state.
+    // When navigating to home with no chatId, reset the new-chat state.
     useEffect(() => {
         if (chatId !== null) {
             // Clear input when navigating to an existing chat
@@ -271,13 +274,13 @@ export function ChatView({ chatId }: ChatViewProps) {
                     return {
                         ...prev,
                         // Keep NEW_CHAT_KEY messages around briefly so the UI can fall back during route transition.
-                        // We clear it when navigating back to "/chat".
+                        // We clear it when navigating back to home without a chatId.
                         [NEW_CONVERSATION_KEY]: pending,
                         [currentChatId!]: migrated,
                     };
                 });
 
-                navigate(`/chat/${currentChatId}`, { replace: true });
+                setSearchParams({ chatId: currentChatId }, { replace: true });
             } catch (err) {
                 // If chat creation fails, keep the user bubble and replace assistant placeholder with an error.
                 const msg = getErrorMessage(err);
@@ -367,7 +370,7 @@ export function ChatView({ chatId }: ChatViewProps) {
             await t3ChatClient.deleteChat(chatId);
             toast.success("Chat deleted successfully");
             // Navigate away from the deleted chat first, then refresh the chat list
-            navigate("/chat");
+            setSearchParams({}, { replace: true });
             refreshChats();
         } catch (err) {
             toast.error("Failed to delete chat", {

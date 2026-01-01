@@ -33,7 +33,7 @@ export function LoginForm() {
             setIsLoading(true);
             handleCallback(token)
                 .then(() => {
-                    navigate("/chat", { replace: true });
+                    navigate("/", { replace: true });
                     // Reload page to refresh auth state
                     window.location.reload();
                 })
@@ -59,7 +59,7 @@ export function LoginForm() {
 
         try {
             await localLogin(username, password);
-            navigate("/chat", { replace: true });
+            navigate("/", { replace: true });
             // Reload page to refresh auth state
             window.location.reload();
         } catch (error) {

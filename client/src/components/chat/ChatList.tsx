@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, MoreVertical } from "lucide-react";
@@ -16,7 +16,8 @@ import type { Chat } from "@/types/chat";
 export function ChatList() {
     const { chats, loading, refresh } = useChats();
     const navigate = useNavigate();
-    const { chatId } = useParams<{ chatId?: string }>();
+    const [searchParams] = useSearchParams();
+    const chatId = searchParams.get("chatId");
     const { streamingChatId } = useStreamingContext();
     const [query, setQuery] = useState("");
     const [deleteDialogChatId, setDeleteDialogChatId] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function ChatList() {
 
             // If the deleted chat was the active one, navigate away first
             if (isActiveChat) {
-                navigate("/chat");
+                navigate("/");
             }
 
             // Then refresh the chat list
@@ -125,7 +126,7 @@ export function ChatList() {
         // Logic to simply navigate to the root chat page which shows "New Chat" view
         // The actual creation happens when sending a message.
         // Or if we want to force a blank state:
-        navigate("/chat");
+        navigate("/");
     };
 
     if (loading) {
@@ -163,7 +164,7 @@ export function ChatList() {
                                     return (
                                         <div key={chat.id} className="group relative flex items-center rounded-md">
                                             <button
-                                                onClick={() => navigate(`/chat/${chat.id}`)}
+                                                onClick={() => navigate(`/?chatId=${chat.id}`)}
                                                 className={`flex flex-1 items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                                                     active ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                                 }`}>

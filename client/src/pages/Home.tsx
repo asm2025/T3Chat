@@ -1,12 +1,9 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/lib/use-auth";
 import { MessageSquare, Zap, Shield, Users } from "lucide-react";
 
 export function Home() {
-    const { isAuthenticated } = useAuth();
-
     return (
         <div className="min-h-screen bg-linear-to-b from-background to-muted/20">
             <div className="container mx-auto px-4 py-16">
@@ -15,15 +12,9 @@ export function Home() {
                     <h1 className="text-5xl font-bold tracking-tight">Welcome to T3Chat</h1>
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto">A modern, open-source chat platform powered by AI. Connect, collaborate, and create with intelligent chats.</p>
                     <div className="flex gap-4 justify-center">
-                        {isAuthenticated ? (
-                            <Button asChild size="lg">
-                                <Link to="/chat">Go to Chat</Link>
-                            </Button>
-                        ) : (
-                            <Button asChild size="lg">
-                                <Link to="/login">Get Started</Link>
-                            </Button>
-                        )}
+                        <Button asChild size="lg">
+                            <Link to="/login">Get Started</Link>
+                        </Button>
                         <Button asChild variant="outline" size="lg">
                             <Link to="/about">Learn More</Link>
                         </Button>
@@ -69,11 +60,9 @@ export function Home() {
                 <div className="text-center space-y-4">
                     <h2 className="text-3xl font-bold">Ready to get started?</h2>
                     <p className="text-muted-foreground">Join thousands of users already using T3Chat</p>
-                    {!isAuthenticated && (
-                        <Button asChild size="lg">
-                            <Link to="/login">Sign in</Link>
-                        </Button>
-                    )}
+                    <Button asChild size="lg">
+                        <Link to="/login">Sign in</Link>
+                    </Button>
                 </div>
             </div>
         </div>

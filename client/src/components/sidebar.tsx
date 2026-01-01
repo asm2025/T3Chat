@@ -52,7 +52,7 @@ export function Sidebar({ variant = "sidebar", collapsible = "offcanvas", classN
                             <span className="sr-only">Toggle Sidebar</span>
                         </Button>
                     )}
-                    <button type="button" onClick={() => navigate("/chat")} className="flex flex-col flex-1 text-center leading-tight group-data-[collapsible=icon]:hidden">
+                    <button type="button" onClick={() => navigate("/")} className="flex flex-col flex-1 text-center leading-tight group-data-[collapsible=icon]:hidden">
                         <span className="block text-xl font-semibold tracking-tight">T3.chat</span>
                     </button>
                 </div>

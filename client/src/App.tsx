@@ -1,14 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { useAuth } from "@/lib/use-auth";
 import { ProtectedRoute } from "@/components/protected-route";
 import { AdminRoute } from "@/components/admin-route";
 import { Settings } from "@/pages/Settings";
-import { Chat } from "@/pages/Chat";
 import { Profile } from "@/pages/Profile";
 import { Models } from "@/pages/Models";
-import { Home } from "@/pages/Home";
 import { About } from "@/pages/About";
 import { Health } from "@/pages/Health";
 import { AdminDashboard } from "@/pages/admin/dashboard";
@@ -17,6 +15,10 @@ import { AdminProviders } from "@/pages/admin/providers";
 import { AdminModels } from "@/pages/admin/models";
 import { AuthCallback } from "@/pages/AuthCallback";
 import { Login } from "@/pages/Login";
+
+// Lazy load page components for code splitting
+const Home = lazy(() => import("@/pages/Home").then((m) => ({ default: m.Home })));
+const Chat = lazy(() => import("@/pages/Chat").then((m) => ({ default: m.Chat })));
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -106,7 +108,6 @@ function AuthenticatedLayout() {
                         <Sidebar variant="sidebar" collapsible="offcanvas" />
                         <SidebarInset className="h-screen">
                             <Routes>
-                                <Route path="/chat/:chatId?" element={<Chat />} />
                                 <Route path="/profile" element={<Profile />} />
                                 <Route path="/settings" element={<Settings />} />
                                 <Route
@@ -162,7 +163,6 @@ function AuthenticatedLayout() {
                             <SidebarInset className="h-screen overflow-hidden">
                                 <FloatingToolbar />
                                 <Routes>
-                                    <Route path="/chat/:chatId?" element={<Chat />} />
                                     <Route path="/profile" element={<Profile />} />
                                     <Route path="/settings" element={<Settings />} />
                                     <Route
@@ -200,6 +200,22 @@ function AuthenticatedLayout() {
     );
 }
 
+// Root route component that conditionally renders Home or Chat based on auth
+function RootRoute() {
+    const { isAuthenticated } = useAuth();
+
+    return (
+        <Suspense
+            fallback={
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            }>
+            {isAuthenticated ? <Chat /> : <Home />}
+        </Suspense>
+    );
+}
+
 function App() {
     const { loading } = useAuth();
 
@@ -214,8 +230,10 @@ function App() {
                         </div>
                     ) : (
                         <Routes>
+                            {/* Root route - conditionally shows Home or Chat */}
+                            <Route path="/" element={<RootRoute />} />
+
                             {/* Public routes */}
-                            <Route path="/" element={<Home />} />
                             <Route path="/about" element={<About />} />
                             <Route path="/health" element={<Health />} />
                             <Route path="/login" element={<Login />} />

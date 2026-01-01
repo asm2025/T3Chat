@@ -34,9 +34,9 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                                 // Style paragraphs
                                 p: ({ node, ...props }) => <p className="mb-3 leading-relaxed last:mb-0" {...props} />,
                                 // Style lists
-                                ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
-                                ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
-                                li: ({ node, ...props }) => <li className="ml-4" {...props} />,
+                                ul: ({ node, ...props }) => <ul className="list-disc list-outside mb-3 space-y-1 pl-6" {...props} />,
+                                ol: ({ node, ...props }) => <ol className="list-decimal list-outside mb-3 space-y-1 pl-6" {...props} />,
+                                li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
                                 // Style code blocks and inline code
                                 code: ({ node, className, children, ...props }) => {
                                     const isInline = !className;
@@ -68,15 +68,14 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                                 tr: ({ node, ...props }) => <tr className="border-b border-border" {...props} />,
                                 th: ({ node, ...props }) => <th className="border border-border px-3 py-2 text-left font-semibold" {...props} />,
                                 td: ({ node, ...props }) => <td className="border border-border px-3 py-2" {...props} />,
-                            }}
-                        >
+                            }}>
                             {message.content}
                         </ReactMarkdown>
                         {streaming && <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-current" />}
-                        {(message.modelUsed || message.tokensUsed) && (
+                        {(message.modelUsed || message.tokensUsed !== undefined) && (
                             <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                                 {message.modelUsed && <span>{message.modelUsed}</span>}
-                                {message.tokensUsed && <span>• {message.tokensUsed} tokens</span>}
+                                {message.tokensUsed !== undefined && <span>• {message.tokensUsed} tokens</span>}
                             </div>
                         )}
                     </div>
@@ -95,10 +94,10 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                         {message.content}
                         {streaming && <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-current" />}
                     </p>
-                    {(message.modelUsed || message.tokensUsed) && (
+                    {(message.modelUsed || message.tokensUsed !== undefined) && (
                         <div className="mt-2 flex items-center gap-2 border-t border-current/10 pt-2 text-xs opacity-70">
                             {message.modelUsed && <span>{message.modelUsed}</span>}
-                            {message.tokensUsed && <span>• {message.tokensUsed} tokens</span>}
+                            {message.tokensUsed !== undefined && <span>• {message.tokensUsed} tokens</span>}
                         </div>
                     )}
                 </div>
