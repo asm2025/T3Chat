@@ -27,6 +27,11 @@ use serde_json::Value;
 use std::{convert::Infallible, sync::Arc};
 use utoipa::ToSchema;
 
+/// End-of-stream marker: sequence of non-printable control characters
+/// that are extremely unlikely to appear in normal AI responses.
+/// Uses: NULL, SOH, STX, ETX, EOT, ENQ, ACK, BEL
+const STREAM_END_MARKER: &str = "\u{0000}\u{0001}\u{0002}\u{0003}\u{0004}\u{0005}\u{0006}\u{0007}";
+
 /// Chat completion request with full LibreChat support
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -563,6 +568,9 @@ pub async fn stream_chat(
     let user_msg_id = user_msg.id;
 
     let event_stream = async_stream::stream! {
+        let mut stream_complete = false;
+        
+        // Process all chunks and accumulate the full response
         while let Some(chunk_result) = stream.next().await {
             match chunk_result {
                 Ok(chunk) => {
@@ -574,32 +582,9 @@ pub async fn stream_chat(
 
                     yield Ok::<Event, Infallible>(event);
 
-                    // If done, save assistant response
+                    // Mark stream as complete when done, but don't save yet
                     if chunk.done {
-                        let assistant_seq = chat_repo
-                            .get_next_sequence_number(chat_id)
-                            .await
-                            .unwrap_or(user_seq + 1);
-
-                        let assistant_message = chat_repo
-                            .create_message(CreateMessageDto {
-                                chat_id,
-                                role: MessageRole::Assistant,
-                                content: full_response.clone(),
-                                metadata: None,
-                                parent_message_id: None,
-                                sequence_number: assistant_seq,
-                            })
-                            .await;
-
-                        if let Ok(msg) = assistant_message {
-                            // Update with model info if available
-                            let _ = chat_repo
-                                .update_tokens_used(msg.id, 0, &model)
-                                .await;
-                        }
-
-                        break;
+                        stream_complete = true;
                     }
                 }
                 Err(e) => {
@@ -624,6 +609,38 @@ pub async fn stream_chat(
                     break;
                 }
             }
+        }
+        
+        // Save assistant message ONCE after all chunks are processed
+        if stream_complete && !full_response.is_empty() {
+            let assistant_seq = chat_repo
+                .get_next_sequence_number(chat_id)
+                .await
+                .unwrap_or(user_seq + 1);
+
+            let assistant_message = chat_repo
+                .create_message(CreateMessageDto {
+                    chat_id,
+                    role: MessageRole::Assistant,
+                    content: full_response.clone(),
+                    metadata: None,
+                    parent_message_id: None,
+                    sequence_number: assistant_seq,
+                })
+                .await;
+
+            if let Ok(msg) = assistant_message {
+                // Update with model info if available
+                let _ = chat_repo
+                    .update_tokens_used(msg.id, 0, &model)
+                    .await;
+            }
+        }
+        
+        // Send final end-of-stream marker after all chunks are processed
+        if stream_complete {
+            let done_event = Event::default().data(STREAM_END_MARKER);
+            yield Ok::<Event, Infallible>(done_event);
         }
     };
 

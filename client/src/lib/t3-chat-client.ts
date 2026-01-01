@@ -220,153 +220,109 @@ export class T3ChatClient extends ApiClient {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let lineBuffer = ""; // Only buffer incomplete lines
 
         try {
-            let buffer = "";
-            let streamDone = false;
-
             while (true) {
                 const { done, value } = await reader.read();
+
                 if (done) {
-                    // Process any remaining buffered data before exiting
-                    // Continue processing even if we encounter [DONE] to ensure all data is processed
-                    if (buffer.trim()) {
-                        const lines = buffer.split("\n");
-                        for (const line of lines) {
-                            if (line.trim() && line.startsWith("data: ")) {
-                                const data = line.slice(6);
-                                if (data === "[DONE]") {
-                                    streamDone = true;
-                                    // Continue processing remaining lines in buffer before breaking
-                                    continue;
-                                }
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    if (parsed && typeof parsed === "object") {
-                                        const maybeError = parsed as Record<string, unknown>;
-                                        if (maybeError.error === true) {
-                                            const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
-                                            throw new Error(message);
-                                        }
-                                    }
-                                    // Mark stream as done if this chunk indicates completion
-                                    const isDone = parsed?.done === true;
-                                    if (isDone) {
-                                        streamDone = true;
-                                    }
-                                    let content: string | null = null;
-                                    if (typeof parsed?.content === "string") {
-                                        content = parsed.content;
-                                    } else if (typeof parsed?.delta === "string") {
-                                        content = parsed.delta;
-                                    }
-                                    // Filter out empty deltas
-                                    if (content) {
-                                        yield content;
-                                    }
-                                } catch {
-                                    // Skip invalid JSON
-                                }
-                            }
+                    // Process any remaining buffered line
+                    if (lineBuffer.trim()) {
+                        const content = this.processSSELine(lineBuffer);
+                        if (content !== null && content !== undefined) {
+                            yield content;
                         }
                     }
                     break;
                 }
 
-                // Decode and accumulate chunks
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
+                // Decode chunk and append to line buffer
+                const chunk = decoder.decode(value, { stream: true });
+                lineBuffer += chunk;
 
+                // Process complete lines (lines ending with \n)
+                const lines = lineBuffer.split("\n");
                 // Keep the last incomplete line in buffer
-                buffer = lines.pop() || "";
+                lineBuffer = lines.pop() || "";
 
-                // Process complete lines immediately - yield chunks as they arrive
+                // Process each complete line
                 for (const line of lines) {
                     if (!line.trim()) continue;
 
+                    // Only process SSE data lines
                     if (line.startsWith("data: ")) {
-                        const data = line.slice(6);
-                        if (data === "[DONE]") {
-                            streamDone = true;
-                            // Still process remaining lines in current batch before returning
-                            continue;
+                        const content = this.processSSELine(line);
+                        if (content === null) {
+                            // End-of-stream marker received, stop processing
+                            return;
                         }
-                        try {
-                            const parsed = JSON.parse(data);
-                            // Server may emit structured errors on the stream.
-                            if (parsed && typeof parsed === "object") {
-                                const maybeError = parsed as Record<string, unknown>;
-                                if (maybeError.error === true) {
-                                    const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
-                                    throw new Error(message);
-                                }
-                            }
-
-                            // Mark stream as done if this chunk indicates completion
-                            const isDone = parsed?.done === true;
-                            if (isDone) {
-                                streamDone = true;
-                            }
-
-                            // Server emits chunks like { delta, done, ... } (ChatResponseChunk).
-                            // Some providers may emit { content } - support both.
-                            let content: string | null = null;
-                            if (typeof parsed?.content === "string") {
-                                content = parsed.content;
-                            } else if (typeof parsed?.delta === "string") {
-                                content = parsed.delta;
-                            }
-
-                            // Yield content immediately if present (filter out empty strings)
-                            if (content) {
-                                yield content;
-                            }
-                        } catch {
-                            // Skip invalid JSON
+                        if (content !== undefined) {
+                            yield content;
                         }
                     }
-                }
-
-                // If stream is done, process any remaining buffer data before breaking
-                if (streamDone) {
-                    // Process any remaining buffered data
-                    if (buffer.trim()) {
-                        const remainingLines = buffer.split("\n");
-                        for (const line of remainingLines) {
-                            if (line.trim() && line.startsWith("data: ")) {
-                                const data = line.slice(6);
-                                if (data === "[DONE]") {
-                                    break;
-                                }
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    if (parsed && typeof parsed === "object") {
-                                        const maybeError = parsed as Record<string, unknown>;
-                                        if (maybeError.error === true) {
-                                            const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
-                                            throw new Error(message);
-                                        }
-                                    }
-                                    let content: string | null = null;
-                                    if (typeof parsed?.content === "string") {
-                                        content = parsed.content;
-                                    } else if (typeof parsed?.delta === "string") {
-                                        content = parsed.delta;
-                                    }
-                                    if (content) {
-                                        yield content;
-                                    }
-                                } catch {
-                                    // Skip invalid JSON
-                                }
-                            }
-                        }
-                    }
-                    break;
                 }
             }
         } finally {
             reader.releaseLock();
+        }
+    }
+
+    /**
+     * End-of-stream marker: sequence of non-printable control characters
+     * that are extremely unlikely to appear in normal AI responses.
+     * Uses: NULL, SOH, STX, ETX, EOT, ENQ, ACK, BEL
+     */
+    private static readonly STREAM_END_MARKER = "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007";
+
+    /**
+     * Process a single SSE data line and extract content.
+     * Returns:
+     * - string: content to yield
+     * - undefined: skip this line (empty delta, etc.)
+     * - null: stream is done (end marker received)
+     */
+    private processSSELine(line: string): string | undefined | null {
+        if (!line.startsWith("data: ")) {
+            return undefined;
+        }
+
+        const data = line.slice(6).trim();
+
+        // Check for end-of-stream marker (sequence of non-printable control characters)
+        if (data === T3ChatClient.STREAM_END_MARKER) {
+            return null;
+        }
+
+        try {
+            const parsed = JSON.parse(data);
+
+            // Handle error responses
+            if (parsed && typeof parsed === "object") {
+                const maybeError = parsed as Record<string, unknown>;
+                if (maybeError.error === true) {
+                    const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
+                    throw new Error(message);
+                }
+            }
+
+            // Extract content from delta or content field
+            let content: string | null = null;
+            if (typeof parsed?.content === "string") {
+                content = parsed.content;
+            } else if (typeof parsed?.delta === "string") {
+                content = parsed.delta;
+            }
+
+            // Yield non-empty content (empty strings are filtered out)
+            return content || undefined;
+        } catch (error) {
+            // If it's an error we threw, re-throw it
+            if (error instanceof Error) {
+                throw error;
+            }
+            // Otherwise, skip invalid JSON lines
+            return undefined;
         }
     }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
@@ -24,7 +24,6 @@ interface ChatViewProps {
 const NEW_CONVERSATION_KEY = "__new__";
 
 export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     // Use prop if provided, otherwise get from search params
     const chatId = chatIdProp !== undefined ? chatIdProp : searchParams.get("chatId");
