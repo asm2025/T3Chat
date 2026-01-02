@@ -89,7 +89,7 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
         <div className="flex w-full gap-3 justify-end">
             <div className="flex max-w-[80%] flex-col items-end text-right">
                 <span className="mb-1.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">You</span>
-                <div className="w-full rounded-xl border border-foreground/20 bg-foreground text-background px-4 py-3 shadow-sm transition">
+                <div className="w-full rounded-xl border border-foreground/20 bg-background text-foreground px-4 py-3 transition">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">
                         {message.content}
                         {streaming && <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-current" />}

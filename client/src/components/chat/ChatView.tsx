@@ -385,7 +385,7 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
     const showChatTitle = chat && chat.id === chatId;
 
     return (
-        <div className="flex h-full flex-col">
+        <div className="flex min-h-full flex-col">
             {showChatTitle && (
                 <div className="border-b border-border p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
