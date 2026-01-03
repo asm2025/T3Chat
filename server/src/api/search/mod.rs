@@ -1,13 +1,10 @@
-use crate::{
-    AppState,
-    middleware::auth::AuthenticatedUser,
-};
+use crate::{AppState, middleware::auth::AuthenticatedUser};
 use axum::{
+    Router,
     extract::{Query, State},
     http::StatusCode,
     response::Json,
     routing::get,
-    Router,
 };
 use meilisearch_sdk::client::Client;
 use serde::{Deserialize, Serialize};
@@ -52,12 +49,12 @@ pub fn routes() -> Router<AppState> {
 
 async fn search(
     user: AuthenticatedUser,
-    State(state): State<AppState>,
+    State(_): State<AppState>,
     Query(params): Query<SearchQuery>,
 ) -> Result<Json<SearchResponse>, StatusCode> {
     // Get MeiliSearch client from environment
-    let meili_host = std::env::var("MEILI_HOST")
-        .unwrap_or_else(|_| "http://localhost:7700".to_string());
+    let meili_host =
+        std::env::var("MEILI_HOST").unwrap_or_else(|_| "http://localhost:7700".to_string());
     let meili_master_key = std::env::var("MEILI_MASTER_KEY").ok();
 
     let client = match Client::new(meili_host, meili_master_key) {
@@ -69,7 +66,7 @@ async fn search(
     };
 
     let index = client.index(MEILISEARCH_INDEX_NAME);
-    
+
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
 
@@ -95,4 +92,3 @@ async fn search(
         offset,
     }))
 }
-

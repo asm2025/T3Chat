@@ -7,16 +7,16 @@ use crate::{
     middleware::auth::AuthenticatedUser,
 };
 use axum::{
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::{get, post, put, delete},
-    Router,
+    routing::{delete, get, post, put},
 };
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
-use uuid::Uuid;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -177,7 +177,10 @@ pub async fn create_preset(
                     updated_at: chrono::Utc::now(),
                     order_index: None,
                 };
-                let _ = state.preset_repository.update(p.id, &user.0.id, update).await;
+                let _ = state
+                    .preset_repository
+                    .update(p.id, &user.0.id, update)
+                    .await;
             }
         }
     }
@@ -185,19 +188,34 @@ pub async fn create_preset(
     // Build model_parameters JSON from individual fields
     let mut model_parameters = serde_json::Map::new();
     if let Some(temp) = payload.temperature {
-        model_parameters.insert("temperature".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap()));
+        model_parameters.insert(
+            "temperature".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap()),
+        );
     }
     if let Some(top_p) = payload.top_p {
-        model_parameters.insert("top_p".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(top_p as f64).unwrap()));
+        model_parameters.insert(
+            "top_p".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(top_p as f64).unwrap()),
+        );
     }
     if let Some(freq_penalty) = payload.frequency_penalty {
-        model_parameters.insert("frequency_penalty".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(freq_penalty as f64).unwrap()));
+        model_parameters.insert(
+            "frequency_penalty".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(freq_penalty as f64).unwrap()),
+        );
     }
     if let Some(pres_penalty) = payload.presence_penalty {
-        model_parameters.insert("presence_penalty".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(pres_penalty as f64).unwrap()));
+        model_parameters.insert(
+            "presence_penalty".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(pres_penalty as f64).unwrap()),
+        );
     }
     if let Some(ctx_window) = payload.context_window {
-        model_parameters.insert("context_window".to_string(), serde_json::Value::Number(serde_json::Number::from(ctx_window)));
+        model_parameters.insert(
+            "context_window".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(ctx_window)),
+        );
     }
     if let Some(tools) = payload.tools {
         model_parameters.insert("tools".to_string(), tools);
@@ -224,7 +242,9 @@ pub async fn create_preset(
 
     let new_preset = NewPreset {
         id: None,
-        preset_id: payload.preset_id.unwrap_or_else(|| Uuid::new_v4().to_string()),
+        preset_id: payload
+            .preset_id
+            .unwrap_or_else(|| Uuid::new_v4().to_string()),
         user_id: user.0.id.clone(),
         title: payload.title,
         endpoint: payload.endpoint.unwrap_or_default(),
@@ -317,27 +337,49 @@ pub async fn update_preset(
                     updated_at: chrono::Utc::now(),
                     order_index: None,
                 };
-                let _ = state.preset_repository.update(p.id, &user.0.id, update).await;
+                let _ = state
+                    .preset_repository
+                    .update(p.id, &user.0.id, update)
+                    .await;
             }
         }
     }
 
     // Build model_parameters JSON from individual fields
-    let mut model_parameters = preset.model_parameters.clone().and_then(|v| v.as_object().cloned()).unwrap_or_default();
+    let mut model_parameters = preset
+        .model_parameters
+        .clone()
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default();
     if let Some(temp) = payload.temperature {
-        model_parameters.insert("temperature".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap()));
+        model_parameters.insert(
+            "temperature".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(temp as f64).unwrap()),
+        );
     }
     if let Some(top_p) = payload.top_p {
-        model_parameters.insert("top_p".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(top_p as f64).unwrap()));
+        model_parameters.insert(
+            "top_p".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(top_p as f64).unwrap()),
+        );
     }
     if let Some(freq_penalty) = payload.frequency_penalty {
-        model_parameters.insert("frequency_penalty".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(freq_penalty as f64).unwrap()));
+        model_parameters.insert(
+            "frequency_penalty".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(freq_penalty as f64).unwrap()),
+        );
     }
     if let Some(pres_penalty) = payload.presence_penalty {
-        model_parameters.insert("presence_penalty".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(pres_penalty as f64).unwrap()));
+        model_parameters.insert(
+            "presence_penalty".to_string(),
+            serde_json::Value::Number(serde_json::Number::from_f64(pres_penalty as f64).unwrap()),
+        );
     }
     if let Some(ctx_window) = payload.context_window {
-        model_parameters.insert("context_window".to_string(), serde_json::Value::Number(serde_json::Number::from(ctx_window)));
+        model_parameters.insert(
+            "context_window".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(ctx_window)),
+        );
     }
     if let Some(tools) = payload.tools {
         model_parameters.insert("tools".to_string(), tools);
@@ -349,7 +391,11 @@ pub async fn update_preset(
     };
 
     // Build feature_flags JSON from options and metadata
-    let mut feature_flags = preset.feature_flags.clone().and_then(|v| v.as_object().cloned()).unwrap_or_default();
+    let mut feature_flags = preset
+        .feature_flags
+        .clone()
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default();
     if let Some(options) = payload.options {
         feature_flags.insert("options".to_string(), options);
     }
@@ -473,8 +519,11 @@ pub async fn reorder_presets(
             is_default: None,
             updated_at: chrono::Utc::now(),
         };
-        
-        let _ = state.preset_repository.update(*id, &user.0.id, update).await;
+
+        let _ = state
+            .preset_repository
+            .update(*id, &user.0.id, update)
+            .await;
     }
 
     Ok(StatusCode::OK)
@@ -483,6 +532,9 @@ pub async fn reorder_presets(
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_presets).post(create_preset))
-        .route("/:id", get(get_preset).put(update_preset).delete(delete_preset))
+        .route(
+            "/{id}",
+            get(get_preset).put(update_preset).delete(delete_preset),
+        )
         .route("/reorder", post(reorder_presets))
 }

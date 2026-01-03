@@ -84,12 +84,12 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_agents).post(create_agent))
         .route(
-            "/:id",
+            "/{id}",
             get(get_agent).put(update_agent).delete(delete_agent),
         )
-        .route("/:id/tools", post(add_tools).delete(remove_tools))
+        .route("/{id}/tools", post(add_tools).delete(remove_tools))
         .route(
-            "/:id/chat-starters",
+            "/{id}/chat-starters",
             post(add_chat_starters).put(update_chat_starters),
         )
 }

@@ -41,7 +41,7 @@ pub struct ReorderTagsRequest {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_tags).post(create_tag))
-        .route("/:id", get(get_tag).put(update_tag).delete(delete_tag))
+        .route("/{id}", get(get_tag).put(update_tag).delete(delete_tag))
         .route("/reorder", post(reorder_tags))
 }
 

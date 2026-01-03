@@ -439,7 +439,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 
 -   Endpoint/model selectors for switching between providers and models
 -   Settings panel for provider-specific parameters (temperature, max tokens, etc.)
--   Streaming message display driven by `/api/v1/chat/stream`
+-   Streaming message display driven by `/api/chat/stream`
 
 ### Adding a New Provider
 
@@ -496,7 +496,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 
 ### Adding API Routes
 
--   Handlers live under `server/src/api/v1/` (grouped by resource).
+-   Handlers live under `server/src/api/` (grouped by resource).
 
 -   Routes are registered inside `setup_router` in `server/src/main.rs`.
 
@@ -628,7 +628,7 @@ cargo build --release
 1. **Test your deployment**:
 
 ```bash
-curl https://api.yourdomain.com/api/v1/hello
+curl https://api.yourdomain.com/api/hello
 ```
 
 ## 🔐 **Authentication Flow**

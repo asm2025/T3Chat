@@ -17,7 +17,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_assistants))
         .route("/sync", post(sync_assistants))
-        .route("/:id", get(get_assistant))
+        .route("/{id}", get(get_assistant))
 }
 
 async fn list_assistants(

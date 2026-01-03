@@ -22,7 +22,7 @@ pub struct ListToolsQuery {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_tools))
-        .route("/:id", get(get_tool))
+        .route("/{id}", get(get_tool))
 }
 
 async fn list_tools(

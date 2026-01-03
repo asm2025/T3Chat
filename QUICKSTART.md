@@ -48,7 +48,7 @@ If you want to enable OIDC authentication, follow these steps. Google OAuth is t
 5. Configure the OAuth consent screen (use "External" for testing)
 6. Choose "Web application" as the application type
 7. Add these authorized redirect URIs:
-    - `http://localhost:3000/api/v1/auth/callback`
+    - `http://localhost:3000/api/auth/callback`
 8. Add these authorized JavaScript origins:
     - `http://localhost:3010`
 9. Copy the "Client ID" and "Client secret"
@@ -313,7 +313,7 @@ Firebase Authentication can be used via Google Cloud Identity Platform, which su
 OIDC_ISSUER_URL=https://securetoken.google.com/YOUR_PROJECT_ID
 OIDC_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
 OIDC_CLIENT_SECRET=your-oauth-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
 **Note**: Replace `YOUR_PROJECT_ID` with your Firebase project ID. The issuer URL format may vary depending on your Firebase configuration. You can verify the correct issuer URL by checking the `.well-known/openid-configuration` endpoint.
