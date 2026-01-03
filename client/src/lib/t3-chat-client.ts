@@ -142,33 +142,33 @@ interface UserProfile {
 export class T3ChatClient extends ApiClient {
     // User profile endpoints
     async getCurrentUser(): Promise<UserProfile> {
-        return this.get<UserProfile>("/v1/me");
+        return this.get<UserProfile>("/me");
     }
 
     async updateUser(data: { displayName?: string | null; imageUrl?: string | null }): Promise<UserProfile> {
-        return this.update<UserProfile>("/v1/me", data);
+        return this.update<UserProfile>("/me", data);
     }
 
     // Models endpoints
     async listModels(): Promise<AIModel[]> {
-        return this.list<AIModel[]>("/v1/models");
+        return this.list<AIModel[]>("/models");
     }
 
     async listAllModels(): Promise<AIModel[]> {
-        return this.list<AIModel[]>("/v1/models/all");
+        return this.list<AIModel[]>("/models/all");
     }
 
     async getModel(id: string): Promise<AIModel> {
-        return this.get<AIModel>(`/v1/models/${id}`);
+        return this.get<AIModel>(`/models/${id}`);
     }
 
     // Chats endpoints
     async listChats(page = 1, pageSize = 20): Promise<{ data: Chat[]; total: number }> {
-        return this.list<{ data: Chat[]; total: number }>("/v1/chats", { page, pageSize });
+        return this.list<{ data: Chat[]; total: number }>("/chats", { page, pageSize });
     }
 
     async getChat(id: string): Promise<ChatWithMessages> {
-        const backendResponse = await this.get<BackendChatWithMessagesResponse>(`/v1/chats/${id}`);
+        const backendResponse = await this.get<BackendChatWithMessagesResponse>(`/chats/${id}`);
         return {
             ...mapBackendChatToChatType(backendResponse.chat),
             messages: backendResponse.messages.map(mapBackendMessageToChatType),
@@ -176,43 +176,43 @@ export class T3ChatClient extends ApiClient {
     }
 
     async createChat(data: CreateChatRequest): Promise<Chat> {
-        const backendChat = await this.post<BackendChatResponse>("/v1/chats", data);
+        const backendChat = await this.post<BackendChatResponse>("/chats", data);
         return mapBackendChatToChatType(backendChat);
     }
 
     async updateChat(id: string, data: { title?: string }): Promise<Chat> {
-        return this.update<Chat>(`/v1/chats/${id}`, data);
+        return this.update<Chat>(`/chats/${id}`, data);
     }
 
     async deleteChat(id: string): Promise<void> {
-        return this.delete(`/v1/chats/${id}`);
+        return this.delete(`/chats/${id}`);
     }
 
     // Config endpoints
     async getStartupConfig(): Promise<StartupConfigResponse> {
-        return this.get<StartupConfigResponse>("/v1/config/startup");
+        return this.get<StartupConfigResponse>("/config/startup");
     }
 
     async getModelsConfig(): Promise<{ providers: Record<string, unknown[]> }> {
-        return this.get<{ providers: Record<string, unknown[]> }>("/v1/config/models");
+        return this.get<{ providers: Record<string, unknown[]> }>("/config/models");
     }
 
     // Messages endpoints
     async getMessages(chatId: string): Promise<Message[]> {
-        return this.get<Message[]>(`/v1/chats/${chatId}/messages`);
+        return this.get<Message[]>(`/chats/${chatId}/messages`);
     }
 
     async createMessage(chatId: string, data: ApiCreateMessageRequest): Promise<Message> {
-        return this.post<Message>(`/v1/chats/${chatId}/messages`, data);
+        return this.post<Message>(`/chats/${chatId}/messages`, data);
     }
 
     // Chat endpoints
     async sendChat(data: ChatRequest): Promise<ChatResponse> {
-        return this.post<ChatResponse>("/v1/chat", data);
+        return this.post<ChatResponse>("/chat", data);
     }
 
     async *streamChat(data: ChatRequest): AsyncGenerator<string, void, unknown> {
-        const response = await this.stream("/v1/chat/stream", { ...data, stream: true });
+        const response = await this.stream("/chat/stream", { ...data, stream: true });
 
         if (!response.body) {
             throw new Error("Response body is null");
@@ -328,29 +328,29 @@ export class T3ChatClient extends ApiClient {
 
     // User API Keys endpoints
     async listUserApiKeys(): Promise<UserApiKey[]> {
-        return this.list<UserApiKey[]>("/v1/keys");
+        return this.list<UserApiKey[]>("/keys");
     }
 
     async createUserApiKey(data: CreateUserApiKeyRequest): Promise<UserApiKey> {
-        return this.post<UserApiKey>("/v1/keys", data);
+        return this.post<UserApiKey>("/keys", data);
     }
 
     async deleteUserApiKey(id: string): Promise<void> {
-        return this.delete(`/v1/keys/${id}`);
+        return this.delete(`/keys/${id}`);
     }
 
     // Features endpoints
     async listFeatures(): Promise<{ features: Array<{ feature: string; enabled: boolean }> }> {
-        return this.get<{ features: Array<{ feature: string; enabled: boolean }> }>("/v1/features");
+        return this.get<{ features: Array<{ feature: string; enabled: boolean }> }>("/features");
     }
 
     async updateFeature(feature: string, enabled: boolean): Promise<{ feature: string; enabled: boolean }> {
-        return this.update<{ feature: string; enabled: boolean }>(`/v1/features/${feature}`, { enabled });
+        return this.update<{ feature: string; enabled: boolean }>(`/features/${feature}`, { enabled });
     }
 
     chats = {
         list: async (params?: { page?: number; pageSize?: number; isArchived?: boolean }) => {
-            const response = await this.list<{ data: BackendChatResponse[]; total: number }>("/v1/chats", params);
+            const response = await this.list<{ data: BackendChatResponse[]; total: number }>("/chats", params);
             return {
                 data: response.data.map(mapBackendChatToClient),
                 total: response.total,
@@ -359,36 +359,36 @@ export class T3ChatClient extends ApiClient {
             } as PaginatedResponse<ChatWithTags>;
         },
         get: async (id: string) => {
-            const backendChat = await this.get<BackendChatResponse>(`/v1/chats/${id}`);
+            const backendChat = await this.get<BackendChatResponse>(`/chats/${id}`);
             return mapBackendChatToClient(backendChat);
         },
-        create: (data: LibreCreateChatRequest) => this.post<LibreChat>("/v1/chats", data),
-        update: (id: string, data: UpdateChatRequest) => this.update<LibreChat>(`/v1/chats/${id}`, data),
-        delete: (id: string) => this.delete(`/v1/chats/${id}`),
-        archive: (id: string, isArchived: boolean) => this.update<LibreChat>(`/v1/chats/${id}`, { isArchived }),
-        addTags: (id: string, tagIds: string[]) => this.post<void>(`/v1/chats/${id}/tags`, { tagIds }),
-        removeTags: (id: string, tagIds: string[]) => this.delete(`/v1/chats/${id}/tags`, { body: { tagIds } }),
+        create: (data: LibreCreateChatRequest) => this.post<LibreChat>("/chats", data),
+        update: (id: string, data: UpdateChatRequest) => this.update<LibreChat>(`/chats/${id}`, data),
+        delete: (id: string) => this.delete(`/chats/${id}`),
+        archive: (id: string, isArchived: boolean) => this.update<LibreChat>(`/chats/${id}`, { isArchived }),
+        addTags: (id: string, tagIds: string[]) => this.post<void>(`/chats/${id}/tags`, { tagIds }),
+        removeTags: (id: string, tagIds: string[]) => this.delete(`/chats/${id}/tags`, { body: { tagIds } }),
     };
 
     messages = {
         list: async (chatId: string) => {
-            const backendMessages = await this.list<BackendMessageResponse[]>(`/v1/chats/${chatId}/messages`);
+            const backendMessages = await this.list<BackendMessageResponse[]>(`/chats/${chatId}/messages`);
             return backendMessages.map(mapBackendMessageToClient);
         },
         get: async (chatId: string, messageId: string) => {
-            const backendMessage = await this.get<BackendMessageResponse>(`/v1/chats/${chatId}/messages/${messageId}`);
+            const backendMessage = await this.get<BackendMessageResponse>(`/chats/${chatId}/messages/${messageId}`);
             return mapBackendMessageToClient(backendMessage);
         },
-        create: (chatId: string, data: CreateMessageRequest) => this.post<LibreMessage>(`/v1/chats/${chatId}/messages`, data),
-        delete: (chatId: string, messageId: string) => this.delete(`/v1/chats/${chatId}/messages/${messageId}`),
+        create: (chatId: string, data: CreateMessageRequest) => this.post<LibreMessage>(`/chats/${chatId}/messages`, data),
+        delete: (chatId: string, messageId: string) => this.delete(`/chats/${chatId}/messages/${messageId}`),
     };
 
     chat = {
-        sendMessage: (data: ChatCompletionRequest) => this.post<ChatCompletionResponse>("/v1/chat", data),
-        streamMessage: (data: ChatCompletionRequest) => this.stream("/v1/chat/stream", data),
-        regenerate: (chatId: string, messageId: string) => this.post<ChatCompletionResponse>("/v1/chat/regenerate", { chatId, messageId }),
+        sendMessage: (data: ChatCompletionRequest) => this.post<ChatCompletionResponse>("/chat", data),
+        streamMessage: (data: ChatCompletionRequest) => this.stream("/chat/stream", data),
+        regenerate: (chatId: string, messageId: string) => this.post<ChatCompletionResponse>("/chat/regenerate", { chatId, messageId }),
         continueFrom: (chatId: string, messageId: string, message: string) =>
-            this.post<ChatCompletionResponse>("/v1/chat/continue", {
+            this.post<ChatCompletionResponse>("/chat/continue", {
                 chatId,
                 messageId,
                 message,
@@ -396,57 +396,57 @@ export class T3ChatClient extends ApiClient {
     };
 
     presets = {
-        list: () => this.list<Preset[]>("/v1/presets"),
-        get: (id: string) => this.get<Preset>(`/v1/presets/${id}`),
-        create: (data: CreatePresetRequest) => this.post<Preset>("/v1/presets", data),
-        update: (id: string, data: UpdatePresetRequest) => this.update<Preset>(`/v1/presets/${id}`, data),
-        delete: (id: string) => this.delete(`/v1/presets/${id}`),
-        setDefault: (id: string) => this.update<Preset>(`/v1/presets/${id}`, { isDefault: true }),
-        reorder: (presetIds: string[]) => this.post<void>("/v1/presets/reorder", { presetIds }),
+        list: () => this.list<Preset[]>("/presets"),
+        get: (id: string) => this.get<Preset>(`/presets/${id}`),
+        create: (data: CreatePresetRequest) => this.post<Preset>("/presets", data),
+        update: (id: string, data: UpdatePresetRequest) => this.update<Preset>(`/presets/${id}`, data),
+        delete: (id: string) => this.delete(`/presets/${id}`),
+        setDefault: (id: string) => this.update<Preset>(`/presets/${id}`, { isDefault: true }),
+        reorder: (presetIds: string[]) => this.post<void>("/presets/reorder", { presetIds }),
     };
 
     agents = {
-        list: (params?: { accessLevel?: number }) => this.list<Agent[]>("/v1/agents", params),
-        get: (id: string) => this.get<AgentWithDetails>(`/v1/agents/${id}`),
-        create: (data: CreateAgentRequest) => this.post<Agent>("/v1/agents", data),
-        update: (id: string, data: Partial<CreateAgentRequest>) => this.update<Agent>(`/v1/agents/${id}`, data),
-        delete: (id: string) => this.delete(`/v1/agents/${id}`),
-        addTools: (id: string, toolIds: string[], configuration?: Record<string, unknown>) => this.post<void>(`/v1/agents/${id}/tools`, { toolIds, configuration }),
-        removeTools: (id: string, toolIds: string[]) => this.delete(`/v1/agents/${id}/tools`, { body: { toolIds } }),
-        addChatStarters: (id: string, starters: string[]) => this.post<void>(`/v1/agents/${id}/chat-starters`, { starters }),
-        updateChatStarters: (id: string, starters: { id?: string; text: string; orderIndex: number }[]) => this.update<void>(`/v1/agents/${id}/chat-starters`, { starters }),
+        list: (params?: { accessLevel?: number }) => this.list<Agent[]>("/agents", params),
+        get: (id: string) => this.get<AgentWithDetails>(`/agents/${id}`),
+        create: (data: CreateAgentRequest) => this.post<Agent>("/agents", data),
+        update: (id: string, data: Partial<CreateAgentRequest>) => this.update<Agent>(`/agents/${id}`, data),
+        delete: (id: string) => this.delete(`/agents/${id}`),
+        addTools: (id: string, toolIds: string[], configuration?: Record<string, unknown>) => this.post<void>(`/agents/${id}/tools`, { toolIds, configuration }),
+        removeTools: (id: string, toolIds: string[]) => this.delete(`/agents/${id}/tools`, { body: { toolIds } }),
+        addChatStarters: (id: string, starters: string[]) => this.post<void>(`/agents/${id}/chat-starters`, { starters }),
+        updateChatStarters: (id: string, starters: { id?: string; text: string; orderIndex: number }[]) => this.update<void>(`/agents/${id}/chat-starters`, { starters }),
     };
 
     assistants = {
-        list: () => this.list<Assistant[]>("/v1/assistants"),
-        get: (id: string) => this.get<Assistant>(`/v1/assistants/${id}`),
-        sync: () => this.post<Assistant[]>("/v1/assistants/sync", {}),
+        list: () => this.list<Assistant[]>("/assistants"),
+        get: (id: string) => this.get<Assistant>(`/assistants/${id}`),
+        sync: () => this.post<Assistant[]>("/assistants/sync", {}),
     };
 
     tags = {
-        list: () => this.list<Tag[]>("/v1/tags"),
-        get: (id: string) => this.get<Tag>(`/v1/tags/${id}`),
-        create: (data: CreateTagRequest) => this.post<Tag>("/v1/tags", data),
-        update: (id: string, data: Partial<CreateTagRequest>) => this.update<Tag>(`/v1/tags/${id}`, data),
-        delete: (id: string) => this.delete(`/v1/tags/${id}`),
-        reorder: (tagIds: string[]) => this.post<void>("/v1/tags/reorder", { tagIds }),
+        list: () => this.list<Tag[]>("/tags"),
+        get: (id: string) => this.get<Tag>(`/tags/${id}`),
+        create: (data: CreateTagRequest) => this.post<Tag>("/tags", data),
+        update: (id: string, data: Partial<CreateTagRequest>) => this.update<Tag>(`/tags/${id}`, data),
+        delete: (id: string) => this.delete(`/tags/${id}`),
+        reorder: (tagIds: string[]) => this.post<void>("/tags/reorder", { tagIds }),
     };
 
     tools = {
-        list: (params?: { isActive?: boolean; toolType?: string }) => this.list<Tool[]>("/v1/tools", params),
-        get: (id: string) => this.get<Tool>(`/v1/tools/${id}`),
+        list: (params?: { isActive?: boolean; toolType?: string }) => this.list<Tool[]>("/tools", params),
+        get: (id: string) => this.get<Tool>(`/tools/${id}`),
     };
 
     files = {
-        list: (params?: { chatId?: string; fileType?: string }) => this.list<File[]>("/v1/files", params),
-        get: (id: string) => this.get<File>(`/v1/files/${id}`),
+        list: (params?: { chatId?: string; fileType?: string }) => this.list<File[]>("/files", params),
+        get: (id: string) => this.get<File>(`/files/${id}`),
         upload: async (file: globalThis.File, chatId?: string) => {
             const formData = new FormData();
             formData.append("file", file);
             if (chatId) {
                 formData.append("chat_id", chatId);
             }
-            return this.post<File>("/v1/files", formData);
+            return this.post<File>("/files", formData);
         },
         stt: async (file: globalThis.File, opts?: { language?: string; model?: string }) => {
             const formData = new FormData();
@@ -457,10 +457,10 @@ export class T3ChatClient extends ApiClient {
             if (opts?.model) {
                 formData.append("model", opts.model);
             }
-            return this.post<{ text: string }>("/v1/files/stt", formData);
+            return this.post<{ text: string }>("/files/stt", formData);
         },
-        delete: (id: string) => this.delete(`/v1/files/${id}`),
-        getDownloadUrl: (id: string) => this.get<{ url: string }>(`/v1/files/${id}/download`),
+        delete: (id: string) => this.delete(`/files/${id}`),
+        getDownloadUrl: (id: string) => this.get<{ url: string }>(`/files/${id}/download`),
     };
 }
 

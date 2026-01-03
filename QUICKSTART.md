@@ -123,7 +123,7 @@ JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 # OIDC_ISSUER_URL=https://accounts.google.com
 # OIDC_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 # OIDC_CLIENT_SECRET=YOUR_CLIENT_SECRET
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 # Optional: Development settings
 APP_ENV=development
@@ -231,7 +231,7 @@ If you configured OIDC in Step 2, you'll see an "Or" separator and a "Login with
 
 -   Check that `CORS_ORIGINS` includes `http://localhost:3010`
 -   Verify the backend is running on port 3000
--   Make sure the OIDC redirect URI matches exactly: `http://localhost:3000/api/v1/auth/callback`
+-   Make sure the OIDC redirect URI matches exactly: `http://localhost:3000/api/auth/callback`
 
 ### PostgreSQL Connection Failed
 
@@ -264,7 +264,7 @@ T3Chat supports two authentication methods:
 1. Sign up at [auth0.com](https://auth0.com/)
 2. Create a "Regular Web Application"
 3. Configure:
-    - Allowed Callback URLs: `http://localhost:3000/api/v1/auth/callback`
+    - Allowed Callback URLs: `http://localhost:3000/api/auth/callback`
     - Allowed Logout URLs: `http://localhost:3010`
     - Allowed Web Origins: `http://localhost:3010`
 4. Update `.env`:
@@ -303,7 +303,7 @@ Firebase Authentication can be used via Google Cloud Identity Platform, which su
     - Navigate to "APIs & Services" > "Credentials"
     - Click "Create Credentials" > "OAuth 2.0 Client ID"
     - Choose "Web application"
-    - Add authorized redirect URI: `http://localhost:3000/api/v1/auth/callback`
+    - Add authorized redirect URI: `http://localhost:3000/api/auth/callback`
     - Add authorized JavaScript origin: `http://localhost:3010`
     - Copy the Client ID and Client Secret
 
@@ -331,7 +331,7 @@ docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin
 4. Create a client:
     - Client ID: `t3chat-client`
     - Client authentication: ON
-    - Valid redirect URIs: `http://localhost:3000/api/v1/auth/callback`
+    - Valid redirect URIs: `http://localhost:3000/api/auth/callback`
     - Web origins: `http://localhost:3010`
 5. Get the client secret from the "Credentials" tab
 6. Update `.env`:

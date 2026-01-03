@@ -3,6 +3,7 @@ pub mod messages;
 use crate::{
     AppState, db::dto::Pagination, db::prelude::*,
     db::repositories::chat_repository::TChatRepository, middleware::auth::AuthenticatedUser,
+    utils::meilisearch::MeiliDocument,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -116,7 +117,7 @@ pub struct UpdateChatRequest {
 /// List all chats for the authenticated user
 #[utoipa::path(
     get,
-    path = "/api/v1/chats",
+    path = "/api/chats",
     tag = "Chats",
     params(PaginationParams),
     security(("bearer_auth" = [])),
@@ -151,7 +152,7 @@ pub async fn list_chats(
 /// Create a new chat
 #[utoipa::path(
     post,
-    path = "/api/v1/chats",
+    path = "/api/chats",
     tag = "Chats",
     security(("bearer_auth" = [])),
     request_body = CreateChatRequest,
@@ -167,11 +168,10 @@ pub async fn create_chat(
     state: State<AppState>,
     Json(payload): Json<CreateChatRequest>,
 ) -> Result<Json<ChatResponse>, StatusCode> {
-    let provider = AiProvider::from_str(&payload.model_provider)
-        .ok_or_else(|| {
-            tracing::warn!("Unknown provider: {}", payload.model_provider);
-            StatusCode::BAD_REQUEST
-        })?;
+    let provider = AiProvider::from_str(&payload.model_provider).ok_or_else(|| {
+        tracing::warn!("Unknown provider: {}", payload.model_provider);
+        StatusCode::BAD_REQUEST
+    })?;
 
     let title = payload.title.unwrap_or_else(|| "New Chat".to_string());
 
@@ -189,13 +189,34 @@ pub async fn create_chat(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
+    // Index in MeiliSearch (non-blocking)
+    let meili = state.meilisearch.clone();
+    let chat_doc = MeiliDocument {
+        id: format!("chat:{}", chat.id),
+        user_id: chat.user_id.clone(),
+        chat_id: chat.id.to_string(),
+        r#type: "chat".to_string(),
+        title: chat.title.clone(),
+        text: None,
+        role: None,
+        model: Some(chat.model.clone()),
+        endpoint: Some(chat.endpoint.clone()),
+        created_at: chat.created_at.to_rfc3339(),
+        updated_at: chat.updated_at.to_rfc3339(),
+    };
+    tokio::spawn(async move {
+        if let Err(e) = meili.index_chat(chat_doc).await {
+            tracing::warn!("Failed to index chat in MeiliSearch: {}", e);
+        }
+    });
+
     Ok(Json(ChatResponse::from(chat)))
 }
 
 /// Get a specific chat with its messages
 #[utoipa::path(
     get,
-    path = "/api/v1/chats/{id}",
+    path = "/api/chats/{id}",
     tag = "Chats",
     security(("bearer_auth" = [])),
     params(
@@ -235,7 +256,7 @@ pub async fn get_chat(
 /// Update a chat
 #[utoipa::path(
     put,
-    path = "/api/v1/chats/{id}",
+    path = "/api/chats/{id}",
     tag = "Chats",
     security(("bearer_auth" = [])),
     params(
@@ -277,13 +298,34 @@ pub async fn update_chat(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    // Update index in MeiliSearch (non-blocking)
+    let meili = state.meilisearch.clone();
+    let chat_doc = MeiliDocument {
+        id: format!("chat:{}", chat.id),
+        user_id: chat.user_id.clone(),
+        chat_id: chat.id.to_string(),
+        r#type: "chat".to_string(),
+        title: chat.title.clone(),
+        text: None,
+        role: None,
+        model: Some(chat.model.clone()),
+        endpoint: Some(chat.endpoint.clone()),
+        created_at: chat.created_at.to_rfc3339(),
+        updated_at: chat.updated_at.to_rfc3339(),
+    };
+    tokio::spawn(async move {
+        if let Err(e) = meili.index_chat(chat_doc).await {
+            tracing::warn!("Failed to update chat in MeiliSearch: {}", e);
+        }
+    });
+
     Ok(Json(ChatResponse::from(chat)))
 }
 
 /// Delete a chat
 #[utoipa::path(
     delete,
-    path = "/api/v1/chats/{id}",
+    path = "/api/chats/{id}",
     tag = "Chats",
     security(("bearer_auth" = [])),
     params(
@@ -309,11 +351,20 @@ pub async fn delete_chat(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
+    let chat_id_str = chat.id.to_string();
     state
         .chat_repository
         .delete(chat.id, &user.0.id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Delete from MeiliSearch (non-blocking)
+    let meili = state.meilisearch.clone();
+    tokio::spawn(async move {
+        if let Err(e) = meili.delete_chat(&chat_id_str).await {
+            tracing::warn!("Failed to delete chat from MeiliSearch: {}", e);
+        }
+    });
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -1,5 +1,7 @@
 // API module - all API handlers organized by version and hierarchy
 pub mod admin;
+pub mod agents;
+pub mod assistants;
 pub mod auth;
 pub mod chat;
 pub mod chats;
@@ -10,6 +12,10 @@ pub mod features;
 pub mod files;
 pub mod health;
 pub mod models;
+pub mod presets;
+pub mod search;
+pub mod tags;
+pub mod tools;
 pub mod user;
 pub mod user_api_keys;
 

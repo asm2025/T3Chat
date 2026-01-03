@@ -3,11 +3,12 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use crate::db::schema::{actions, agent_actions, agent_tools, assistant_tools, tool_calls, tools};
 
 /// Tool model
-#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = tools)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Tool {

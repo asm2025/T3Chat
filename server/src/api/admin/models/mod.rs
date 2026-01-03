@@ -321,7 +321,7 @@ pub async fn deprecate_model(
     get_model(State(state), Path(id), _user).await
 }
 
-// POST /api/v1/admin/models/scan
+// POST /api/admin/models/scan
 pub async fn scan_models(
     _state: State<AppState>,
     _user: AuthenticatedUser,

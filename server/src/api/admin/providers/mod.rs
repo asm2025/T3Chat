@@ -279,7 +279,7 @@ pub async fn disable_provider(
     get_provider(State(state), Path(id), _user).await
 }
 
-// POST /api/v1/admin/providers/{id}/scan
+// POST /api/admin/providers/{id}/scan
 pub async fn scan_provider(
     _state: State<AppState>,
     _path: Path<Uuid>,

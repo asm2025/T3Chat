@@ -53,6 +53,7 @@ bcrypt = "0"
 serde_yaml = "0.9"
 regex = "1"
 thiserror = "1"
+meilisearch-sdk = "0.28"
 
 [dev-dependencies]
 tempfile = "3"

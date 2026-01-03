@@ -3,11 +3,12 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use crate::db::schema::{agent_chat_starters, agents, assistant_chat_starters, assistants};
 
 /// Agent model
-#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = agents)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Agent {
@@ -203,7 +204,7 @@ pub struct UpdateAssistant {
 }
 
 /// Agent chat starter
-#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = agent_chat_starters)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct AgentChatStarter {

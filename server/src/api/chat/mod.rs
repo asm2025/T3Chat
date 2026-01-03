@@ -83,7 +83,7 @@ pub struct TokenUsageResponse {
 /// Handle non-streaming chat completion
 #[utoipa::path(
     post,
-    path = "/api/v1/chat",
+    path = "/api/chat",
     tag = "Chat",
     security(("bearer_auth" = [])),
     request_body = ChatRequest,
@@ -343,7 +343,7 @@ pub async fn chat(
 /// Handle streaming chat completion via Server-Sent Events
 #[utoipa::path(
     post,
-    path = "/api/v1/chat/stream",
+    path = "/api/chat/stream",
     tag = "Chat",
     security(("bearer_auth" = [])),
     request_body = ChatRequest,
@@ -634,6 +634,27 @@ pub async fn stream_chat(
                 let _ = chat_repo
                     .update_tokens_used(msg.id, 0, &model)
                     .await;
+
+                // Index in MeiliSearch (non-blocking)
+                let meili = state.meilisearch.clone();
+                let message_doc = crate::utils::meilisearch::MeiliDocument {
+                    id: format!("message:{}", msg.id),
+                    user_id: user.0.id.clone(),
+                    chat_id: msg.chat_id.to_string(),
+                    r#type: "message".to_string(),
+                    title: None,
+                    text: msg.text.clone(),
+                    role: Some(msg.role.clone()),
+                    model: msg.model.clone(),
+                    endpoint: None,
+                    created_at: msg.created_at.to_rfc3339(),
+                    updated_at: msg.updated_at.to_rfc3339(),
+                };
+                tokio::spawn(async move {
+                    if let Err(e) = meili.index_message(message_doc).await {
+                        tracing::warn!("Failed to index message in MeiliSearch: {}", e);
+                    }
+                });
             }
         }
         

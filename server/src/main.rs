@@ -45,11 +45,17 @@ pub struct AppState {
     pub chat_repository: Arc<db::repositories::ChatRepository>,
     pub file_repository: Arc<db::repositories::file_repository::FileRepository>,
     pub user_feature_repository: Arc<db::repositories::UserFeatureRepository>,
+    pub agent_repository: Arc<db::repositories::agent_repository::AgentRepository>,
+    pub preset_repository: Arc<db::repositories::preset_repository::PresetRepository>,
+    pub tag_repository: Arc<db::repositories::tag_repository::TagRepository>,
+    pub tool_repository: Arc<db::repositories::tool_repository::ToolRepository>,
     pub oidc_client: Option<Arc<auth::OidcClient>>,
     pub jwks_cache: Option<Arc<auth::JwksCache>>,
     pub app_config: Arc<config::app_config::DerivedAppConfig>,
     pub config_metadata: Arc<config::ConfigMetadata>,
     pub model_catalog: Arc<ai::model_catalog::ModelCatalog>,
+    pub meilisearch: Arc<utils::meilisearch::MeiliSearchService>,
+    pub rag_service: Arc<utils::rag::RagService>,
 }
 
 #[tokio::main]
@@ -80,8 +86,10 @@ async fn run() -> Result<()> {
 
     tracing::info!("Loading T3Chat configuration");
     let loaded_config = config::load_config().await;
-    
-    let app_config = Arc::new(config::app_config::DerivedAppConfig::from_loaded(loaded_config.clone()));
+
+    let app_config = Arc::new(config::app_config::DerivedAppConfig::from_loaded(
+        loaded_config.clone(),
+    ));
     let config_metadata = Arc::new(loaded_config.metadata);
 
     tracing::info!("Building model catalog");
@@ -114,6 +122,18 @@ async fn run() -> Result<()> {
     ));
     let user_feature_repository =
         Arc::new(db::repositories::UserFeatureRepository::new(pool.clone()));
+    let agent_repository = Arc::new(db::repositories::agent_repository::AgentRepository::new(
+        pool.clone(),
+    ));
+    let preset_repository = Arc::new(db::repositories::preset_repository::PresetRepository::new(
+        pool.clone(),
+    ));
+    let tag_repository = Arc::new(db::repositories::tag_repository::TagRepository::new(
+        pool.clone(),
+    ));
+    let tool_repository = Arc::new(db::repositories::tool_repository::ToolRepository::new(
+        pool.clone(),
+    ));
 
     // Initialize OIDC client and JWKS cache (optional)
     let (oidc_client, jwks_cache) = if env::is_oidc_configured() {
@@ -156,6 +176,25 @@ async fn run() -> Result<()> {
         (None, None)
     };
 
+    // Initialize MeiliSearch service
+    let meilisearch_service = Arc::new(utils::meilisearch::MeiliSearchService::new());
+
+    // Ensure index exists (non-blocking, log errors but don't fail startup)
+    let meili_clone = meilisearch_service.clone();
+    tokio::spawn(async move {
+        if let Err(e) = meili_clone.ensure_index_exists().await {
+            tracing::warn!(
+                "MeiliSearch index setup failed (search may not work): {}",
+                e
+            );
+        } else {
+            tracing::info!("MeiliSearch index ready");
+        }
+    });
+
+    // Initialize RAG service
+    let rag_service = Arc::new(utils::rag::RagService::new());
+
     let state = AppState {
         db: pool,
         user_repository,
@@ -165,11 +204,17 @@ async fn run() -> Result<()> {
         chat_repository,
         file_repository,
         user_feature_repository,
+        agent_repository,
+        preset_repository,
+        tag_repository,
+        tool_repository,
         oidc_client,
         jwks_cache,
         app_config,
         config_metadata,
         model_catalog,
+        meilisearch: meilisearch_service,
+        rag_service,
     };
     tracing::info!("Database configured successfully.");
 
@@ -351,10 +396,7 @@ fn setup_router(state: AppState) -> Result<Router> {
         ));
 
     let config_routes = Router::new()
-        .route(
-            "/startup",
-            get(api::config::startup::get_startup_config),
-        )
+        .route("/startup", get(api::config::startup::get_startup_config))
         .route("/models", get(api::config::models::list_models));
 
     let chats_routes = Router::new()
@@ -376,8 +418,7 @@ fn setup_router(state: AppState) -> Result<Router> {
         )
         .route(
             "/{chat_id}/messages/{id}",
-            put(api::chats::messages::update_message)
-                .delete(api::chats::messages::delete_message),
+            put(api::chats::messages::update_message).delete(api::chats::messages::delete_message),
         )
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -411,6 +452,35 @@ fn setup_router(state: AppState) -> Result<Router> {
             middleware::auth::auth_middleware,
         ));
 
+    let agents_routes = api::agents::routes().route_layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+
+    let presets_routes = api::presets::routes().route_layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+
+    let tags_routes = api::tags::routes().route_layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+
+    let tools_routes = api::tools::routes().route_layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+
+    let assistants_routes = api::assistants::routes().route_layer(
+        axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware),
+    );
+
+    let search_routes = api::search::routes().route_layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+
     let files_routes = Router::new()
         .route(
             "/",
@@ -439,12 +509,9 @@ fn setup_router(state: AppState) -> Result<Router> {
         ));
 
     // Auth routes - /me requires authentication
-    let auth_me_route = Router::new()
-        .route("/me", get(api::auth::me))
-        .route_layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            middleware::auth::auth_middleware,
-        ));
+    let auth_me_route = Router::new().route("/me", get(api::auth::me)).route_layer(
+        axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware),
+    );
 
     // Admin routes
     let admin_routes = Router::new()
@@ -463,16 +530,22 @@ fn setup_router(state: AppState) -> Result<Router> {
 
     let api_router = Router::new()
         .route("/health", get(api::health::health_check))
-        .nest("/api/v1/auth", api::auth::router().merge(auth_me_route))
-        .nest("/api/v1/models", models_routes)
-        .nest("/api/v1/chats", chats_routes)
-        .nest("/api/v1/chat", chat_routes)
-        .nest("/api/v1/keys", user_api_keys_routes)
-        .nest("/api/v1/features", features_routes)
-        .nest("/api/v1/files", files_routes)
-        .nest("/api/v1/user", user_routes)
-        .nest("/api/v1/admin", admin_routes)
-        .nest("/api/v1/config", config_routes);
+        .nest("/api/auth", api::auth::router().merge(auth_me_route))
+        .nest("/api/models", models_routes)
+        .nest("/api/chats", chats_routes)
+        .nest("/api/chat", chat_routes)
+        .nest("/api/keys", user_api_keys_routes)
+        .nest("/api/features", features_routes)
+        .nest("/api/agents", agents_routes)
+        .nest("/api/presets", presets_routes)
+        .nest("/api/tags", tags_routes)
+        .nest("/api/tools", tools_routes)
+        .nest("/api/assistants", assistants_routes)
+        .nest("/api/search", search_routes)
+        .nest("/api/files", files_routes)
+        .nest("/api/user", user_routes)
+        .nest("/api/admin", admin_routes)
+        .nest("/api/config", config_routes);
 
     let index_html = static_path.join("index.html");
     let static_files_service = ServeDir::new(static_path)

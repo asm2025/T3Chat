@@ -30,7 +30,7 @@ export function Health() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/health`);
+      const response = await fetch(`${API_BASE_URL}/health`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }

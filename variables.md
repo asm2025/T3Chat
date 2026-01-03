@@ -75,13 +75,13 @@ This document provides a comprehensive reference for all environment variables u
 
 -   **Description**: OIDC callback redirect URI
 -   **Format**: URL
--   **Example**: `http://localhost:3000/api/v1/auth/callback`
+-   **Example**: `http://localhost:3000/api/auth/callback`
 -   **Required**: ❌ No (optional - only needed if enabling OIDC)
 -   **Default**: None
 -   **Notes**:
     -   Must **exactly match** the redirect URI configured in your OIDC provider
-    -   For local development: `http://localhost:3000/api/v1/auth/callback`
-    -   For production: `https://your-domain.com/api/v1/auth/callback`
+    -   For local development: `http://localhost:3000/api/auth/callback`
+    -   For production: `https://your-domain.com/api/auth/callback`
     -   **OIDC is optional** - local authentication works without this
 
 ##### `JWT_SECRET`
@@ -145,7 +145,7 @@ This document provides a comprehensive reference for all environment variables u
 -   **Required**: ❌ No
 -   **Default**: `http://localhost:5173`
 -   **Notes**:
-    -   Used by the `/api/v1/auth/callback` handler to redirect back to the UI
+    -   Used by the `/api/auth/callback` handler to redirect back to the UI
     -   For local development, set this to match your Vite dev server URL (e.g. `http://localhost:3010`)
 
 #### `T3CHAT_CONFIG`
@@ -188,6 +188,129 @@ These variables are used by `t3chat.yaml` via `${VAR_NAME}` placeholders. Only s
 -   **Required**: ❌ No (but required if OpenRouter provider is enabled)
 
 > 💡 For additional custom providers defined under `custom:` in `t3chat.yaml`, choose appropriate env var names and reference them in the YAML file.
+
+### MeiliSearch Variables (Optional - for search functionality)
+
+#### `MEILI_HOST`
+
+-   **Description**: MeiliSearch server URL
+-   **Format**: URL
+-   **Example**: `http://localhost:7700`
+-   **Required**: ❌ No
+-   **Default**: `http://localhost:7700`
+-   **Notes**:
+    -   MeiliSearch provides full-text search across chats and messages
+    -   The server automatically creates and configures the search index on startup
+    -   See [MeiliSearch Setup](#meilisearch-setup) below for installation instructions
+
+#### `MEILI_MASTER_KEY`
+
+-   **Description**: MeiliSearch master key for authentication
+-   **Format**: String (secure)
+-   **Example**: `masterKey123456789`
+-   **Required**: ❌ No
+-   **Default**: None
+-   **Notes**:
+    -   Only needed if you've configured MeiliSearch with a master key
+    -   Leave unset if using MeiliSearch without authentication (default development setup)
+
+**MeiliSearch Setup:**
+
+MeiliSearch provides fast, typo-tolerant search across your chats and messages. To enable search functionality:
+
+1. **Install MeiliSearch** (choose one method):
+
+   **Option A: Docker (Recommended)**
+   ```bash
+   docker run -d -p 7700:7700 -v $(pwd)/meili_data:/meili_data getmeili/meilisearch:latest
+   ```
+
+   **Option B: Homebrew (macOS)**
+   ```bash
+   brew install meilisearch
+   meilisearch
+   ```
+
+   **Option C: Download binary**
+   - Download from [meilisearch.com/download](https://www.meilisearch.com/download)
+   - Run: `./meilisearch`
+
+2. **Configure environment variables** in `server/.env`:
+   ```bash
+   MEILI_HOST=http://localhost:7700
+   MEILI_MASTER_KEY=your-master-key-here  # Optional, only if you set a master key
+   ```
+
+3. **Index creation**: The server automatically creates and configures the MeiliSearch index (`chats_messages`) on startup.
+
+**MeiliSearch Features:**
+- Full-text search across chat titles and message content
+- User-scoped search (users only see their own chats/messages)
+- Automatic indexing on chat/message create/update/delete
+- Fast, typo-tolerant search
+- Filterable by user_id, chat_id, type, role, model, endpoint
+
+**Resources:**
+- [MeiliSearch Documentation](https://www.meilisearch.com/docs)
+- [MeiliSearch Rust SDK](https://docs.rs/meilisearch-sdk)
+
+### RAG API Variables (Optional - for file search and citations)
+
+#### `RAG_API_URL`
+
+-   **Description**: RAG API server URL
+-   **Format**: URL
+-   **Example**: `http://localhost:8000`
+-   **Required**: ❌ No
+-   **Default**: `http://localhost:8000`
+-   **Notes**:
+    -   The RAG (Retrieval Augmented Generation) API provides semantic search across uploaded files
+    -   Enables file citations in chat responses
+    -   Uses LibreChat's RAG API service (Python/FastAPI with pgvector)
+    -   See [RAG API Setup](#rag-api-setup) below for installation instructions
+
+**RAG API Setup:**
+
+The RAG API enables semantic search across uploaded files and file citations in chat responses. To enable RAG functionality:
+
+1. **Use LibreChat's RAG API** (recommended):
+
+   The RAG API is a Python/FastAPI service that uses `pgvector` for vector storage. You can use LibreChat's official RAG API:
+
+   **Option A: Docker Compose** (from LibreChat repo):
+   ```bash
+   # In LibreChat directory
+   docker compose -f rag.yml up -d
+   ```
+
+   **Option B: Standalone setup**:
+   - Clone or use LibreChat's RAG API service
+   - Ensure it's configured to use the same `pgvector` database
+   - Set `RAG_API_URL` to point to the service
+
+2. **Configure environment variables** in `server/.env`:
+   ```bash
+   RAG_API_URL=http://localhost:8000
+   ```
+
+3. **File ingestion**: When files are uploaded (PDFs, text files, documents), they are automatically sent to the RAG API for indexing.
+
+4. **File search**: The RAG API provides semantic search across file content, enabling:
+   - File citations in chat responses
+   - Context-aware responses based on uploaded documents
+   - Multi-file search and retrieval
+
+**RAG API Endpoints Used:**
+-   `POST {RAG_API_URL}/upload` – Ingest a file into the vector database
+-   `POST {RAG_API_URL}/query` – Query files for relevant content
+-   `DELETE {RAG_API_URL}/delete/{file_id}` – Remove a file from the index
+
+**Note**: The RAG API requires a separate `pgvector` PostgreSQL database. See LibreChat's `rag.yml` for the complete setup.
+
+**Resources:**
+- [LibreChat RAG API](https://github.com/danny-avila/LibreChat/tree/main/rag_api) (if available)
+- [pgvector Documentation](https://github.com/pgvector/pgvector)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
 
 ### Future Variables (From Development Plan)
 
@@ -317,6 +440,13 @@ FRONTEND_URL=http://localhost:3010
 # JWT Session Token Secret (generate with: openssl rand -base64 32)
 JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 
+# Optional: MeiliSearch (for search functionality)
+# MEILI_HOST=http://localhost:7700
+# MEILI_MASTER_KEY=your-master-key  # Optional, only if you set a master key
+
+# Optional: RAG API (for file search and citations)
+# RAG_API_URL=http://localhost:8000
+
 # OIDC Authentication (OPTIONAL - only needed if you want OIDC login)
 # Leave these commented out if you only want local authentication
 # Choose one of the following OIDC provider configurations:
@@ -325,25 +455,25 @@ JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 # OIDC_ISSUER_URL=https://accounts.google.com
 # OIDC_CLIENT_ID=your-client-id.apps.googleusercontent.com
 # OIDC_CLIENT_SECRET=your-client-secret
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 # Option 2: Firebase (Google Cloud Identity Platform)
 # OIDC_ISSUER_URL=https://securetoken.google.com/YOUR_PROJECT_ID
 # OIDC_CLIENT_ID=your-oauth-client-id.apps.googleusercontent.com
 # OIDC_CLIENT_SECRET=your-oauth-client-secret
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 # Option 3: Auth0
 # OIDC_ISSUER_URL=https://YOUR_DOMAIN.auth0.com
 # OIDC_CLIENT_ID=your-auth0-client-id
 # OIDC_CLIENT_SECRET=your-auth0-client-secret
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 # Option 4: Keycloak (for self-hosted)
 # OIDC_ISSUER_URL=http://localhost:8080/realms/t3chat
 # OIDC_CLIENT_ID=your-keycloak-client-id
 # OIDC_CLIENT_SECRET=your-keycloak-client-secret
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
 #### Frontend (`client/.env.development`)
@@ -373,11 +503,18 @@ CORS_ORIGINS=http://localhost:3010,http://localhost:3000
 OIDC_ISSUER_URL=https://accounts.google.com
 OIDC_CLIENT_ID=your-client-id.apps.googleusercontent.com
 OIDC_CLIENT_SECRET=your-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 # JWT Session Tokens
 JWT_SECRET=dev-secret-change-in-production-min-32-chars-long
 JWT_EXPIRY_SECONDS=3600
+
+# Optional: MeiliSearch
+# MEILI_HOST=http://localhost:7700
+# MEILI_MASTER_KEY=dev-master-key
+
+# Optional: RAG API
+# RAG_API_URL=http://localhost:8000
 ```
 
 #### Frontend (`client/.env.development`)
@@ -405,7 +542,7 @@ CORS_ORIGINS=https://staging.example.com,https://api-staging.example.com
 OIDC_ISSUER_URL=https://accounts.google.com
 OIDC_CLIENT_ID=staging-client-id.apps.googleusercontent.com
 OIDC_CLIENT_SECRET=staging-client-secret
-OIDC_REDIRECT_URI=https://api-staging.example.com/api/v1/auth/callback
+OIDC_REDIRECT_URI=https://api-staging.example.com/api/auth/callback
 
 # JWT Session Tokens
 JWT_SECRET=staging-secret-generate-with-openssl-rand-base64-32
@@ -438,7 +575,7 @@ CORS_ORIGINS=https://app.example.com,https://api.example.com
 OIDC_ISSUER_URL=https://accounts.google.com
 OIDC_CLIENT_ID=production-client-id.apps.googleusercontent.com
 OIDC_CLIENT_SECRET=production-client-secret-keep-secure
-OIDC_REDIRECT_URI=https://api.example.com/api/v1/auth/callback
+OIDC_REDIRECT_URI=https://api.example.com/api/auth/callback
 
 # JWT Session Tokens
 JWT_SECRET=production-secret-generate-with-openssl-rand-base64-32
@@ -532,7 +669,7 @@ Google OAuth is the easiest to set up for local development:
 
 3. **Configure Redirect URIs**:
 
-    - Add `http://localhost:3000/api/v1/auth/callback` to "Authorized redirect URIs"
+    - Add `http://localhost:3000/api/auth/callback` to "Authorized redirect URIs"
     - For frontend: Add `http://localhost:3010` to "Authorized JavaScript origins"
 
 4. **Get Your Credentials**:
@@ -543,7 +680,7 @@ Google OAuth is the easiest to set up for local development:
 OIDC_ISSUER_URL=https://accounts.google.com
 OIDC_CLIENT_ID=your-client-id.apps.googleusercontent.com
 OIDC_CLIENT_SECRET=GOCSPX-your-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 JWT_SECRET=generate-with-openssl-rand-base64-32
 ```
 
@@ -554,7 +691,7 @@ Auth0 provides a free tier and easy setup:
 1. Sign up at [auth0.com](https://auth0.com/)
 2. Create a new "Regular Web Application"
 3. Configure:
-    - Allowed Callback URLs: `http://localhost:3000/api/v1/auth/callback`
+    - Allowed Callback URLs: `http://localhost:3000/api/auth/callback`
     - Allowed Logout URLs: `http://localhost:3010`
     - Allowed Web Origins: `http://localhost:3010`
 4. Get credentials from "Settings" tab
@@ -564,7 +701,7 @@ Auth0 provides a free tier and easy setup:
 OIDC_ISSUER_URL=https://YOUR_DOMAIN.auth0.com
 OIDC_CLIENT_ID=your-auth0-client-id
 OIDC_CLIENT_SECRET=your-auth0-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 JWT_SECRET=generate-with-openssl-rand-base64-32
 ```
 
@@ -586,7 +723,7 @@ docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin
 
     - Client ID: `t3chat-client`
     - Client authentication: ON
-    - Valid redirect URIs: `http://localhost:3000/api/v1/auth/callback`
+    - Valid redirect URIs: `http://localhost:3000/api/auth/callback`
     - Web origins: `http://localhost:3010`
 
 5. **Get Client Secret**: From the "Credentials" tab
@@ -597,7 +734,7 @@ docker run -p 8080:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin
 OIDC_ISSUER_URL=http://localhost:8080/realms/t3chat
 OIDC_CLIENT_ID=t3chat-client
 OIDC_CLIENT_SECRET=your-keycloak-client-secret
-OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 JWT_SECRET=generate-with-openssl-rand-base64-32
 ```
 

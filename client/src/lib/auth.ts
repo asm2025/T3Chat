@@ -24,7 +24,7 @@ const EXPIRES_AT_KEY = 'auth_token_expires_at';
  */
 export async function isOidcEnabled(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/config`);
+    const response = await fetch(`${API_BASE_URL}/api/auth/config`);
     if (!response.ok) return false;
     const data = await response.json();
     return data.oidc_enabled === true;
@@ -37,14 +37,14 @@ export async function isOidcEnabled(): Promise<boolean> {
  * Initiate OIDC login flow by redirecting to backend login endpoint
  */
 export async function initiateLogin(): Promise<void> {
-  window.location.href = `${API_BASE_URL}/api/v1/auth/login`;
+  window.location.href = `${API_BASE_URL}/api/auth/login`;
 }
 
 /**
  * Local login with username/email and password
  */
 export async function localLogin(username: string, password: string): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/local/login`, {
+  const response = await fetch(`${API_BASE_URL}/api/auth/local/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
@@ -142,7 +142,7 @@ export async function refreshToken(): Promise<string | null> {
   if (!refreshToken) return null;
   
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),
@@ -189,7 +189,7 @@ export async function getCurrentUser(): Promise<User | null> {
   
   try {
     const currentToken = getToken();
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
       headers: { 'Authorization': `Bearer ${currentToken}` },
     });
     
@@ -221,7 +221,7 @@ export async function logout(): Promise<void> {
   // Call backend logout endpoint if we have a token
   if (token) {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
       });

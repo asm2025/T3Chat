@@ -35,7 +35,7 @@ pub struct UpdateFeatureRequest {
 /// List all features for the authenticated user
 #[utoipa::path(
     get,
-    path = "/api/v1/features",
+    path = "/api/features",
     tag = "Features",
     security(("bearer_auth" = [])),
     responses(
@@ -82,7 +82,7 @@ pub async fn list_features(
 /// Update a specific feature for the authenticated user
 #[utoipa::path(
     put,
-    path = "/api/v1/features/{feature}",
+    path = "/api/features/{feature}",
     tag = "Features",
     security(("bearer_auth" = [])),
     params(

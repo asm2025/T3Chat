@@ -150,7 +150,7 @@ impl From<UserModel> for AdminUserResponse {
     }
 }
 
-// GET /api/v1/admin/users
+// GET /api/admin/users
 pub async fn list_users(
     State(state): State<AppState>,
     Query(params): Query<ListUsersQuery>,
@@ -206,7 +206,7 @@ pub async fn list_users(
     }))
 }
 
-// GET /api/v1/admin/users/{id}
+// GET /api/admin/users/{id}
 pub async fn get_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -244,7 +244,7 @@ pub async fn get_user(
     }))
 }
 
-// POST /api/v1/admin/users
+// POST /api/admin/users
 pub async fn create_user(
     State(state): State<AppState>,
     _user: AuthenticatedUser,
@@ -293,7 +293,7 @@ pub async fn create_user(
     }))
 }
 
-// PUT /api/v1/admin/users/{id}
+// PUT /api/admin/users/{id}
 pub async fn update_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -337,7 +337,7 @@ pub async fn update_user(
     }))
 }
 
-// DELETE /api/v1/admin/users/{id}
+// DELETE /api/admin/users/{id}
 pub async fn delete_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -353,7 +353,7 @@ pub async fn delete_user(
     Ok(StatusCode::NO_CONTENT)
 }
 
-// POST /api/v1/admin/users/{id}/enable
+// POST /api/admin/users/{id}/enable
 pub async fn enable_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -369,7 +369,7 @@ pub async fn enable_user(
     get_user(State(state), Path(id), _user).await
 }
 
-// POST /api/v1/admin/users/{id}/disable
+// POST /api/admin/users/{id}/disable
 pub async fn disable_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -385,7 +385,7 @@ pub async fn disable_user(
     get_user(State(state), Path(id), _user).await
 }
 
-// POST /api/v1/admin/users/{id}/lock
+// POST /api/admin/users/{id}/lock
 pub async fn lock_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -403,7 +403,7 @@ pub async fn lock_user(
     get_user(State(state), Path(id), _user).await
 }
 
-// POST /api/v1/admin/users/{id}/unlock
+// POST /api/admin/users/{id}/unlock
 pub async fn unlock_user(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -419,7 +419,7 @@ pub async fn unlock_user(
     get_user(State(state), Path(id), _user).await
 }
 
-// GET /api/v1/admin/users/{id}/roles
+// GET /api/admin/users/{id}/roles
 pub async fn get_user_roles(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -435,7 +435,7 @@ pub async fn get_user_roles(
     Ok(Json(roles))
 }
 
-// POST /api/v1/admin/users/{id}/roles
+// POST /api/admin/users/{id}/roles
 pub async fn add_user_role(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -461,7 +461,7 @@ pub async fn add_user_role(
     Ok(Json(roles))
 }
 
-// DELETE /api/v1/admin/users/{id}/roles/{role}
+// DELETE /api/admin/users/{id}/roles/{role}
 pub async fn remove_user_role(
     State(state): State<AppState>,
     Path((id, role)): Path<(String, String)>,
@@ -482,7 +482,7 @@ pub async fn remove_user_role(
     Ok(Json(roles))
 }
 
-// GET /api/v1/admin/users/{id}/stats
+// GET /api/admin/users/{id}/stats
 pub async fn get_user_stats(
     State(state): State<AppState>,
     Path(id): Path<String>,

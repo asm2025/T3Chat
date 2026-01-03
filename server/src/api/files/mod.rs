@@ -107,6 +107,30 @@ pub async fn upload_file(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
+        // Ingest file into RAG (non-blocking, only for document types)
+        if created_file.file_type == "document" || content_type.starts_with("text/") || content_type == "application/pdf" {
+            let rag = state.rag_service.clone();
+            let file_id_str = created_file.id.to_string();
+            let user_id_str = created_file.user_id.clone();
+            let filepath_str = created_file.filepath.clone();
+            let filename_str = created_file.filename.clone();
+            let mime_type_str = created_file.mime_type.clone();
+            
+            tokio::spawn(async move {
+                if let Err(e) = rag.ingest_file(
+                    &file_id_str,
+                    &user_id_str,
+                    &filepath_str,
+                    &filename_str,
+                    &mime_type_str,
+                ).await {
+                    tracing::warn!("Failed to ingest file into RAG: {}", e);
+                } else {
+                    tracing::info!("File ingested into RAG: {}", file_id_str);
+                }
+            });
+        }
+
         Ok(Json(created_file))
     } else {
         Err(StatusCode::BAD_REQUEST)
@@ -200,7 +224,7 @@ pub async fn get_download_url(
 
     // Return the content URL
     Ok(Json(DownloadUrlResponse {
-        url: format!("/api/v1/files/{}/content", id),
+        url: format!("/api/files/{}/content", id),
     }))
 }
 
@@ -224,11 +248,22 @@ pub async fn delete_file(
         return Err(StatusCode::FORBIDDEN);
     }
 
+    let file_id_str = file.id.to_string();
+    let user_id_str = file.user_id.clone();
+
     // Delete from DB first
     state.file_repository.delete(id).await.map_err(|e| {
         tracing::error!("Failed to delete file record: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    // Delete from RAG (non-blocking)
+    let rag = state.rag_service.clone();
+    tokio::spawn(async move {
+        if let Err(e) = rag.delete_file(&file_id_str, &user_id_str).await {
+            tracing::warn!("Failed to delete file from RAG: {}", e);
+        }
+    });
 
     // Delete from disk
     let filepath = PathBuf::from(&file.filepath);

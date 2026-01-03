@@ -44,7 +44,7 @@ pub struct CreateUserApiKeyRequest {
 /// List all API keys for the authenticated user
 #[utoipa::path(
     get,
-    path = "/api/v1/keys",
+    path = "/api/keys",
     tag = "User API Keys",
     security(("bearer_auth" = [])),
     responses(
@@ -71,7 +71,7 @@ pub async fn list_keys(
 /// Create a new API key for the authenticated user
 #[utoipa::path(
     post,
-    path = "/api/v1/keys",
+    path = "/api/keys",
     tag = "User API Keys",
     security(("bearer_auth" = [])),
     request_body = CreateUserApiKeyRequest,
@@ -127,7 +127,7 @@ pub async fn create_key(
 /// Delete an API key
 #[utoipa::path(
     delete,
-    path = "/api/v1/keys/{id}",
+    path = "/api/keys/{id}",
     tag = "User API Keys",
     security(("bearer_auth" = [])),
     params(

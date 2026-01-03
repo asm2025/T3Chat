@@ -16,7 +16,7 @@ use crate::env;
 use crate::middleware::auth::AuthenticatedUser;
 use crate::utils::password::verify_password;
 
-// GET /api/v1/auth/login (OIDC)
+// GET /api/auth/login (OIDC)
 pub async fn oidc_login(State(state): State<AppState>) -> Result<Redirect, StatusCode> {
     let oidc_client = state.oidc_client.as_ref().ok_or(StatusCode::NOT_FOUND)?;
 
@@ -28,7 +28,7 @@ pub async fn oidc_login(State(state): State<AppState>) -> Result<Redirect, Statu
     Ok(Redirect::to(auth_url.as_str()))
 }
 
-// GET /api/v1/auth/callback?code=...&state=...
+// GET /api/auth/callback?code=...&state=...
 #[derive(Deserialize)]
 pub struct CallbackQuery {
     code: String,
@@ -113,7 +113,7 @@ pub async fn callback(
     )))
 }
 
-// POST /api/v1/auth/local/login
+// POST /api/auth/local/login
 #[derive(Deserialize)]
 pub struct LocalLoginRequest {
     username: String,
@@ -225,7 +225,7 @@ pub async fn login(
     }))
 }
 
-// POST /api/v1/auth/logout
+// POST /api/auth/logout
 #[derive(Serialize)]
 pub struct LogoutResponse {
     success: bool,
@@ -236,7 +236,7 @@ pub async fn logout() -> Result<Json<LogoutResponse>, StatusCode> {
     Ok(Json(LogoutResponse { success: true }))
 }
 
-// POST /api/v1/auth/refresh
+// POST /api/auth/refresh
 #[derive(Deserialize)]
 pub struct RefreshRequest {
     refresh_token: String,
@@ -265,7 +265,7 @@ pub async fn refresh(
     }))
 }
 
-// GET /api/v1/auth/me
+// GET /api/auth/me
 #[derive(Serialize)]
 pub struct UserResponse {
     pub id: String,
@@ -300,7 +300,7 @@ pub async fn me(
     }))
 }
 
-// GET /api/v1/auth/config
+// GET /api/auth/config
 #[derive(Serialize)]
 pub struct AuthConfigResponse {
     pub oidc_enabled: bool,

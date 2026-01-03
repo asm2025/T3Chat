@@ -22,7 +22,7 @@ pub struct CreateMessageRequest {
 /// Get all messages for a chat
 #[utoipa::path(
     get,
-    path = "/api/v1/chats/{id}/messages",
+    path = "/api/chats/{id}/messages",
     tag = "Messages",
     security(("bearer_auth" = [])),
     params(
@@ -62,7 +62,7 @@ pub async fn get_messages(
 /// Create a new message in a chat
 #[utoipa::path(
     post,
-    path = "/api/v1/chats/{id}/messages",
+    path = "/api/chats/{id}/messages",
     tag = "Messages",
     security(("bearer_auth" = [])),
     params(
@@ -121,6 +121,27 @@ pub async fn create_message(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    // Index in MeiliSearch (non-blocking)
+    let meili = state.meilisearch.clone();
+    let message_doc = crate::utils::meilisearch::MeiliDocument {
+        id: format!("message:{}", message.id),
+        user_id: user.0.id.clone(),
+        chat_id: message.chat_id.to_string(),
+        r#type: "message".to_string(),
+        title: None,
+        text: message.text.clone(),
+        role: Some(message.role.clone()),
+        model: message.model.clone(),
+        endpoint: None,
+        created_at: message.created_at.to_rfc3339(),
+        updated_at: message.updated_at.to_rfc3339(),
+    };
+    tokio::spawn(async move {
+        if let Err(e) = meili.index_message(message_doc).await {
+            tracing::warn!("Failed to index message in MeiliSearch: {}", e);
+        }
+    });
+
     Ok(Json(MessageResponse::from(message)))
 }
 
@@ -133,7 +154,7 @@ pub struct UpdateMessageRequest {
 /// Update a message in a chat
 #[utoipa::path(
     put,
-    path = "/api/v1/chats/{chat_id}/messages/{id}",
+    path = "/api/chats/{chat_id}/messages/{id}",
     tag = "Messages",
     security(("bearer_auth" = [])),
     params(
@@ -183,13 +204,34 @@ pub async fn update_message(
             }
         })?;
 
+    // Update index in MeiliSearch (non-blocking)
+    let meili = state.meilisearch.clone();
+    let message_doc = crate::utils::meilisearch::MeiliDocument {
+        id: format!("message:{}", message.id),
+        user_id: user.0.id.clone(),
+        chat_id: message.chat_id.to_string(),
+        r#type: "message".to_string(),
+        title: None,
+        text: message.text.clone(),
+        role: Some(message.role.clone()),
+        model: message.model.clone(),
+        endpoint: None,
+        created_at: message.created_at.to_rfc3339(),
+        updated_at: message.updated_at.to_rfc3339(),
+    };
+    tokio::spawn(async move {
+        if let Err(e) = meili.index_message(message_doc).await {
+            tracing::warn!("Failed to update message in MeiliSearch: {}", e);
+        }
+    });
+
     Ok(Json(MessageResponse::from(message)))
 }
 
 /// Delete a message from a chat
 #[utoipa::path(
     delete,
-    path = "/api/v1/chats/{chat_id}/messages/{id}",
+    path = "/api/chats/{chat_id}/messages/{id}",
     tag = "Messages",
     security(("bearer_auth" = [])),
     params(
@@ -229,13 +271,22 @@ pub async fn delete_message(
             }
         })?;
 
+    // Delete from MeiliSearch (non-blocking)
+    let meili = state.meilisearch.clone();
+    let message_id_str = message_id.to_string();
+    tokio::spawn(async move {
+        if let Err(e) = meili.delete_message(&message_id_str).await {
+            tracing::warn!("Failed to delete message from MeiliSearch: {}", e);
+        }
+    });
+
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// Clear all messages from a chat
 #[utoipa::path(
     delete,
-    path = "/api/v1/chats/{id}/messages",
+    path = "/api/chats/{id}/messages",
     tag = "Messages",
     security(("bearer_auth" = [])),
     params(

@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 /// Get current user profile
 #[utoipa::path(
     get,
-    path = "/api/v1/me",
+    path = "/api/me",
     tag = "User",
     security(("bearer_auth" = [])),
     responses(
@@ -38,7 +38,7 @@ pub struct UpdateUserRequest {
 /// Update current user profile
 #[utoipa::path(
     put,
-    path = "/api/v1/me",
+    path = "/api/me",
     tag = "User",
     security(("bearer_auth" = [])),
     request_body = UpdateUserRequest,

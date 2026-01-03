@@ -3,11 +3,12 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
+use utoipa::ToSchema;
 
 use crate::db::schema::presets;
 
 /// Preset model - saved chat configurations
-#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Selectable, Serialize, Deserialize, ToSchema)]
 #[diesel(table_name = presets)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Preset {

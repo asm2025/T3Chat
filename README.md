@@ -52,9 +52,13 @@ Start with everything running locally on your machine, then progressively connec
 
 -   🏷️ Tag system for organizing chats
 
--   📁 File upload and management
+-   📁 File upload and management with RAG integration
 
 -   🔐 Encrypted API key storage per user/provider
+
+-   🔍 Full-text search (MeiliSearch) across chats and messages
+
+-   📚 RAG (Retrieval Augmented Generation) for file-based chat context
 
 ## 🗂 Environment Configuration
 

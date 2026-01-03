@@ -49,7 +49,13 @@ impl Modify for BearerAuthAddon {
         crate::api::user_api_keys::create_key,
         crate::api::user_api_keys::delete_key,
         crate::api::features::list_features,
-        crate::api::features::update_feature
+        crate::api::features::update_feature,
+        crate::api::presets::list_presets,
+        crate::api::presets::get_preset,
+        crate::api::presets::create_preset,
+        crate::api::presets::update_preset,
+        crate::api::presets::delete_preset,
+        crate::api::presets::reorder_presets
     ),
     components(
         schemas(
@@ -71,7 +77,11 @@ impl Modify for BearerAuthAddon {
             crate::api::user_api_keys::CreateUserApiKeyRequest,
             crate::api::features::UserFeatureResponse,
             crate::api::features::UserFeaturesResponse,
-            crate::api::features::UpdateFeatureRequest
+            crate::api::features::UpdateFeatureRequest,
+            crate::db::models::Preset,
+            crate::api::presets::CreatePresetRequest,
+            crate::api::presets::UpdatePresetRequest,
+            crate::api::presets::ReorderPresetsRequest
         )
     ),
     tags(
@@ -82,7 +92,8 @@ impl Modify for BearerAuthAddon {
         (name = "Chat", description = "Chat completion endpoints"),
         (name = "User", description = "Authenticated user profile"),
         (name = "User API Keys", description = "API key management"),
-        (name = "Features", description = "User feature preferences")
+        (name = "Features", description = "User feature preferences"),
+        (name = "Presets", description = "Chat preset management")
     ),
     modifiers(&BearerAuthAddon)
 )]

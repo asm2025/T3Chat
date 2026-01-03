@@ -74,7 +74,7 @@ impl From<(AiModelModel, String)> for ModelResponse {
 /// List all active AI models from the model catalog
 #[utoipa::path(
     get,
-    path = "/api/v1/models",
+    path = "/api/models",
     tag = "Models",
     responses(
         (status = 200, description = "List of AI models", body = [ModelResponse]),
@@ -105,7 +105,7 @@ pub async fn list_models(state: State<AppState>) -> Result<Json<Vec<ModelRespons
 /// List all AI models (active and inactive)
 #[utoipa::path(
     get,
-    path = "/api/v1/models/all",
+    path = "/api/models/all",
     tag = "Models",
     responses(
         (status = 200, description = "List of all AI models", body = [ModelResponse]),
@@ -127,7 +127,7 @@ pub async fn list_all_models(
 /// Get a specific AI model by ID
 #[utoipa::path(
     get,
-    path = "/api/v1/models/{id}",
+    path = "/api/models/{id}",
     tag = "Models",
     params(
         ("id" = Uuid, Path, description = "Model identifier")
@@ -155,7 +155,7 @@ pub async fn get_model(
 /// List models enabled for the authenticated user
 #[utoipa::path(
     get,
-    path = "/api/v1/models/my",
+    path = "/api/models/my",
     tag = "Models",
     security(("bearer_auth" = [])),
     responses(
@@ -192,7 +192,7 @@ pub async fn list_my_models(
 /// Enable a model for the authenticated user
 #[utoipa::path(
     post,
-    path = "/api/v1/models/{id}/enable",
+    path = "/api/models/{id}/enable",
     tag = "Models",
     security(("bearer_auth" = [])),
     params(
@@ -230,7 +230,7 @@ pub async fn enable_model(
 /// Disable a model for the authenticated user
 #[utoipa::path(
     post,
-    path = "/api/v1/models/{id}/disable",
+    path = "/api/models/{id}/disable",
     tag = "Models",
     security(("bearer_auth" = [])),
     params(
