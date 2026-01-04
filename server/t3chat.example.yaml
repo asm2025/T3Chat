@@ -14,9 +14,6 @@
 #   - T3CHAT_CONFIG (alternative)
 # --------------------------------------------------------------------------------------
 
-# Configuration version (required)
-version: 1.2.1
-
 # Cache settings: Set to true to enable caching
 cache: true
 

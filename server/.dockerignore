@@ -1,0 +1,40 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+*.pdb
+
+# Environment files (use docker-compose env vars instead)
+.env
+.env.*
+!.env.example
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+tests/
+**/*_test.rs
+
+# wwwroot (will be populated by frontend build)
+wwwroot/*
+

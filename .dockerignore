@@ -1,0 +1,46 @@
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+server/target/
+server/**/*.rs.bk
+server/*.pdb
+client/dist/
+client/node_modules/
+client/.pnpm-store/
+
+# Logs
+*.log
+server/logs/
+client/logs/
+
+# Test files
+**/*_test.rs
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Reference files
+!ref/

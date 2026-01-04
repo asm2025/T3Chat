@@ -1,0 +1,105 @@
+# T3Chat Local Prerequisites
+# Run this file to start all required services for local development:
+#   docker compose -f docker-compose.prerequisites.yml up -d
+#
+# This includes:
+#   - PostgreSQL 18 with pgvector extension (for main database + RAG vector storage)
+#   - Meilisearch (optional, for full-text search)
+#   - RAG API (optional, for file-based semantic search and citations)
+services:
+    # Main PostgreSQL database (used by T3Chat backend)
+    postgres:
+        image: pgvector/pgvector:pg18
+        container_name: postgres
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: appdata
+        ports:
+            - "5432:5432"
+        volumes:
+            # Persist PostgreSQL data to local directory
+            # Note: PostgreSQL 18+ requires mounting to /var/lib/postgresql (not /var/lib/postgresql/data)
+            # The container will create a version-specific subdirectory automatically (e.g., /var/lib/postgresql/18)
+            # If you have existing data from PostgreSQL <18, you may need to migrate it using pg_upgrade
+            - "D:/Work/db/PostegreSQL:/var/lib/postgresql"
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d appdata"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - t3chat
+
+    # Meilisearch - Fast, typo-tolerant search engine (optional but recommended)
+    # Provides full-text search across chats and messages
+    meilisearch:
+        image: getmeili/meilisearch:v1.12.3
+        container_name: meilisearch
+        restart: unless-stopped
+        environment:
+            - MEILI_HOST=http://meilisearch:7700
+            - MEILI_NO_ANALYTICS=true
+            - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-}
+        ports:
+            - "7700:7700"
+        volumes:
+            # Persist Meilisearch data to local directory
+            - "D:/Work/db/Meilisearch:/meili_data"
+        networks:
+            - t3chat
+        # Meilisearch is optional - the backend will work without it (search just won't be available)
+        profiles:
+            - optional
+
+    # RAG API - Semantic search for uploaded files (optional)
+    # Provides file citations and context-aware responses based on documents
+    # Uses LibreChat's RAG API service (Python/FastAPI with pgvector)
+    # Note: The RAG API uses the main postgres database. For production, consider using a separate database.
+    rag_api:
+        image: ghcr.io/danny-avila/librechat-rag-api-dev-lite:latest
+        container_name: rag-api
+        restart: unless-stopped
+        environment:
+            - DB_HOST=postgres
+            - DB_PORT=5432
+            - POSTGRES_DB=appdata
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=password
+            - RAG_PORT=${RAG_PORT:-8000}
+        ports:
+            - "${RAG_PORT:-8000}:${RAG_PORT:-8000}"
+        depends_on:
+            postgres:
+                condition: service_healthy
+        networks:
+            - t3chat
+        # RAG API is optional - only needed if you want file-based semantic search
+        profiles:
+            - optional
+
+    # Separate pgvector database for RAG (if using separate database)
+    # Note: The RAG API can also use the main postgres database above
+    # Uncomment this if you want a separate database for RAG vectors
+    # vectordb:
+    #   image: pgvector/pgvector:pg18
+    #   container_name: vectordb
+    #   restart: unless-stopped
+    #   environment:
+    #     POSTGRES_DB: mydatabase
+    #     POSTGRES_USER: myuser
+    #     POSTGRES_PASSWORD: mypassword
+    #   ports:
+    #     - "5433:5432"
+    #   volumes:
+    #     # Note: PostgreSQL 18+ requires mounting to /var/lib/postgresql (not /var/lib/postgresql/data)
+    #     - "D:/Work/db/PostegreSQL_RAG:/var/lib/postgresql"
+    #   networks:
+    #     - t3chat
+    #   profiles:
+    #     - optional
+
+networks:
+    t3chat:
+        driver: bridge

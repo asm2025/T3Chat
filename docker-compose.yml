@@ -1,0 +1,85 @@
+# Docker Compose configuration for T3Chat
+# Orchestrates PostgreSQL, Rust backend, and React frontend
+services:
+    postgres:
+        image: postgres:18
+        container_name: t3chat-postgres
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: appdata
+        ports:
+            - "5432:5432"
+        volumes:
+            # Persist PostgreSQL data
+            # Option 1: Use named volume (recommended for portability)
+            - postgres_data:/var/lib/postgresql/data
+            # Option 2: Use bind mount (uncomment and adjust path for Windows)
+            # - "D:/Work/db/PostegreSQL:/var/lib/postgresql/data"
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d appdata"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - t3chat-network
+
+    backend:
+        build:
+            context: .
+            dockerfile: ./server/Dockerfile
+        container_name: t3chat-backend
+        restart: unless-stopped
+        ports:
+            - "${PORT:-3000}:3000"
+        depends_on:
+            postgres:
+                condition: service_healthy
+        environment:
+            # Database connection
+            DATABASE_URL: postgresql://postgres:password@postgres:5432/appdata
+            # CORS configuration
+            CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3010}
+            # JWT secret (REQUIRED - set in .env file)
+            JWT_SECRET: ${JWT_SECRET}
+            # Server port
+            PORT: ${PORT:-3000}
+            # App environment
+            APP_ENV: ${APP_ENV:-production}
+            # Optional: OIDC configuration
+            OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+            OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+            OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+            OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
+            # Optional: AI provider API keys
+            OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+            ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+            GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+            OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+            ABACUS_API_KEY: ${ABACUS_API_KEY:-}
+            # Optional: Debug and Swagger
+            DEBUG_ROUTES: ${DEBUG_ROUTES:-false}
+            # Optional: JWT expiry
+            JWT_EXPIRY_SECONDS: ${JWT_EXPIRY_SECONDS:-3600}
+        volumes:
+            # Mount t3chat.yaml for configuration
+            - ./server/t3chat.yaml:/app/t3chat.yaml:ro
+            # Optional: Mount logs directory
+            - ./server/logs:/app/logs
+        networks:
+            - t3chat-network
+        healthcheck:
+            test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+            interval: 30s
+            timeout: 3s
+            start_period: 10s
+            retries: 3
+
+volumes:
+    postgres_data:
+        driver: local
+
+networks:
+    t3chat-network:
+        driver: bridge

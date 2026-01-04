@@ -120,11 +120,46 @@ Before running or compiling the Rust server, make sure the following tooling is 
 
 -   Rust toolchain installed via [rustup](https://rustup.rs)
 
-    -   **Windows**: Use the MSVC toolchain (default)
+    -   **Windows**: Use the MSVC toolchain (default) or GNU toolchain (`x86_64-pc-windows-gnu`)
+    
+        -   **MSVC** (default): Better integration with Windows, requires Visual Studio Build Tools or Windows SDK
+        -   **GNU** (`x86_64-pc-windows-gnu`): Alternative option, uses MinGW-w64, no Visual Studio required
+        
+        To use GNU toolchain: `rustup toolchain install stable-x86_64-pc-windows-gnu` and `rustup default stable-x86_64-pc-windows-gnu`
 
     -   **Linux/macOS**: Default toolchain works fine
 
 -   PostgreSQL client libraries (`libpq`)
+
+-   **Docker Desktop** (recommended for easy setup of services)
+
+    -   PostgreSQL (required)
+    -   Meilisearch (optional, recommended for full-text search)
+    -   RAG API (optional, for file-based semantic search)
+
+### Quick Start with Docker
+
+The easiest way to get all prerequisites running is to use the provided Docker Compose file:
+
+```bash
+# Start all prerequisites (PostgreSQL, Meilisearch, RAG API)
+docker compose -f docker-compose.prerequisites.yml up -d
+
+# Or start only required services (PostgreSQL)
+docker compose -f docker-compose.prerequisites.yml up -d postgres
+
+# Check service status
+docker compose -f docker-compose.prerequisites.yml ps
+```
+
+This will start:
+-   **PostgreSQL 18 with pgvector** on port `5432` (required)
+-   **Meilisearch** on port `7700` (optional, recommended)
+-   **RAG API** on port `8000` (optional)
+
+All data is persisted to `D:/Work/db/` (adjust paths in the compose file for your system).
+
+See the [Docker Services](#docker-services) section below for detailed information about each service.
 
 ### PostgreSQL Client Library Setup
 
@@ -133,11 +168,11 @@ The Rust server uses the `diesel` crate which requires PostgreSQL client librari
 Choose your platform below for detailed setup instructions:
 
 <details>\
-<summary><strong>🪟 Windows (MSVC)</strong></summary>
+<summary><strong>🪟 Windows (MSVC or GNU)</strong></summary>
 
-On Windows, the MSVC linker needs to find `libpq.lib` at compile time and `libpq.dll` at runtime. You have two main options:
+On Windows, you can use either the MSVC toolchain (default) or the GNU toolchain (`x86_64-pc-windows-gnu`). The MSVC linker needs to find `libpq.lib` at compile time and `libpq.dll` at runtime. You have several options:
 
-#### Option 1: Official PostgreSQL Installer (Recommended for beginners)
+#### Option 1: Official PostgreSQL Installer (Recommended for MSVC toolchain)
 
 1. **Download PostgreSQL 18** from [postgresql.org/download/windows](https://www.postgresql.org/download/windows/)
 
@@ -173,9 +208,9 @@ where libpq.dll
 # Should show: C:\Program Files\PostgreSQL\18\bin\libpq.dll
 ```
 
-#### Option 2: vcpkg Package Manager
+#### Option 2: vcpkg Package Manager (MSVC toolchain)
 
-[vcpkg](https://vcpkg.io) is Microsoft's C/C++ package manager that provides pre-built libraries.
+[vcpkg](https://vcpkg.io) is Microsoft's C/C++ package manager that provides pre-built libraries. This option works with the MSVC toolchain.
 
 1. **Install vcpkg** (if not already installed):
 
@@ -246,7 +281,7 @@ vcpkg install libpq:x64-windows
 >
 > `LIB` is a Windows-specific environment variable used by the MSVC linker (`link.exe`) to locate `.lib` files during compilation. When you add a directory to `LIB`, any compiled program can link against libraries in that directory. Alternatively, Diesel respects `PQ_LIB_DIR` specifically for PostgreSQL, which is more targeted and won't affect other builds.
 
-#### Option 3: Chocolatey Package Manager
+#### Option 3: Chocolatey Package Manager (MSVC toolchain)
 
 ```cmd
 choco install postgresql
@@ -255,6 +290,41 @@ setx PQ_LIB_DIR "C:\Program Files\PostgreSQL\18\lib"
 setx PQ_INCLUDE_DIR "C:\Program Files\PostgreSQL\18\include"
 # Restart terminal
 ```
+
+#### Option 4: Using GNU Toolchain (`x86_64-pc-windows-gnu`)
+
+If you prefer to use the GNU toolchain instead of MSVC:
+
+1. **Install the GNU toolchain**:
+   ```cmd
+   rustup toolchain install stable-x86_64-pc-windows-gnu
+   rustup default stable-x86_64-pc-windows-gnu
+   ```
+
+2. **Install MinGW-w64** (if not already installed):
+   - Download from [MinGW-w64](https://www.mingw-w64.org/downloads/)
+   - Or use MSYS2: `pacman -S mingw-w64-x86_64-postgresql`
+   - Or use Chocolatey: `choco install mingw`
+
+3. **Set environment variables**:
+   ```cmd
+   setx PQ_LIB_DIR "C:\msys64\mingw64\lib"  # Adjust path to your MinGW installation
+   setx PQ_INCLUDE_DIR "C:\msys64\mingw64\include"
+   ```
+
+4. **Add MinGW bin to PATH** (for runtime DLL):
+   ```cmd
+   setx PATH "%PATH%;C:\msys64\mingw64\bin"
+   ```
+
+5. **Restart your terminal** and verify:
+   ```cmd
+   rustc --version  # Should show x86_64-pc-windows-gnu
+   ```
+
+> 💡 **Choosing between MSVC and GNU:**
+> - **MSVC** (default): Better Windows integration, requires Visual Studio Build Tools or Windows SDK
+> - **GNU** (`x86_64-pc-windows-gnu`): Alternative option using MinGW-w64, no Visual Studio required, may be easier for some developers
 
 </details>
 
@@ -372,6 +442,108 @@ pg_config --version
 -   See [Rust PostgreSQL documentation](https://docs.rs/postgres/latest/postgres/)
 
 -   Visit our [community discussions](https://github.com/VoloBuilds/create-volo-app/discussions)
+
+### Docker Services
+
+T3Chat uses several optional services that can be run via Docker for local development. The `docker-compose.prerequisites.yml` file provides a one-command setup for all services.
+
+#### PostgreSQL (Required)
+
+PostgreSQL 18 with the `pgvector` extension is required for the main database. The Docker setup uses the official `pgvector/pgvector` image.
+
+**Configuration:**
+-   Port: `5432`
+-   Database: `appdata`
+-   User: `postgres`
+-   Password: `password`
+-   Data persistence: `D:/Work/db/PostegreSQL` (adjust in compose file)
+
+**Connection string:** `postgresql://postgres:password@localhost:5432/appdata`
+
+#### Meilisearch (Optional, Recommended)
+
+[Meilisearch](https://www.meilisearch.com/) is a fast, typo-tolerant search engine that provides full-text search across chats and messages. It's built in Rust and delivers results in under 50ms.
+
+**Why use Meilisearch?**
+-   ⚡ Lightning-fast search (sub-50ms response times)
+-   🔍 Typo-tolerant search (finds results even with spelling mistakes)
+-   🌍 Multi-language support
+-   📊 Built-in relevance ranking
+-   🔐 Community Edition is fully open-source (MIT license)
+
+**Configuration:**
+-   Port: `7700`
+-   Data persistence: `D:/Work/db/Meilisearch` (adjust in compose file)
+-   Master key: Optional (set via `MEILI_MASTER_KEY` environment variable)
+
+**Backend Integration:**
+The Rust backend automatically creates and configures the Meilisearch index on startup. Search functionality is gracefully disabled if Meilisearch is unavailable.
+
+**Getting Started:**
+```bash
+# Start Meilisearch
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d meilisearch
+
+# Or start all services including Meilisearch
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
+```
+
+**Environment Variables:**
+Add to `server/.env`:
+```bash
+MEILI_HOST=http://localhost:7700
+MEILI_MASTER_KEY=your-master-key-here  # Optional, only if you set a master key
+```
+
+**Resources:**
+-   [Meilisearch Documentation](https://www.meilisearch.com/docs)
+-   [Meilisearch Community Edition](https://www.meilisearch.com/pricing) (free, MIT licensed)
+-   [Building AI-Driven Search with Meilisearch](https://www.freecodecamp.org/news/how-to-build-an-ai-driven-search-experience-using-meilisearch/)
+
+#### RAG API (Optional)
+
+The RAG (Retrieval Augmented Generation) API provides semantic search across uploaded files, enabling file citations and context-aware responses based on documents.
+
+**What is RAG?**
+RAG combines full-text search with semantic vector search to understand the meaning and context of your documents. When you upload files (PDFs, text files, documents), they are automatically indexed and can be queried semantically.
+
+**Features:**
+-   📄 Automatic file ingestion (PDFs, text files, documents)
+-   🔍 Semantic search across file content
+-   📝 File citations in chat responses
+-   🧠 Context-aware responses based on uploaded documents
+-   🔗 Multi-file search and retrieval
+
+**Configuration:**
+-   Port: `8000` (configurable via `RAG_PORT` environment variable)
+-   Database: Uses the main PostgreSQL database with pgvector extension
+-   Image: LibreChat's official RAG API (`ghcr.io/danny-avila/librechat-rag-api-dev-lite:latest`)
+
+**Getting Started:**
+```bash
+# Start RAG API (requires PostgreSQL to be running)
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d rag_api
+
+# Or start all services including RAG API
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
+```
+
+**Environment Variables:**
+Add to `server/.env`:
+```bash
+RAG_API_URL=http://localhost:8000
+```
+
+**RAG API Endpoints:**
+-   `POST {RAG_API_URL}/upload` – Ingest a file into the vector database
+-   `POST {RAG_API_URL}/query` – Query files for relevant content
+-   `DELETE {RAG_API_URL}/delete/{file_id}` – Remove a file from the index
+
+**Note:** The RAG API requires a PostgreSQL database with the `pgvector` extension. The Docker setup uses the main PostgreSQL instance, but you can configure a separate database if needed.
+
+**Resources:**
+-   [LibreChat RAG API](https://github.com/danny-avila/LibreChat/tree/main/rag_api)
+-   [pgvector Documentation](https://github.com/pgvector/pgvector)
 
 ## 🛠️ **Development**
 

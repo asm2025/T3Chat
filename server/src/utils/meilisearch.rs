@@ -41,12 +41,18 @@ impl MeiliSearchService {
                 .unwrap_or_else(|_| "http://localhost:7700".to_string());
             let meili_master_key = std::env::var("MEILI_MASTER_KEY").ok();
 
-            match Client::new(meili_host, meili_master_key) {
+            if meili_master_key.is_none() {
+                tracing::info!("Connecting to MeiliSearch at {} without authentication", meili_host);
+            } else {
+                tracing::info!("Connecting to MeiliSearch at {} with authentication", meili_host);
+            }
+
+            match Client::new(meili_host.clone(), meili_master_key) {
                 Ok(client) => {
                     *client_guard = Some(Arc::new(client));
                 }
                 Err(e) => {
-                    tracing::error!("Failed to create MeiliSearch client: {:?}", e);
+                    tracing::error!("Failed to create MeiliSearch client for {}: {:?}", meili_host, e);
                     return None;
                 }
             }
@@ -115,25 +121,71 @@ impl MeiliSearchService {
 
         // Try to get index settings to check if it exists
         if let Err(e) = index.get_settings().await {
-            if e.to_string().contains("index_not_found") {
+            let error_str = e.to_string();
+            if error_str.contains("index_not_found") {
                 // Index doesn't exist, create it
                 tracing::info!("Creating MeiliSearch index: {}", self.index_name);
+            } else if error_str.contains("MissingAuthorizationHeader") 
+                || error_str.contains("missing_authorization_header")
+                || error_str.contains("401") {
+                // Authentication error - MeiliSearch requires a master key
+                let meili_host = std::env::var("MEILI_HOST")
+                    .unwrap_or_else(|_| "http://localhost:7700".to_string());
+                return Err(format!(
+                    "MeiliSearch authentication failed: {}. \
+                    Your MeiliSearch instance requires a master key. \
+                    Please set MEILI_MASTER_KEY environment variable to match the key used when starting MeiliSearch. \
+                    MeiliSearch host: {}",
+                    e, meili_host
+                ));
             } else {
                 return Err(format!("Failed to check index: {:?}", e));
             }
         }
 
         // Set searchable attributes
-        index
+        let result = index
             .set_searchable_attributes(&["title", "text"])
-            .await
-            .map_err(|e| format!("Failed to set searchable attributes: {:?}", e))?;
+            .await;
+        if let Err(e) = result {
+            let error_str = e.to_string();
+            if error_str.contains("MissingAuthorizationHeader") 
+                || error_str.contains("missing_authorization_header")
+                || error_str.contains("401") {
+                let meili_host = std::env::var("MEILI_HOST")
+                    .unwrap_or_else(|_| "http://localhost:7700".to_string());
+                return Err(format!(
+                    "MeiliSearch authentication failed: {}. \
+                    Your MeiliSearch instance requires a master key. \
+                    Please set MEILI_MASTER_KEY environment variable to match the key used when starting MeiliSearch. \
+                    MeiliSearch host: {}",
+                    e, meili_host
+                ));
+            }
+            return Err(format!("Failed to set searchable attributes: {:?}", e));
+        }
 
         // Set filterable attributes
-        index
+        let result = index
             .set_filterable_attributes(&["user_id", "chat_id", "type", "role", "model", "endpoint"])
-            .await
-            .map_err(|e| format!("Failed to set filterable attributes: {:?}", e))?;
+            .await;
+        if let Err(e) = result {
+            let error_str = e.to_string();
+            if error_str.contains("MissingAuthorizationHeader") 
+                || error_str.contains("missing_authorization_header")
+                || error_str.contains("401") {
+                let meili_host = std::env::var("MEILI_HOST")
+                    .unwrap_or_else(|_| "http://localhost:7700".to_string());
+                return Err(format!(
+                    "MeiliSearch authentication failed: {}. \
+                    Your MeiliSearch instance requires a master key. \
+                    Please set MEILI_MASTER_KEY environment variable to match the key used when starting MeiliSearch. \
+                    MeiliSearch host: {}",
+                    e, meili_host
+                ));
+            }
+            return Err(format!("Failed to set filterable attributes: {:?}", e));
+        }
 
         Ok(())
     }

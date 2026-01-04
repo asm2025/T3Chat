@@ -9,22 +9,80 @@ This guide will help you get T3Chat up and running in under 10 minutes.
 -   [Rust](https://rustup.rs/) (latest stable)
 -   [PostgreSQL](https://www.postgresql.org/) (v14 or later, or use Docker)
 
-## Step 1: Set Up PostgreSQL
+## Step 1: Set Up Prerequisites
 
-### Option A: Use Docker (Easiest)
+### Option A: Use Docker Compose (Recommended - Easiest)
+
+The easiest way to get all prerequisites running is to use the provided Docker Compose file:
 
 ```bash
-docker run --name postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=t3chat -p 5432:5432 -d
+# Start all prerequisites (PostgreSQL, Meilisearch, RAG API)
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
+
+# Or start only PostgreSQL (required)
+docker compose -f docker-compose.prerequisites.yml up -d postgres
 ```
 
-### Option B: Use Local PostgreSQL
+This will start:
 
-Create a database named `t3chat`:
+-   **PostgreSQL 18 with pgvector** on port `5432` (required)
+-   **Meilisearch** on port `7700` (optional, recommended for search)
+-   **RAG API** on port `8000` (optional, for file-based semantic search)
+
+**Note:** Adjust the volume paths in `docker-compose.prerequisites.yml` to match your system (currently set to `D:/Work/db/`).
+
+**Meilisearch Master Key (Optional but Recommended):**
+
+For production or if you want to secure your Meilisearch instance, you can set a master key. Generate one using:
+
+```bash
+# Using OpenSSL
+openssl rand -base64 32
+
+# Or using Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Then set it as an environment variable before starting Docker Compose:
+
+```bash
+# Windows (PowerShell)
+$env:MEILI_MASTER_KEY="your-generated-key-here"
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
+
+# Windows (CMD)
+set MEILI_MASTER_KEY=your-generated-key-here
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
+
+# Linux/macOS
+export MEILI_MASTER_KEY="your-generated-key-here"
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
+```
+
+**Note:** If you don't set a master key, Meilisearch will run without authentication (fine for local development). If you do set one, make sure to also add it to your `server/.env` file (see Step 4 below).
+
+### Option B: Use Docker (PostgreSQL Only)
+
+If you only want PostgreSQL without the compose file:
+
+```bash
+docker run --name postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=appdata -p 5432:5432 -d postgres:18
+```
+
+### Option C: Use Local PostgreSQL
+
+Create a database named `appdata`:
 
 ```bash
 psql -U postgres
-CREATE DATABASE t3chat;
+CREATE DATABASE appdata;
 \q
+```
+
+**Note:** If using local PostgreSQL, ensure the `pgvector` extension is installed for RAG functionality:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 ## Step 2: Configure Authentication
@@ -107,7 +165,7 @@ Create a `.env` file in the `server/` directory:
 cd server
 cat > .env << 'EOF'
 # Database
-DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
+DATABASE_URL=postgresql://postgres:password@localhost:5432/appdata
 
 # CORS (must include your frontend URL)
 CORS_ORIGINS=http://localhost:3010
@@ -124,6 +182,14 @@ JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 # OIDC_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 # OIDC_CLIENT_SECRET=YOUR_CLIENT_SECRET
 # OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
+
+# Optional: Meilisearch (for full-text search - recommended)
+# MEILI_HOST=http://localhost:7700
+# MEILI_MASTER_KEY=your-master-key-here  # Optional: Only needed if you set MEILI_MASTER_KEY when starting Docker Compose
+#                                         # Generate a key with: openssl rand -base64 32
+
+# Optional: RAG API (for file-based semantic search)
+# RAG_API_URL=http://localhost:8000
 
 # Optional: Development settings
 APP_ENV=development
@@ -236,8 +302,9 @@ If you configured OIDC in Step 2, you'll see an "Or" separator and a "Login with
 ### PostgreSQL Connection Failed
 
 -   Verify PostgreSQL is running: `pg_isready` or check Docker: `docker ps`
--   Test connection: `psql -U postgres -h localhost -p 5432 -d t3chat`
+-   Test connection: `psql -U postgres -h localhost -p 5432 -d appdata`
 -   Check the `DATABASE_URL` format matches: `postgresql://user:password@host:port/database`
+-   If using Docker Compose: `docker compose -f docker-compose.prerequisites.yml ps`
 
 ## Authentication Options
 
