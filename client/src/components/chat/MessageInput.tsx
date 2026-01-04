@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Paperclip, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import type { AIModel } from "@/types/model";
 
 const TERMS_STORAGE_KEY = "t3chat.termsAcknowledged";
@@ -160,13 +161,14 @@ export function MessageInput({ onSend, disabled, models = [], selectedModel, onM
 
                         <div className="mt-2 -mb-px flex w-full min-w-0 flex-row-reverse flex-wrap items-center justify-between gap-2">
                             <div className="-mt-0.5 -mr-0.5 flex shrink-0 items-center justify-center gap-2" aria-label="Message actions">
-                                <button
+                                <Button
                                     type="submit"
                                     disabled={isSubmitDisabled}
                                     aria-label={isSubmitDisabled ? "Message requires text" : "Send message"}
-                                    className="focus-visible:ring-ring button-reflect inline-flex size-10 items-center justify-center rounded-lg bg-primary p-2 text-primary-foreground shadow-sm transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 hover:bg-primary/90">
+                                    size="icon"
+                                    className="button-reflect size-10">
                                     <ArrowUp className="size-5" />
-                                </button>
+                                </Button>
                             </div>
 
                             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pr-2">

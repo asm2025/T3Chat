@@ -47,16 +47,17 @@ export function MessageList({ messages, streaming, showPlaceholder = true, place
                 <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
                     {filteredMessages.map((message, index) => {
                         const isLastMessage = index === filteredMessages.length - 1;
-                        const isStreaming = streaming && isLastMessage;
+                        const isStreaming = streaming && isLastMessage && message.role === "assistant";
 
                         if (message.role === "user") {
-                            return <MessageBubble key={message.id} message={message} streaming={isStreaming} />;
+                            return <MessageBubble key={message.id} message={message} streaming={false} />;
                         }
 
                         return <MessageBubble key={message.id} message={message} streaming={isStreaming} />;
                     })}
 
-                    {streaming && (
+                    {/* Only show "Generating response..." if streaming but no assistant message is being streamed */}
+                    {streaming && (filteredMessages.length === 0 || filteredMessages[filteredMessages.length - 1]?.role !== "assistant") && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <div className="flex gap-1">
                                 <span className="h-2 w-2 animate-bounce rounded-full bg-current" style={{ animationDelay: "0ms" }} />

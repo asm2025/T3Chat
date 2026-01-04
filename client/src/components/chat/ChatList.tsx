@@ -162,12 +162,10 @@ export function ChatList() {
                                     const isStreaming = chat.id === streamingChatId;
                                     const displayTitle = chat.title || "New Chat";
                                     return (
-                                        <div key={chat.id} className="group relative flex items-center rounded-md">
+                                        <div key={chat.id} className="group relative flex items-center">
                                             <button
                                                 onClick={() => navigate(`/?chatId=${chat.id}`)}
-                                                className={`flex flex-1 items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                                                    active ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                                }`}>
+                                                className={`flex flex-1 items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors ${active ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                                                 <div className="flex-1 truncate">{displayTitle}</div>
                                                 {isStreaming && <RadialProgress size={16} className="text-muted-foreground" />}
                                             </button>
@@ -180,7 +178,6 @@ export function ChatList() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem
-                                                        variant="destructive"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setDeleteDialogChatId(chat.id);
@@ -208,7 +205,7 @@ export function ChatList() {
                         <Button variant="outline" onClick={() => setDeleteDialogChatId(null)} disabled={isDeleting}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDeleteChat} disabled={isDeleting}>
+                        <Button onClick={handleDeleteChat} disabled={isDeleting}>
                             {isDeleting ? "Deleting..." : "Delete"}
                         </Button>
                     </DialogFooter>

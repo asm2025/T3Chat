@@ -72,12 +72,6 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                             {message.content}
                         </ReactMarkdown>
                         {streaming && <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-current" />}
-                        {(message.modelUsed || message.tokensUsed !== undefined) && (
-                            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                                {message.modelUsed && <span>{message.modelUsed}</span>}
-                                {message.tokensUsed !== undefined && <span>• {message.tokensUsed} tokens</span>}
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
@@ -94,12 +88,6 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                         {message.content}
                         {streaming && <span className="ml-1 inline-block h-4 w-2 animate-pulse bg-current" />}
                     </p>
-                    {(message.modelUsed || message.tokensUsed !== undefined) && (
-                        <div className="mt-2 flex items-center gap-2 border-t border-current/10 pt-2 text-xs opacity-70">
-                            {message.modelUsed && <span>{message.modelUsed}</span>}
-                            {message.tokensUsed !== undefined && <span>• {message.tokensUsed} tokens</span>}
-                        </div>
-                    )}
                 </div>
             </div>
             <Avatar className="h-8 w-8 border border-border bg-background shadow-sm">

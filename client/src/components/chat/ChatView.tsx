@@ -41,12 +41,25 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
     const [inputContent, setInputContent] = useState("");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    // Local state for streaming message content (updates immediately)
+    const [streamingContent, setStreamingContent] = useState<string>("");
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
     const chatKey = chatId ?? NEW_CONVERSATION_KEY;
     // During the transition from no chatId to chatId, React may render once with the new `chatId`
     // before our state has been migrated to that key. Fall back to the new-chat bucket to avoid
     // the placeholder flashing back in.
-    const messages = messagesByChatId[chatKey] ?? (chatId ? messagesByChatId[NEW_CONVERSATION_KEY] ?? [] : []);
+    const baseMessages = messagesByChatId[chatKey] ?? (chatId ? messagesByChatId[NEW_CONVERSATION_KEY] ?? [] : []);
+
+    // Merge streaming message with local state for immediate updates
+    const messages = useMemo(() => {
+        if (!streaming || !streamingMessageId) {
+            return baseMessages;
+        }
+        // Replace the streaming message with updated content from local state
+        // streamingContent can be empty string initially, which is valid
+        return baseMessages.map((msg) => (msg.id === streamingMessageId ? { ...msg, content: streamingContent } : msg));
+    }, [baseMessages, streaming, streamingMessageId, streamingContent]);
 
     const modelSpecs = config?.modelSpecs || [];
     const useSpecs = modelSpecs.length > 0;
@@ -101,6 +114,13 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
             return;
         }
 
+        // If we are currently streaming this chat, don't overwrite our optimistic messages
+        // with the potentially stale/empty state from the server.
+        // We will refresh explicitly when streaming is done.
+        if (streaming && chat.id === chatId) {
+            return;
+        }
+
         setMessagesByChatId((prev) => {
             const next = { ...prev };
             const nextMessages = chat.messages ?? [];
@@ -113,7 +133,7 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
             }
             return next;
         });
-    }, [chat, chatId]);
+    }, [chat, chatId, streaming]);
 
     // When navigating to home with no chatId, reset the new-chat state.
     useEffect(() => {
@@ -125,6 +145,9 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
         // Reset messages and input for new chat
         setMessagesForChat(NEW_CONVERSATION_KEY, []);
         setInputContent("");
+        // Clear streaming state
+        setStreamingContent("");
+        setStreamingMessageId(null);
     }, [chatId, setMessagesForChat]);
 
     useEffect(() => {
@@ -254,18 +277,6 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                 // Refresh chat list immediately so the new chat appears in sidebar
                 refreshChats();
 
-                // Update chat title after creation with actual content (non-blocking)
-                const chatTitle = content.slice(0, 30) + (content.length > 30 ? "..." : "");
-                t3ChatClient
-                    .updateChat(currentChatId, { title: chatTitle })
-                    .then(() => {
-                        refreshChats();
-                    })
-                    .catch((err) => {
-                        // Non-critical error, continue
-                        console.error("Failed to update chat title:", err);
-                    });
-
                 // Migrate optimistic messages from the new-chat key to the real chat id.
                 setMessagesByChatId((prev) => {
                     const pending = prev[NEW_CONVERSATION_KEY] ?? [];
@@ -280,6 +291,21 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                 });
 
                 setSearchParams({ chatId: currentChatId }, { replace: true });
+
+                // Update chat title after creation with actual content (non-blocking)
+                const chatTitle = content.slice(0, 30) + (content.length > 30 ? "..." : "");
+                t3ChatClient
+                    .updateChat(currentChatId, { title: chatTitle })
+                    .then(() => {
+                        refreshChats();
+                        // Refresh the chat data to update the title in the header
+                        // Use setTimeout to ensure chatId is set in the hook after setSearchParams
+                        setTimeout(() => refresh(), 50);
+                    })
+                    .catch((err) => {
+                        // Non-critical error, continue
+                        console.error("Failed to update chat title:", err);
+                    });
             } catch (err) {
                 // If chat creation fails, keep the user bubble and replace assistant placeholder with an error.
                 const msg = getErrorMessage(err);
@@ -304,6 +330,10 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
         // Clear input when sending message
         setInputContent("");
 
+        // Initialize streaming state
+        setStreamingContent("");
+        setStreamingMessageId(assistantTempId);
+
         try {
             await sendMessage(
                 {
@@ -314,15 +344,15 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                     stream: true,
                 },
                 (chunk) => {
-                    // Use functional update to ensure each chunk is appended immediately
-                    setMessagesForChat(currentChatId!, (prev) => {
-                        const assistantMsg = prev.find((m) => m.id === assistantTempId);
-                        const currentContent = assistantMsg?.content || "";
-                        return prev.map((message) => (message.id === assistantTempId ? { ...message, content: currentContent + chunk } : message));
-                    });
+                    // Update local state immediately for instant UI updates
+                    setStreamingContent((prev) => prev + chunk);
                 },
                 async () => {
                     try {
+                        // Clear streaming state
+                        setStreamingContent("");
+                        setStreamingMessageId(null);
+
                         // `/v1/chat/stream` persists user + assistant messages on the server.
                         // Refresh to reconcile optimistic state with DB.
                         if (chatId === currentChatId) {
@@ -338,6 +368,9 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                         }
                     } catch (err) {
                         toast.error("Failed to save assistant response", { description: getErrorMessage(err) });
+                        // Clear streaming state on error
+                        setStreamingContent("");
+                        setStreamingMessageId(null);
                     }
                 },
             );
@@ -345,6 +378,9 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
             // Replace the empty assistant placeholder with a visible error so the UI doesn't look "stuck".
             const msg = getErrorMessage(err);
             setMessagesForChat(currentChatId!, (prev) => prev.map((m) => (m.id === assistantTempId ? { ...m, content: `Error: ${msg}` } : m)));
+            // Clear streaming state on error
+            setStreamingContent("");
+            setStreamingMessageId(null);
         }
     };
 
@@ -357,7 +393,10 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
         return <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border bg-card p-8 text-center text-red-500">Unable to load chat. {error.message}</div>;
     }
 
-    if (!loading && chatId && !chat) {
+    // Only show "Chat not found" if we really don't have a chat AND we don't have any optimistic messages to show.
+    // If we have messages (e.g. just created a new chat), we should render the view even if 'chat' is still loading.
+    const hasOptimisticMessages = messages.length > 0;
+    if (!loading && chatId && !chat && !hasOptimisticMessages) {
         return <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card">Chat not found.</div>;
     }
 
@@ -381,17 +420,19 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
         }
     };
 
-    // Only show chat title if we have a chat and it matches the current chatId
-    const showChatTitle = chat && chat.id === chatId;
+    // Only show chat title if we have a chat and it matches the current chatId,
+    // OR if we are in a newly created chat (optimistic) that matches the current chatId
+    const effectiveChat = chat && chat.id === chatId ? chat : chatId && messages.length > 0 ? { id: chatId, title: "New Chat" } : null;
+    const showChatTitle = !!effectiveChat;
 
     return (
         <div className="flex min-h-full flex-col">
             {showChatTitle && (
                 <div className="border-b border-border p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-row items-center justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Chat</p>
-                            <h2 className="text-lg font-semibold">{chat.title}</h2>
+                            <h2 className="text-lg font-semibold">{effectiveChat.title === "New Chat" && chat?.title ? chat.title : effectiveChat.title}</h2>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)} className="text-muted-foreground hover:text-destructive">
                             <Trash2 className="h-4 w-4" />
@@ -411,7 +452,7 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                         <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDeleteChat} disabled={isDeleting}>
+                        <Button onClick={handleDeleteChat} disabled={isDeleting}>
                             {isDeleting ? "Deleting..." : "Delete"}
                         </Button>
                     </DialogFooter>

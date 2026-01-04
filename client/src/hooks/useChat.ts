@@ -17,7 +17,7 @@ export function useChat(chatId: string | null) {
         };
     }, []);
 
-    const loadChat = useCallback(async () => {
+    const loadChat = useCallback(async (isBackground = false) => {
         if (!chatId) {
             if (mountedRef.current) {
                 setChat(null);
@@ -28,7 +28,7 @@ export function useChat(chatId: string | null) {
         }
 
         try {
-            if (mountedRef.current) {
+            if (mountedRef.current && !isBackground) {
                 setLoading(true);
                 setError(null);
             }
@@ -41,7 +41,7 @@ export function useChat(chatId: string | null) {
                 setError(err as Error);
             }
         } finally {
-            if (mountedRef.current) {
+            if (mountedRef.current && !isBackground) {
                 setLoading(false);
             }
         }
@@ -51,5 +51,5 @@ export function useChat(chatId: string | null) {
         loadChat();
     }, [loadChat]);
 
-    return { chat, loading, error, refresh: loadChat };
+    return { chat, loading, error, refresh: () => loadChat(true) };
 }
