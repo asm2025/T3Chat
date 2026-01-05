@@ -1,0 +1,15 @@
+# Configuration for flutter_rust_bridge code generation
+
+# Rust crate path
+rust_crate_dir: .
+
+# Output directory for generated Dart code
+dart_output: ../../lib/core/rust/bridge_generated.dart
+
+# Output directory for generated Rust code
+rust_output: src/bridge_generated.rs
+
+# Additional options
+rust_input:
+  - src/ffi/bridge.rs
+
