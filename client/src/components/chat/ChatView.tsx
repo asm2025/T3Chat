@@ -353,7 +353,7 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                         setStreamingContent("");
                         setStreamingMessageId(null);
 
-                        // `/v1/chat/stream` persists user + assistant messages on the server.
+                        // `/chat/stream` persists user + assistant messages on the server.
                         // Refresh to reconcile optimistic state with DB.
                         if (chatId === currentChatId) {
                             await refresh();

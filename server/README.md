@@ -155,34 +155,39 @@ MeiliSearch provides full-text search across chats and messages. To enable searc
 
 1. **Install MeiliSearch** (choose one method):
 
-   **Option A: Docker (Recommended)**
-   ```bash
-   docker run -d -p 7700:7700 -v $(pwd)/meili_data:/meili_data getmeili/meilisearch:latest
-   ```
+    **Option A: Docker (Recommended)**
 
-   **Option B: Homebrew (macOS)**
-   ```bash
-   brew install meilisearch
-   meilisearch
-   ```
+    ```bash
+    docker run -d -p 7700:7700 -v $(pwd)/meili_data:/meili_data getmeili/meilisearch:latest
+    ```
 
-   **Option C: Download binary**
-   - Download from [meilisearch.com/download](https://www.meilisearch.com/download)
-   - Run: `./meilisearch`
+    **Option B: Homebrew (macOS)**
+
+    ```bash
+    brew install meilisearch
+    meilisearch
+    ```
+
+    **Option C: Download binary**
+
+    - Download from [meilisearch.com/download](https://www.meilisearch.com/download)
+    - Run: `./meilisearch`
 
 2. **Configure environment variables** in `server/.env`:
-   ```bash
-   MEILI_HOST=http://localhost:7700
-   MEILI_MASTER_KEY=your-master-key-here  # Optional, only if you set a master key
-   ```
+
+    ```bash
+    MEILI_HOST=http://localhost:7700
+    MEILI_MASTER_KEY=your-master-key-here  # Optional, only if you set a master key
+    ```
 
 3. **Index creation**: The server automatically creates and configures the MeiliSearch index on startup.
 
 **MeiliSearch Features:**
-- Full-text search across chat titles and message content
-- User-scoped search (users only see their own chats/messages)
-- Automatic indexing on chat/message create/update/delete
-- Fast, typo-tolerant search
+
+-   Full-text search across chat titles and message content
+-   User-scoped search (users only see their own chats/messages)
+-   Automatic indexing on chat/message create/update/delete
+-   Fast, typo-tolerant search
 
 ### RAG API Variables (Optional - for file search and citations)
 
@@ -194,32 +199,36 @@ The RAG (Retrieval Augmented Generation) API provides semantic search across upl
 
 1. **Use LibreChat's RAG API** (recommended):
 
-   The RAG API is a Python/FastAPI service that uses `pgvector` for vector storage. You can use LibreChat's official RAG API:
+    The RAG API is a Python/FastAPI service that uses `pgvector` for vector storage. You can use LibreChat's official RAG API:
 
-   **Option A: Docker Compose** (from LibreChat repo):
-   ```bash
-   # In LibreChat directory
-   docker compose -f rag.yml up -d
-   ```
+    **Option A: Docker Compose** (from LibreChat repo):
 
-   **Option B: Standalone setup**:
-   - Clone or use LibreChat's RAG API service
-   - Ensure it's configured to use the same `pgvector` database
-   - Set `RAG_API_URL` to point to the service
+    ```bash
+    # In LibreChat directory
+    docker compose -f rag.yml up -d
+    ```
+
+    **Option B: Standalone setup**:
+
+    - Clone or use LibreChat's RAG API service
+    - Ensure it's configured to use the same `pgvector` database
+    - Set `RAG_API_URL` to point to the service
 
 2. **Configure environment variables** in `server/.env`:
-   ```bash
-   RAG_API_URL=http://localhost:8000
-   ```
+
+    ```bash
+    RAG_API_URL=http://localhost:8000
+    ```
 
 3. **File ingestion**: When files are uploaded (PDFs, text files, documents), they are automatically sent to the RAG API for indexing.
 
 4. **File search**: The RAG API provides semantic search across file content, enabling:
-   - File citations in chat responses
-   - Context-aware responses based on uploaded documents
-   - Multi-file search and retrieval
+    - File citations in chat responses
+    - Context-aware responses based on uploaded documents
+    - Multi-file search and retrieval
 
 **RAG API Endpoints Used:**
+
 -   `POST {RAG_API_URL}/upload` – Ingest a file into the vector database
 -   `POST {RAG_API_URL}/query` – Query files for relevant content
 -   `DELETE {RAG_API_URL}/delete/{file_id}` – Remove a file from the index
@@ -240,6 +249,7 @@ Create separate files such as `.env.development`, `.env.staging`, and `.env.rele
 ### Example Configuration
 
 **Development (`server/.env.development`):**
+
 ```bash
 DATABASE_URL=postgresql://postgres:password@localhost:5432/t3chat
 CORS_ORIGINS=http://localhost:3010,http://localhost:3000
@@ -251,7 +261,7 @@ JWT_SECRET=your-secure-jwt-secret
 # OIDC_ISSUER_URL=https://your-oidc-provider.com
 # OIDC_CLIENT_ID=your-client-id
 # OIDC_CLIENT_SECRET=your-client-secret
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
 📖 **For complete environment variable documentation**, see [`variables.md`](../variables.md)
@@ -302,7 +312,7 @@ JWT_SECRET=your-secure-jwt-secret
 # OIDC_ISSUER_URL=https://your-oidc-provider.com
 # OIDC_CLIENT_ID=your-client-id
 # OIDC_CLIENT_SECRET=your-client-secret
-# OIDC_REDIRECT_URI=http://localhost:3000/api/v1/auth/callback
+# OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
 Then run `cargo run` from `server/`. Auto-migrate is enabled by the call to `db::connect(&database_url, true)` in `main.rs`. Set the second argument to `false` if you want to manage migrations manually.
@@ -424,7 +434,7 @@ Server now properly handles SIGINT/SIGTERM signals for graceful shutdown.
 
 | Environment     | Status   | Notes                                              |
 | --------------- | -------- | -------------------------------------------------- |
-| **Development** | ✅ Ready | Full OIDC authentication support                  |
+| **Development** | ✅ Ready | Full OIDC authentication support                   |
 | **Production**  | ✅ Ready | Full JWKS-based authentication + graceful shutdown |
 
 ## 🚨 Known Limitations

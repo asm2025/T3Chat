@@ -244,7 +244,7 @@ endpoints:
         # Groq Example
         - name: "groq"
           apiKey: "${GROQ_API_KEY}"
-          baseURL: "https://api.groq.com/openai/v1/"
+          baseURL: "https://api.groq.com/openai/"
           models:
               default:
                   - "llama-3.3-70b-versatile"
@@ -457,7 +457,7 @@ modelSpecs:
 # webSearch:
 #   # Jina Reranking Configuration
 #   jinaApiKey: '${JINA_API_KEY}'  # Your Jina API key
-#   jinaApiUrl: '${JINA_API_URL}'  # Custom Jina API URL (optional, defaults to https://api.jina.ai/v1/rerank)
+#   jinaApiUrl: '${JINA_API_URL}'  # Custom Jina API URL (optional, defaults to https://api.jina.ai/rerank)
 #   # Other rerankers
 #   cohereApiKey: '${COHERE_API_KEY}'
 #   # Search providers

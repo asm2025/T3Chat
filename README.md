@@ -121,10 +121,10 @@ Before running or compiling the Rust server, make sure the following tooling is 
 -   Rust toolchain installed via [rustup](https://rustup.rs)
 
     -   **Windows**: Use the MSVC toolchain (default) or GNU toolchain (`x86_64-pc-windows-gnu`)
-    
+
         -   **MSVC** (default): Better integration with Windows, requires Visual Studio Build Tools or Windows SDK
         -   **GNU** (`x86_64-pc-windows-gnu`): Alternative option, uses MinGW-w64, no Visual Studio required
-        
+
         To use GNU toolchain: `rustup toolchain install stable-x86_64-pc-windows-gnu` and `rustup default stable-x86_64-pc-windows-gnu`
 
     -   **Linux/macOS**: Default toolchain works fine
@@ -153,6 +153,7 @@ docker compose -f docker-compose.prerequisites.yml ps
 ```
 
 This will start:
+
 -   **PostgreSQL 18 with pgvector** on port `5432` (required)
 -   **Meilisearch** on port `7700` (optional, recommended)
 -   **RAG API** on port `8000` (optional)
@@ -296,35 +297,40 @@ setx PQ_INCLUDE_DIR "C:\Program Files\PostgreSQL\18\include"
 If you prefer to use the GNU toolchain instead of MSVC:
 
 1. **Install the GNU toolchain**:
-   ```cmd
-   rustup toolchain install stable-x86_64-pc-windows-gnu
-   rustup default stable-x86_64-pc-windows-gnu
-   ```
+
+    ```cmd
+    rustup toolchain install stable-x86_64-pc-windows-gnu
+    rustup default stable-x86_64-pc-windows-gnu
+    ```
 
 2. **Install MinGW-w64** (if not already installed):
-   - Download from [MinGW-w64](https://www.mingw-w64.org/downloads/)
-   - Or use MSYS2: `pacman -S mingw-w64-x86_64-postgresql`
-   - Or use Chocolatey: `choco install mingw`
+
+    - Download from [MinGW-w64](https://www.mingw-w64.org/downloads/)
+    - Or use MSYS2: `pacman -S mingw-w64-x86_64-postgresql`
+    - Or use Chocolatey: `choco install mingw`
 
 3. **Set environment variables**:
-   ```cmd
-   setx PQ_LIB_DIR "C:\msys64\mingw64\lib"  # Adjust path to your MinGW installation
-   setx PQ_INCLUDE_DIR "C:\msys64\mingw64\include"
-   ```
+
+    ```cmd
+    setx PQ_LIB_DIR "C:\msys64\mingw64\lib"  # Adjust path to your MinGW installation
+    setx PQ_INCLUDE_DIR "C:\msys64\mingw64\include"
+    ```
 
 4. **Add MinGW bin to PATH** (for runtime DLL):
-   ```cmd
-   setx PATH "%PATH%;C:\msys64\mingw64\bin"
-   ```
+
+    ```cmd
+    setx PATH "%PATH%;C:\msys64\mingw64\bin"
+    ```
 
 5. **Restart your terminal** and verify:
-   ```cmd
-   rustc --version  # Should show x86_64-pc-windows-gnu
-   ```
+    ```cmd
+    rustc --version  # Should show x86_64-pc-windows-gnu
+    ```
 
 > 💡 **Choosing between MSVC and GNU:**
-> - **MSVC** (default): Better Windows integration, requires Visual Studio Build Tools or Windows SDK
-> - **GNU** (`x86_64-pc-windows-gnu`): Alternative option using MinGW-w64, no Visual Studio required, may be easier for some developers
+>
+> -   **MSVC** (default): Better Windows integration, requires Visual Studio Build Tools or Windows SDK
+> -   **GNU** (`x86_64-pc-windows-gnu`): Alternative option using MinGW-w64, no Visual Studio required, may be easier for some developers
 
 </details>
 
@@ -452,6 +458,7 @@ T3Chat uses several optional services that can be run via Docker for local devel
 PostgreSQL 18 with the `pgvector` extension is required for the main database. The Docker setup uses the official `pgvector/pgvector` image.
 
 **Configuration:**
+
 -   Port: `5432`
 -   Database: `appdata`
 -   User: `postgres`
@@ -465,6 +472,7 @@ PostgreSQL 18 with the `pgvector` extension is required for the main database. T
 [Meilisearch](https://www.meilisearch.com/) is a fast, typo-tolerant search engine that provides full-text search across chats and messages. It's built in Rust and delivers results in under 50ms.
 
 **Why use Meilisearch?**
+
 -   ⚡ Lightning-fast search (sub-50ms response times)
 -   🔍 Typo-tolerant search (finds results even with spelling mistakes)
 -   🌍 Multi-language support
@@ -472,6 +480,7 @@ PostgreSQL 18 with the `pgvector` extension is required for the main database. T
 -   🔐 Community Edition is fully open-source (MIT license)
 
 **Configuration:**
+
 -   Port: `7700`
 -   Data persistence: `D:/Work/db/Meilisearch` (adjust in compose file)
 -   Master key: Optional (set via `MEILI_MASTER_KEY` environment variable)
@@ -480,6 +489,7 @@ PostgreSQL 18 with the `pgvector` extension is required for the main database. T
 The Rust backend automatically creates and configures the Meilisearch index on startup. Search functionality is gracefully disabled if Meilisearch is unavailable.
 
 **Getting Started:**
+
 ```bash
 # Start Meilisearch
 docker compose -f docker-compose.prerequisites.yml --profile optional up -d meilisearch
@@ -490,12 +500,14 @@ docker compose -f docker-compose.prerequisites.yml --profile optional up -d
 
 **Environment Variables:**
 Add to `server/.env`:
+
 ```bash
 MEILI_HOST=http://localhost:7700
 MEILI_MASTER_KEY=your-master-key-here  # Optional, only if you set a master key
 ```
 
 **Resources:**
+
 -   [Meilisearch Documentation](https://www.meilisearch.com/docs)
 -   [Meilisearch Community Edition](https://www.meilisearch.com/pricing) (free, MIT licensed)
 -   [Building AI-Driven Search with Meilisearch](https://www.freecodecamp.org/news/how-to-build-an-ai-driven-search-experience-using-meilisearch/)
@@ -508,6 +520,7 @@ The RAG (Retrieval Augmented Generation) API provides semantic search across upl
 RAG combines full-text search with semantic vector search to understand the meaning and context of your documents. When you upload files (PDFs, text files, documents), they are automatically indexed and can be queried semantically.
 
 **Features:**
+
 -   📄 Automatic file ingestion (PDFs, text files, documents)
 -   🔍 Semantic search across file content
 -   📝 File citations in chat responses
@@ -515,11 +528,13 @@ RAG combines full-text search with semantic vector search to understand the mean
 -   🔗 Multi-file search and retrieval
 
 **Configuration:**
+
 -   Port: `8000` (configurable via `RAG_PORT` environment variable)
 -   Database: Uses the main PostgreSQL database with pgvector extension
 -   Image: LibreChat's official RAG API (`ghcr.io/danny-avila/librechat-rag-api-dev-lite:latest`)
 
 **Getting Started:**
+
 ```bash
 # Start RAG API (requires PostgreSQL to be running)
 docker compose -f docker-compose.prerequisites.yml --profile optional up -d rag_api
@@ -530,11 +545,13 @@ docker compose -f docker-compose.prerequisites.yml --profile optional up -d
 
 **Environment Variables:**
 Add to `server/.env`:
+
 ```bash
 RAG_API_URL=http://localhost:8000
 ```
 
 **RAG API Endpoints:**
+
 -   `POST {RAG_API_URL}/upload` – Ingest a file into the vector database
 -   `POST {RAG_API_URL}/query` – Query files for relevant content
 -   `DELETE {RAG_API_URL}/delete/{file_id}` – Remove a file from the index
@@ -542,6 +559,7 @@ RAG_API_URL=http://localhost:8000
 **Note:** The RAG API requires a PostgreSQL database with the `pgvector` extension. The Docker setup uses the main PostgreSQL instance, but you can configure a separate database if needed.
 
 **Resources:**
+
 -   [LibreChat RAG API](https://github.com/danny-avila/LibreChat/tree/main/rag_api)
 -   [pgvector Documentation](https://github.com/pgvector/pgvector)
 
@@ -637,7 +655,7 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 │   ├── src/
 │   │   ├── main.rs     # Application entry point & router
 │   │   ├── api/        # Versioned HTTP handlers
-│   │   │   └── v1/
+│   │   │   └── /
 │   │   │       ├── auth/       # Local + OIDC auth
 │   │   │       ├── chat/       # Chat completion endpoints
 │   │   │       ├── chats/      # Chat + message CRUD

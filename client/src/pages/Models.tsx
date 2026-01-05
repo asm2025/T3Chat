@@ -22,7 +22,7 @@ export function Models() {
     const fetchModels = async () => {
         try {
             setLoading(true);
-            const data = await api.get<AIModel[]>("/v1/models");
+            const data = await api.get<AIModel[]>("/models");
             setModels(data);
         } catch (error) {
             toast.error("Failed to fetch models", {
@@ -38,10 +38,7 @@ export function Models() {
 
     // Filter models
     const filteredModels = models.filter((model) => {
-        const matchesSearch =
-            model.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            model.modelId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            model.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = model.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || model.modelId.toLowerCase().includes(searchQuery.toLowerCase()) || model.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesProvider = selectedProvider === "all" || model.provider === selectedProvider;
 
@@ -105,36 +102,36 @@ export function Models() {
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
-                                                        <CardTitle className="text-lg">{model.displayName}</CardTitle>
-                                                        <CardDescription className="mt-1 font-mono text-xs">{model.modelId}</CardDescription>
+                                                <CardTitle className="text-lg">{model.displayName}</CardTitle>
+                                                <CardDescription className="mt-1 font-mono text-xs">{model.modelId}</CardDescription>
                                             </div>
-                                                    {/* Catalog response doesn't currently expose paid/free status */}
+                                            {/* Catalog response doesn't currently expose paid/free status */}
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         {model.description && <p className="text-sm text-muted-foreground line-clamp-2">{model.description}</p>}
 
                                         <div className="flex flex-wrap gap-2">
-                                                    {model.supportsStreaming && (
+                                            {model.supportsStreaming && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Zap className="mr-1 h-3 w-3" />
                                                     Streaming
                                                 </Badge>
                                             )}
-                                                    {model.supportsImages && (
+                                            {model.supportsImages && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Image className="mr-1 h-3 w-3" />
                                                     Images
                                                 </Badge>
                                             )}
-                                                    {model.supportsFunctions && (
+                                            {model.supportsFunctions && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Code className="mr-1 h-3 w-3" />
                                                     Functions
                                                 </Badge>
                                             )}
-                                                    {/* Catalog response doesn't currently expose supportsVision on this endpoint */}
-                                                    {"supportsVision" in model && (model as unknown as { supportsVision: boolean }).supportsVision && (
+                                            {/* Catalog response doesn't currently expose supportsVision on this endpoint */}
+                                            {"supportsVision" in model && (model as unknown as { supportsVision: boolean }).supportsVision && (
                                                 <Badge variant="outline" className="text-xs">
                                                     <Brain className="mr-1 h-3 w-3" />
                                                     Vision
@@ -145,16 +142,16 @@ export function Models() {
                                         <div className="text-xs text-muted-foreground space-y-1">
                                             <div className="flex justify-between">
                                                 <span>Provider:</span>
-                                                        <span className="font-medium">{model.provider}</span>
+                                                <span className="font-medium">{model.provider}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span>Context Window:</span>
-                                                        <span className="font-medium">{model.contextWindow.toLocaleString()}</span>
+                                                <span className="font-medium">{model.contextWindow.toLocaleString()}</span>
                                             </div>
-                                                    {"maxOutputTokens" in model && (model as unknown as { maxOutputTokens?: number }).maxOutputTokens && (
+                                            {"maxOutputTokens" in model && (model as unknown as { maxOutputTokens?: number }).maxOutputTokens && (
                                                 <div className="flex justify-between">
                                                     <span>Max Output:</span>
-                                                            <span className="font-medium">{(model as unknown as { maxOutputTokens: number }).maxOutputTokens.toLocaleString()}</span>
+                                                    <span className="font-medium">{(model as unknown as { maxOutputTokens: number }).maxOutputTokens.toLocaleString()}</span>
                                                 </div>
                                             )}
                                         </div>

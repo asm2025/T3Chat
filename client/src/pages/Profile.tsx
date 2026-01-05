@@ -81,8 +81,8 @@ export function Profile() {
 
         try {
             setSaving(true);
-            // Update user profile via API - use /v1/me endpoint
-            await api.update("/v1/me", { displayName: displayName || null });
+            // Update user profile via API - use /me endpoint
+            await api.update("/me", { displayName: displayName || null });
 
             // Refresh the profile
             const updatedData = await getCurrentUser();
