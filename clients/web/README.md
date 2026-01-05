@@ -18,7 +18,7 @@ The frontend talks to the backend through a single base URL exposed as `import.m
 -   **Local development (recommended)**:
 
     ```bash
-    cd client
+    cd clients/web
     pnpm dev -- --api-url http://localhost:3000
     ```
 
@@ -27,7 +27,7 @@ The frontend talks to the backend through a single base URL exposed as `import.m
 -   **Production build**:
 
     ```bash
-    cd client
+    cd clients/web
     pnpm run build -- --api-url https://api.example.com
     ```
 

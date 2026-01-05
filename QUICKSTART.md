@@ -224,7 +224,7 @@ cargo build
 ### Frontend
 
 ```bash
-cd client
+cd clients/web
 pnpm install
 ```
 
@@ -246,7 +246,7 @@ The server will:
 ### Start Frontend (in a new terminal)
 
 ```bash
-cd client
+cd clients/web
 pnpm dev -- --api-url http://localhost:3000
 ```
 
@@ -413,7 +413,7 @@ OIDC_CLIENT_SECRET=your-keycloak-client-secret
 
 -   See [`variables.md`](variables.md) for complete environment variable documentation
 -   Check [`server/README.md`](server/README.md) for backend-specific details
--   Check [`client/README.md`](client/README.md) for frontend-specific details
+-   Check [`clients/web/README.md`](clients/web/README.md) for frontend-specific details
 -   Review the main [`README.md`](README.md) for architecture and deployment information
 
 ---

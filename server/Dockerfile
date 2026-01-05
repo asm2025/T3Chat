@@ -11,12 +11,12 @@ WORKDIR /app/frontend
 RUN npm install -g pnpm
 
 # Copy frontend package files
-COPY client/package.json client/pnpm-lock.yaml client/pnpm-workspace.yaml ./
-COPY client/tsconfig*.json ./
-COPY client/vite.config.ts ./
-COPY client/index.html ./
-COPY client/public ./public
-COPY client/src ./src
+COPY clients/web/package.json clients/web/pnpm-lock.yaml clients/web/pnpm-workspace.yaml ./
+COPY clients/web/tsconfig*.json ./
+COPY clients/web/vite.config.ts ./
+COPY clients/web/index.html ./
+COPY clients/web/public ./public
+COPY clients/web/src ./src
 
 # Install dependencies and build
 RUN pnpm install --frozen-lockfile && \

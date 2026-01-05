@@ -6,7 +6,7 @@ This directory contains Docker configuration files for running T3Chat in a conta
 
 - `docker-compose.yml` - Main orchestration file for all services
 - `server/Dockerfile` - Multi-stage build for Rust backend (includes frontend build)
-- `client/Dockerfile` - Frontend build Dockerfile (optional, used by backend Dockerfile)
+- `clients/web/Dockerfile` - Frontend build Dockerfile (optional, used by backend Dockerfile)
 
 ## Quick Start
 

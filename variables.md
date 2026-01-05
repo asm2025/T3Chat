@@ -380,7 +380,7 @@ These variables are planned for future implementation and are documented here fo
     -   Must be prefixed with `VITE_` for Vite to expose it
     -   Used by API client for all backend requests
     -   Should match backend server URL
-    -   In this repo, `client/vite.config.ts` sets `VITE_API_URL` from the `--api-url` CLI flag (for example, `pnpm dev -- --api-url http://localhost:3000` or `pnpm run build -- --api-url https://api.example.com`). The `.env` examples below are only needed if you remove that override and rely on Vite's standard `.env` loading.
+    -   In this repo, `clients/web/vite.config.ts` sets `VITE_API_URL` from the `--api-url` CLI flag (for example, `pnpm dev -- --api-url http://localhost:3000` or `pnpm run build -- --api-url https://api.example.com`). The `.env` examples below are only needed if you remove that override and rely on Vite's standard `.env` loading.
 
 ---
 
@@ -413,9 +413,9 @@ The backend loads environment variables from multiple `.env` files in the follow
 
 Vite automatically loads environment variables from `.env` files based on the `--mode` flag:
 
--   **Development**: `client/.env.development`
--   **Staging**: `client/.env.staging`
--   **Production**: `client/.env.release` or `client/.env.production`
+-   **Development**: `clients/web/.env.development`
+-   **Staging**: `clients/web/.env.staging`
+-   **Production**: `clients/web/.env.release` or `clients/web/.env.production`
 
 **Note**: Only variables prefixed with `VITE_` are exposed to the frontend code.
 
@@ -476,10 +476,10 @@ JWT_SECRET=your-super-secure-random-jwt-secret-key-min-32-chars
 # OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 ```
 
-#### Frontend (`client/.env.development`)
+#### Frontend (`clients/web/.env.development`)
 
 ```bash
-# Optional if you remove the CLI --api-url override in client/vite.config.ts
+# Optional if you remove the CLI --api-url override in clients/web/vite.config.ts
 VITE_API_URL=http://localhost:3000
 ```
 
@@ -517,7 +517,7 @@ JWT_EXPIRY_SECONDS=3600
 # RAG_API_URL=http://localhost:8000
 ```
 
-#### Frontend (`client/.env.development`)
+#### Frontend (`clients/web/.env.development`)
 
 ```bash
 VITE_API_URL=http://localhost:3000
@@ -549,10 +549,10 @@ JWT_SECRET=staging-secret-generate-with-openssl-rand-base64-32
 JWT_EXPIRY_SECONDS=3600
 ```
 
-#### Frontend (`client/.env.staging`)
+#### Frontend (`clients/web/.env.staging`)
 
 ```bash
-# Optional if you remove the CLI --api-url override in client/vite.config.ts
+# Optional if you remove the CLI --api-url override in clients/web/vite.config.ts
 VITE_API_URL=https://api-staging.example.com
 ```
 
@@ -582,10 +582,10 @@ JWT_SECRET=production-secret-generate-with-openssl-rand-base64-32
 JWT_EXPIRY_SECONDS=3600
 ```
 
-#### Frontend (`client/.env.release`)
+#### Frontend (`clients/web/.env.release`)
 
 ```bash
-# Optional if you remove the CLI --api-url override in client/vite.config.ts
+# Optional if you remove the CLI --api-url override in clients/web/vite.config.ts
 VITE_API_URL=https://api.example.com
 ```
 
@@ -805,7 +805,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 ## Related Documentation
 
 -   [Backend README](server/README.md) - Backend-specific documentation
--   [Frontend README](client/README.md) - Frontend-specific documentation
+-   [Frontend README](clients/web/README.md) - Frontend-specific documentation
 -   [Development Plan](plan.md) - Complete development plan with future variables
 
 ---
