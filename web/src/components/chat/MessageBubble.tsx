@@ -81,7 +81,7 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
     // User messages: with bubble container
     return (
         <div className="flex w-full gap-3 justify-end">
-            <div className="flex max-w-[80%] flex-col items-end text-right">
+            <div className="flex max-w-[80%] flex-col items-end">
                 <span className="mb-1.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">You</span>
                 <div className="w-full rounded-xl border border-foreground/20 bg-background text-foreground px-4 py-3 transition">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">
