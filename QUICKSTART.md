@@ -8,6 +8,7 @@ This guide will help you get T3Chat up and running in under 10 minutes.
 -   [pnpm](https://pnpm.io/) (`npm install -g pnpm`)
 -   [Rust](https://rustup.rs/) (latest stable)
 -   [PostgreSQL](https://www.postgresql.org/) (v14 or later, or use Docker)
+-   [Flutter](https://flutter.dev/) (latest stable) - **Optional**, only needed for mobile/desktop client
 
 ## Step 1: Set Up Prerequisites
 
@@ -221,12 +222,30 @@ cd server
 cargo build
 ```
 
-### Frontend
+### Frontend (Web)
 
 ```bash
-cd clients/web
+cd web
 pnpm install
 ```
+
+### Frontend (Client - Mobile/Desktop - Optional)
+
+The unified Flutter client supports both mobile (Android/iOS) and desktop (Windows/Linux/macOS) platforms:
+
+```bash
+cd client
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+
+# For desktop platforms, also build the Rust core:
+# cd native/t3chat_core && cargo build --release && cd ../..
+```
+
+**Note**: The client automatically detects the platform and uses:
+
+-   **Mobile**: Dio HTTP client (no Rust build needed)
+-   **Desktop**: Rust FFI via flutter_rust_bridge (requires Rust core build)
 
 ## Step 6: Run the Application
 
@@ -245,12 +264,29 @@ The server will:
 
 ### Start Frontend (in a new terminal)
 
+**Web Client (React):**
+
 ```bash
-cd clients/web
+cd web
 pnpm dev -- --api-url http://localhost:3000
 ```
 
-The UI will start on `http://localhost:3010` and talk to the backend at `http://localhost:3000/api`.
+The web UI will start on `http://localhost:3010` and talk to the backend at `http://localhost:3000/api`.
+
+**Client (Flutter - Mobile/Desktop - Optional):**
+
+```bash
+cd client
+# For mobile (Android/iOS)
+flutter run
+
+# For desktop (Windows/Linux/macOS)
+# First ensure Rust core is built:
+# cd native/t3chat_core && cargo build --release && cd ../..
+flutter run -d windows  # or linux, macos
+```
+
+The Flutter client will automatically detect the platform and use the appropriate data layer (Dio HTTP for mobile, Rust FFI for desktop). Make sure to configure the API base URL in `client/lib/core/config/app_config.dart`.
 
 ## Step 7: Log In
 
@@ -279,6 +315,7 @@ If you configured OIDC in Step 2, you'll see an "Or" separator and a "Login with
 -   **Add AI Provider Keys**: Go to Settings to add your OpenAI, Anthropic, or Google AI API keys
 -   **Start Chatting**: Create a new chat and select an AI model
 -   **Explore Features**: Try agents, presets, file uploads, and more
+-   **Try the Flutter Client**: Run the unified Flutter client for mobile or desktop platforms (see Step 6)
 
 ## Troubleshooting
 
@@ -413,7 +450,8 @@ OIDC_CLIENT_SECRET=your-keycloak-client-secret
 
 -   See [`variables.md`](variables.md) for complete environment variable documentation
 -   Check [`server/README.md`](server/README.md) for backend-specific details
--   Check [`clients/web/README.md`](clients/web/README.md) for frontend-specific details
+-   Check [`web/README.md`](web/README.md) for web frontend-specific details
+-   Check [`client/README.md`](client/README.md) for unified Flutter client (mobile/desktop) details
 -   Review the main [`README.md`](README.md) for architecture and deployment information
 
 ---
