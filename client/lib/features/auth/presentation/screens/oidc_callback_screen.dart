@@ -16,14 +16,23 @@ class _OidcCallbackScreenState extends ConsumerState<OidcCallbackScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.token != null) {
-      // Token is extracted from URL, now we need to store it
-      // The Rust client should handle this automatically when we call getCurrentUser
-      // For now, just navigate to app
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.go('/app');
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final token = widget.token;
+      if (token == null || token.isEmpty) {
+        context.go('/login');
+        return;
+      }
+
+      await ref.read(authStateProvider.notifier).loginWithToken(token);
+
+      // GoRouter redirect will handle navigation once authState becomes non-null.
+      if (mounted) {
+        final authState = ref.read(authStateProvider);
+        if (authState.hasError) {
+          context.go('/login');
+        }
+      }
+    });
   }
 
   @override

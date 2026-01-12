@@ -55,7 +55,9 @@ class WindowManagerService {
     WindowOptions windowOptions = WindowOptions(
       size: windowSize,
       center: windowPosition == null,
-      backgroundColor: Colors.transparent,
+      // Avoid a transparent desktop window; any unpainted areas would show the OS desktop behind.
+      // This also makes Flutter error widgets far less jarring visually.
+      backgroundColor: const Color(0xFFF8FAFC),
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.normal,
     );

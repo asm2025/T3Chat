@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -25,6 +24,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // Explicit root route so `/` can be matched before redirects are evaluated.
+      // Without this, go_router shows "no routes for location: /".
+      GoRoute(
+        path: '/',
+        redirect: (context, state) {
+          final isLoggedIn = authState.value != null;
+          return isLoggedIn ? '/app' : '/login';
+        },
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),

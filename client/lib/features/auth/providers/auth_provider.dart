@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/error/exceptions.dart';
 import '../../../core/providers/repository_providers.dart';
 import '../../../domain/models/user.dart';
 import '../../../domain/repositories/auth_repository.dart';
@@ -43,7 +44,22 @@ class AuthStateNotifier extends Notifier<AsyncValue<User?>> {
       state = AsyncValue<User?>.data(userAndToken.user);
     } catch (e, stack) {
       state = AsyncValue<User?>.error(e, stack);
-      rethrow;
+    }
+  }
+
+  /// Used for OIDC flows where the server redirects back with a token.
+  /// We persist the token, then resolve the current user from `/api/auth/me`.
+  Future<void> loginWithToken(String token) async {
+    state = const AsyncValue<User?>.loading();
+    try {
+      await _authRepo.setToken(token);
+      final user = await _authRepo.getCurrentUser();
+      if (user == null) {
+        throw const AuthException('Unauthorized');
+      }
+      state = AsyncValue<User?>.data(user);
+    } catch (e, stack) {
+      state = AsyncValue<User?>.error(e, stack);
     }
   }
 

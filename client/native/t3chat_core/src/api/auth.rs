@@ -10,11 +10,30 @@ struct LocalLoginRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct LocalLoginResponse {
     token: String,
-    #[serde(rename = "expiresAt")]
+    #[serde(alias = "expires_at")]
     expires_at: i64,
     user: User,
+}
+
+fn redact_token_in_body(body: &str) -> String {
+    // Best-effort: if body is JSON, redact `token` at the top level.
+    // Otherwise, return a short snippet.
+    if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(body) {
+        if let Some(obj) = value.as_object_mut() {
+            if obj.contains_key("token") {
+                obj.insert(
+                    "token".to_string(),
+                    serde_json::Value::String("<redacted>".to_string()),
+                );
+            }
+        }
+        return value.to_string().chars().take(1000).collect();
+    }
+
+    body.chars().take(500).collect()
 }
 
 pub async fn login(
@@ -36,10 +55,19 @@ pub async fn login(
         return Err(Error::from(response.error_for_status().unwrap_err()));
     }
 
-    let data: LocalLoginResponse = response.json().await?;
+    // Decode manually so we can surface the real serde error (missing field, wrong casing, etc.)
+    // and show a redacted body snippet for debugging.
+    let body = response.text().await?;
+    let data: LocalLoginResponse = serde_json::from_str(&body).map_err(|e| {
+        let redacted = redact_token_in_body(&body);
+        Error::Unknown(format!(
+            "Failed to decode login response JSON: {}. Body: {}",
+            e, redacted
+        ))
+    })?;
     
-    // Save token
-    client.token_storage().save_token(&data.token).await?;
+    // Save token (persist + in-memory cache)
+    client.set_token(&data.token).await?;
 
     Ok(UserAndToken {
         user: data.user,
@@ -58,13 +86,16 @@ pub async fn get_current_user(client: &ApiClient) -> Result<User, Error> {
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
             // Clear invalid token
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
     }
 
-    let user: User = response.json().await?;
+    let body = response.text().await?;
+    let user: User = serde_json::from_str(&body).map_err(|e| {
+        Error::Unknown(format!("Failed to decode /api/auth/me JSON: {}. Body: {}", e, body))
+    })?;
     Ok(user)
 }
 
@@ -79,7 +110,13 @@ pub async fn get_auth_config(client: &ApiClient) -> Result<AuthConfig, Error> {
         return Err(Error::from(response.error_for_status().unwrap_err()));
     }
 
-    let config: AuthConfig = response.json().await?;
+    let body = response.text().await?;
+    let config: AuthConfig = serde_json::from_str(&body).map_err(|e| {
+        Error::Unknown(format!(
+            "Failed to decode /api/auth/config JSON: {}. Body: {}",
+            e, body
+        ))
+    })?;
     Ok(config)
 }
 
@@ -92,7 +129,7 @@ pub async fn logout(client: &ApiClient) -> Result<(), Error> {
         .await;
 
     // Always clear local token
-    client.token_storage().delete_token().await?;
+    client.clear_token().await?;
     Ok(())
 }
 

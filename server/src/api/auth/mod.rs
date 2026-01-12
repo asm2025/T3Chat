@@ -121,6 +121,7 @@ pub struct LocalLoginRequest {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LocalLoginResponse {
     token: String,
     expires_at: i64,
@@ -267,6 +268,7 @@ pub async fn refresh(
 
 // GET /api/auth/me
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserResponse {
     pub id: String,
     pub email: String,

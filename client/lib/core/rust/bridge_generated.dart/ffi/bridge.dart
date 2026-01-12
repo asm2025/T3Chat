@@ -19,6 +19,9 @@ FfiUserAndToken login({required String username, required String password}) =>
       password: password,
     );
 
+void setToken({required String token}) =>
+    RustLib.instance.api.crateFfiBridgeSetToken(token: token);
+
 FfiUser getCurrentUser() => RustLib.instance.api.crateFfiBridgeGetCurrentUser();
 
 void logout() => RustLib.instance.api.crateFfiBridgeLogout();

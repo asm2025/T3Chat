@@ -45,6 +45,13 @@ pub fn ffi_login(username: String, password: String) -> Result<FfiUserAndToken, 
 }
 
 #[frb(sync)]
+pub fn ffi_set_token(token: String) -> Result<(), FfiError> {
+    let client = get_client()?;
+    let rt = tokio::runtime::Runtime::new().map_err(|e| FfiError::Unknown(e.to_string()))?;
+    rt.block_on(async { client.set_token(&token).await.map_err(FfiError::from) })
+}
+
+#[frb(sync)]
 pub fn ffi_get_current_user() -> Result<FfiUser, FfiError> {
     let client = get_client()?;
     let rt = tokio::runtime::Runtime::new().map_err(|e| FfiError::Unknown(e.to_string()))?;

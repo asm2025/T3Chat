@@ -118,6 +118,23 @@ Shared UI code that works on all platforms:
 
     **Note**: This step must be completed before running `flutter pub get` because the generated bridge files are imported by your Dart code. Running from the client root avoids path resolution issues on Windows.
 
+3. **Automated Build Script (Windows)**
+
+    For convenience, you can use the `bind.bat` script to automate the entire Rust bridge rebuild process:
+
+    ```bash
+    # From client/ directory
+    bind.bat
+    ```
+
+    This script automates the following steps:
+    - Deletes `.dart_tool` folder and `pubspec.lock`
+    - Builds the Rust crate in release mode
+    - Generates Flutter Rust Bridge bindings
+    - Runs `flutter pub get`
+
+    The script includes error checking and will stop if any step fails. This is especially useful when making changes to the Rust core (`native/t3chat_core/`).
+
 #### Mobile Setup
 
 1. **Android**: No additional setup required (Gradle will handle dependencies)
@@ -285,9 +302,10 @@ client/
 ### Desktop Development
 
 1. Make changes to Rust code in `native/t3chat_core/`
-2. Rebuild Rust: `cd native/t3chat_core && cargo build`
-3. Regenerate bridge: Run flutter_rust_bridge_codegen
-4. Hot reload Flutter app
+2. Rebuild Rust and regenerate bridge:
+   - **Manual steps**: `cd native/t3chat_core && cargo build --release`, then run `flutter_rust_bridge_codegen`
+   - **Automated (Windows)**: Run `bind.bat` from the `client/` directory to automate the rebuild process
+3. Hot reload Flutter app
 
 ### Mobile Development
 

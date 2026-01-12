@@ -1,4 +1,5 @@
 use thiserror::Error;
+use std::error::Error as _;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -27,6 +28,14 @@ impl From<reqwest::Error> for Error {
             Error::Network("Request timeout".to_string())
         } else if err.is_connect() {
             Error::Network("Connection failed".to_string())
+        } else if err.is_decode() {
+            // reqwest's Display for decode errors is often generic ("error decoding response body").
+            // Prefer the underlying serde error when available.
+            if let Some(source) = err.source() {
+                Error::Unknown(format!("Decode error: {}", source))
+            } else {
+                Error::Unknown("Decode error".to_string())
+            }
         } else if err.status() == Some(reqwest::StatusCode::UNAUTHORIZED) {
             Error::Auth("Unauthorized".to_string())
         } else if err.status() == Some(reqwest::StatusCode::FORBIDDEN) {

@@ -6,22 +6,17 @@ use serde::Serialize;
 use std::pin::Pin;
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatRequest {
-    #[serde(rename = "chatId")]
     pub chat_id: String,
     pub message: String,
-    #[serde(rename = "modelProvider")]
     pub model_provider: String,
-    #[serde(rename = "modelId")]
     pub model_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "modelParameters")]
     pub model_parameters: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "featureFlags")]
     pub feature_flags: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "systemMessage")]
     pub system_message: Option<String>,
     pub stream: bool,
 }
@@ -43,7 +38,7 @@ pub async fn send_message(
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
@@ -68,7 +63,7 @@ pub async fn stream_message(
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));

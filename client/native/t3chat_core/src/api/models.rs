@@ -21,7 +21,7 @@ pub async fn list_models(client: &ApiClient) -> Result<Vec<Model>, Error> {
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));

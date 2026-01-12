@@ -35,6 +35,11 @@ pub fn login(username: String, password: String) -> Result<FfiUserAndToken, FfiE
 }
 
 #[frb(sync)]
+pub fn set_token(token: String) -> Result<(), FfiError> {
+    auth_ffi::ffi_set_token(token)
+}
+
+#[frb(sync)]
 pub fn get_current_user() -> Result<FfiUser, FfiError> {
     auth_ffi::ffi_get_current_user()
 }

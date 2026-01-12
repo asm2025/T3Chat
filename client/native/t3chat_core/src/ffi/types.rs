@@ -4,83 +4,76 @@ use serde::{Deserialize, Serialize};
 // These are used for communication between Rust and Dart
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiUser {
     pub id: String,
     pub email: String,
-    #[serde(rename = "emailVerified")]
     pub email_verified: Option<bool>,
     pub name: Option<String>,
     pub username: Option<String>,
-    #[serde(rename = "avatarUrl")]
     pub avatar_url: Option<String>,
     pub roles: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiUserAndToken {
     pub user: FfiUser,
     pub token: String,
-    #[serde(rename = "expiresAt")]
     pub expires_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiChat {
     pub id: String,
-    #[serde(rename = "userId")]
     pub user_id: String,
     pub title: String,
-    #[serde(rename = "modelProvider")]
     pub model_provider: String,
-    #[serde(rename = "modelId")]
     pub model_id: String,
-    #[serde(rename = "createdAt")]
     pub created_at: String,
-    #[serde(rename = "updatedAt")]
     pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiMessage {
     pub id: String,
-    #[serde(rename = "chatId")]
     pub chat_id: String,
     pub role: String,
     pub content: String,
     pub metadata: Option<String>, // JSON string
-    #[serde(rename = "parentMessageId")]
     pub parent_message_id: Option<String>,
-    #[serde(rename = "sequenceNumber")]
     pub sequence_number: i32,
-    #[serde(rename = "createdAt")]
     pub created_at: String,
-    #[serde(rename = "tokensUsed")]
     pub tokens_used: Option<i32>,
-    #[serde(rename = "modelUsed")]
     pub model_used: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiChatWithMessages {
     pub chat: FfiChat,
     pub messages: Vec<FfiMessage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiChatListResponse {
     pub data: Vec<FfiChat>,
     pub total: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiChatChunk {
     pub delta: String,
     pub done: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FfiAuthConfig {
-    #[serde(rename = "oidcEnabled")]
     pub oidc_enabled: bool,
 }
 

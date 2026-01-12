@@ -4,12 +4,11 @@ use reqwest::Method;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateChatRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    #[serde(rename = "modelProvider")]
     pub model_provider: String,
-    #[serde(rename = "modelId")]
     pub model_id: String,
 }
 
@@ -47,7 +46,7 @@ pub async fn list_chats(
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
@@ -69,7 +68,7 @@ pub async fn create_chat(
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
@@ -91,7 +90,7 @@ pub async fn get_chat(client: &ApiClient, chat_id: &str) -> Result<ChatWithMessa
             return Err(Error::NotFound(format!("Chat {} not found", chat_id)));
         }
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
@@ -114,7 +113,7 @@ pub async fn update_chat(
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
@@ -133,7 +132,7 @@ pub async fn delete_chat(client: &ApiClient, chat_id: &str) -> Result<(), Error>
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            let _ = client.token_storage().delete_token().await;
+            let _ = client.clear_token().await;
             return Err(Error::Auth("Unauthorized".to_string()));
         }
         return Err(Error::from(response.error_for_status().unwrap_err()));
