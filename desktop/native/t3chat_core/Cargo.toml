@@ -1,33 +1,25 @@
 [package]
 name = "t3chat_core"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+license = "MIT"
+authors = ["asm <asm2025@outlook.com>"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # HTTP client
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0", features = ["json", "stream"] }
 tokio = { version = "1", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 # Secure token storage
-keyring = "2.3"
-
-# Error handling
-thiserror = "1.0"
-
-# Async streams
-futures = "0.3"
-
-# UUID
-uuid = { version = "1.0", features = ["v4", "serde"] }
-
+keyring = "3"
+thiserror = "2"
+futures = "0"
+uuid = { version = "1", features = ["v4", "serde"] }
 # Flutter Rust Bridge
-flutter_rust_bridge = "1.90"
-flutter_rust_bridge_codegen = "1.90"
+flutter_rust_bridge = "=2.11.1"
 
 [dev-dependencies]
-

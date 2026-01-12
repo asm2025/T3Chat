@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part '../../../../clients/desktop/lib/domain/models/chat.g.dart';
+part 'chat.g.dart';
 
 @JsonSerializable()
 class Chat {

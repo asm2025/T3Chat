@@ -1,7 +1,7 @@
 use crate::api::client::ApiClient;
 use crate::domain::{Chat, ChatListResponse, ChatWithMessages, Error};
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct CreateChatRequest {
@@ -24,20 +24,26 @@ pub async fn list_chats(
     page: Option<u64>,
     page_size: Option<u64>,
 ) -> Result<ChatListResponse, Error> {
-    let mut query = Vec::new();
+    // reqwest 0.13's RequestBuilder no longer exposes `.query(...)` in our build,
+    // so we append the query string directly (safe here because values are numeric).
+    let mut path = String::from("/api/chats");
+    let mut parts: Vec<String> = Vec::new();
     if let Some(p) = page {
-        query.push(("page", p.to_string()));
+        parts.push(format!("page={}", p));
     }
     if let Some(ps) = page_size {
-        query.push(("pageSize", ps.to_string()));
+        parts.push(format!("pageSize={}", ps));
+    }
+    if !parts.is_empty() {
+        path.push('?');
+        path.push_str(&parts.join("&"));
     }
 
-    let mut req = client.request(Method::GET, "/api/chats").await?;
-    if !query.is_empty() {
-        req = req.query(&query);
-    }
-
-    let response = req.send().await?;
+    let response = client
+        .request(Method::GET, &path)
+        .await?
+        .send()
+        .await?;
 
     if !response.status().is_success() {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {

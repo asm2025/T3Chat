@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../../../clients/desktop/lib/features/chat/auth/providers/auth_provider.dart';
+import '../../../../auth/providers/auth_provider.dart';
 import '../../providers/chat_list_provider.dart';
 import '../widgets/chat_list_item.dart';
 

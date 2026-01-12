@@ -1,15 +1,17 @@
-# Configuration for flutter_rust_bridge code generation
+# Configuration for flutter_rust_bridge code generation (FRB v2)
 
-# Rust crate path
-rust_crate_dir: .
+# Rust crate root (directory containing Cargo.toml)
+rust_root: .
 
-# Output directory for generated Dart code
+# Entry Rust module that defines the FRB bridge API (new syntax expected by recent codegen)
+rust_input: crate::ffi::bridge
+
+# Output file for generated Dart code (relative to this config file)
 dart_output: ../../lib/core/rust/bridge_generated.dart
 
-# Output directory for generated Rust code
+# Output file for generated Rust bindings (relative to this config file)
 rust_output: src/bridge_generated.rs
 
-# Additional options
-rust_input:
-  - src/ffi/bridge.rs
+# Match the README `--class-name RustLib` (and the placeholder in `lib/core/rust/rust_client.dart`)
+dart_entrypoint_class_name: RustLib
 

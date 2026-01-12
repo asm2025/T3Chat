@@ -1,0 +1,10 @@
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\debug\deps\miniz_oxide-879b5a59702a0368.d: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\mod.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\core.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\output_buffer.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\stream.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\shared.rs
+
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\debug\deps\libminiz_oxide-879b5a59702a0368.rmeta: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\mod.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\core.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\output_buffer.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\stream.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\shared.rs
+
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\lib.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\mod.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\core.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\output_buffer.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\inflate\stream.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\miniz_oxide-0.8.9\src\shared.rs:

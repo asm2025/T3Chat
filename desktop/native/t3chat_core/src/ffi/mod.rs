@@ -1,4 +1,5 @@
 pub mod auth_ffi;
+pub mod bridge;
 pub mod chat_ffi;
 pub mod types;
 pub mod user_ffi;

@@ -1,7 +1,7 @@
 use crate::api::client::ApiClient;
 use crate::domain::{Error, User};
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct UpdateUserRequest {

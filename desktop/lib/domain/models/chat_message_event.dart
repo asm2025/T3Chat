@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part '../../../../clients/desktop/lib/domain/models/chat_message_event.freezed.dart';
+part 'chat_message_event.freezed.dart';
 
 @freezed
 class ChatMessageEvent with _$ChatMessageEvent {

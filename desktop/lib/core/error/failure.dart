@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-part '../../../../clients/desktop/lib/core/error/failure.freezed.dart';
+part 'failure.freezed.dart';
 
 @freezed
 class Failure with _$Failure {

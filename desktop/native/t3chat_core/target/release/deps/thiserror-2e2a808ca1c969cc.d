@@ -1,0 +1,14 @@
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\deps\thiserror-2e2a808ca1c969cc.d: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\build\thiserror-9efe046986a95307\out/private.rs
+
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\deps\libthiserror-2e2a808ca1c969cc.rlib: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\build\thiserror-9efe046986a95307\out/private.rs
+
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\deps\libthiserror-2e2a808ca1c969cc.rmeta: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\build\thiserror-9efe046986a95307\out/private.rs
+
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\lib.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\aserror.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\display.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\var.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\thiserror-2.0.17\src\private.rs:
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\release\build\thiserror-9efe046986a95307\out/private.rs:
+
+# env-dep:OUT_DIR=D:\\Work\\rust\\T3Chat\\desktop\\native\\t3chat_core\\target\\release\\build\\thiserror-9efe046986a95307\\out

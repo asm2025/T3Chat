@@ -1,0 +1,5 @@
+[build]
+# flutter_rust_bridge macros use `cfg(frb_expand)` internally.
+# Newer Rust toolchains warn about unknown cfg names unless explicitly allowed.
+rustflags = ["--check-cfg=cfg(frb_expand)"]
+

@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-part '../../../../clients/desktop/lib/domain/models/auth_config.g.dart';
+part 'auth_config.g.dart';
 
 @JsonSerializable()
 class AuthConfig {

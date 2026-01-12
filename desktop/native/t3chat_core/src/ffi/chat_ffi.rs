@@ -4,7 +4,6 @@ use crate::ffi::types::{
 };
 use crate::ffi::auth_ffi::get_client;
 use flutter_rust_bridge::frb;
-use futures::StreamExt;
 
 #[frb(sync)]
 pub fn ffi_list_chats(page: Option<u64>, page_size: Option<u64>) -> Result<FfiChatListResponse, FfiError> {

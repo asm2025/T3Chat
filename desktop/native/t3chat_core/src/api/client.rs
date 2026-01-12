@@ -2,7 +2,6 @@ use crate::domain::Error;
 use crate::storage::TokenStorage;
 use reqwest::{Client, Method, RequestBuilder};
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 pub struct ApiClient {
     client: Client,

@@ -1,0 +1,8 @@
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\debug\deps\rustls_platform_verifier-e058773123dcb2fc.d: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\verification\mod.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\verification\windows.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\../README.md
+
+D:\Work\rust\T3Chat\desktop\native\t3chat_core\target\debug\deps\librustls_platform_verifier-e058773123dcb2fc.rmeta: C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\lib.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\verification\mod.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\verification\windows.rs C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\../README.md
+
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\lib.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\verification\mod.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\verification\windows.rs:
+C:\Users\asm\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\rustls-platform-verifier-0.6.2\src\../README.md:

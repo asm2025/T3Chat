@@ -1,8 +1,8 @@
 use crate::api::client::ApiClient;
 use crate::domain::{ChatChunk, ChatCompletionResponse, Error};
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::Stream;
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::pin::Pin;
 
 #[derive(Debug, Serialize)]

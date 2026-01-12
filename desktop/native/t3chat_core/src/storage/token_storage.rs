@@ -28,7 +28,7 @@ impl TokenStorage {
 
     pub async fn delete_token(&self) -> Result<(), Error> {
         let entry = Entry::new(SERVICE_NAME, TOKEN_KEY)?;
-        match entry.delete_password() {
+        match entry.delete_credential() {
             Ok(()) => Ok(()),
             Err(keyring::Error::NoEntry) => Ok(()), // Already deleted
             Err(e) => Err(Error::from(e)),

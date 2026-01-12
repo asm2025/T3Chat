@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 static API_CLIENT: std::sync::OnceLock<Arc<RwLock<Option<Arc<ApiClient>>>>> =
     std::sync::OnceLock::new();
 
-fn get_client() -> Result<Arc<ApiClient>, FfiError> {
+pub(in crate::ffi) fn get_client() -> Result<Arc<ApiClient>, FfiError> {
     let client_store = API_CLIENT.get_or_init(|| Arc::new(RwLock::new(None)));
     let rt = tokio::runtime::Runtime::new().map_err(|e| FfiError::Unknown(e.to_string()))?;
     rt.block_on(async {

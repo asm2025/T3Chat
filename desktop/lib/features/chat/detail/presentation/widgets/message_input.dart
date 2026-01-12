@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../../../../clients/desktop/lib/features/core/providers/repository_providers.dart';
-import '../../../../../../../clients/desktop/lib/features/domain/repositories/chat_repository.dart';
+import '../../../../../core/providers/repository_providers.dart';
+import '../../../../../domain/repositories/chat_repository.dart';
 
 class MessageInput extends ConsumerStatefulWidget {
   final String chatId;
