@@ -216,7 +216,7 @@ After bridge generation, uncomment the FFI calls in:
 Run build_runner to generate JSON serialization and Freezed code:
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build --delete-conflicting-outputs
 ```
 
 ### 4. Platform-Specific Setup
