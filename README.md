@@ -12,14 +12,14 @@ Start with everything running locally on your machine, then progressively connec
 
 ## 🚀 **What You Have**
 
-**Frontend:**
+**Frontend Clients:**
 
--   ⚛️ React + TypeScript + Vite
+-   🌐 **Web** - React + TypeScript + Vite with Tailwind CSS v4 + ShadCN components
+-   📱🖥️ **Client** - Unified Flutter client supporting both mobile (Android/iOS) and desktop (Windows/Linux/macOS) platforms with platform-aware data layer (Dio HTTP for mobile, Rust FFI for desktop)
 
--   🎨 Tailwind CSS v4 + ShadCN components
+**Common Features:**
 
 -   🔐 OIDC Authentication & Local Authentication
-
 -   💬 Multi-provider chat interface (OpenAI, Anthropic, Google, custom)
 
 **Backend:**
@@ -90,11 +90,17 @@ Environment is configured via a mix of **`.env` files** and a **YAML application
 
 ### Frontend API base URL
 
--   The frontend uses `import.meta.env.VITE_API_URL` as its API base URL, but in this repo it is **set via Vite CLI flags**, not `.env` files.
+**Web Client:**
+
+-   The web frontend uses `import.meta.env.VITE_API_URL` as its API base URL, but in this repo it is **set via Vite CLI flags**, not `.env` files.
 -   **Local development** (recommended):
-    -   `cd clients/web && pnpm dev -- --api-url http://localhost:3000`
+    -   `cd web && pnpm dev -- --api-url http://localhost:3000`
 -   **Production builds** (e.g. Cloudflare Pages):
-    -   `cd clients/web && pnpm run build -- --api-url https://api.yourdomain.com`
+    -   `cd web && pnpm run build -- --api-url https://api.yourdomain.com`
+
+**Client (Mobile/Desktop):**
+
+-   API base URL is configured in the client's configuration file (see `client/README.md` for details)
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md). For a step‑by‑step walkthrough, see [`QUICKSTART.md`](QUICKSTART.md).
 
@@ -581,28 +587,269 @@ cd server
 cargo run -- --port 8788
 ```
 
-### Frontend (React UI)
+### Updating Rust Dependencies
+
+The Rust backend uses Cargo for dependency management. Here's how to keep dependencies up-to-date:
+
+**Checking for outdated dependencies:**
 
 ```bash
-cd clients/web
+cd server
+cargo outdated
+```
+
+**Updating dependencies:**
+
+1. **Minor and patch updates** (e.g., `1.2.0` → `1.2.5`):
+   ```bash
+   cd server
+   cargo update
+   ```
+
+2. **Major version upgrades** (e.g., `1.2.0` → `2.0.0`):
+   ```bash
+   # 1. Update Cargo.toml with new version
+   # Edit server/Cargo.toml
+   
+   # 2. Update dependencies
+   cd server
+   cargo update
+   
+   # 3. Build to check for breaking changes
+   cargo build
+   
+   # 4. Fix any compilation errors
+   # Update code to match new API
+   
+   # 5. Test thoroughly
+   cargo test
+   cargo run
+   ```
+
+**Common Rust dependency upgrades:**
+
+##### Axum (Web framework)
+
+- Check [Axum changelog](https://github.com/tokio-rs/axum/blob/main/CHANGELOG.md)
+- Major versions may change middleware or routing APIs
+- Review migration guides for breaking changes
+
+##### Diesel (Database ORM)
+
+- Check [Diesel changelog](https://github.com/diesel-rs/diesel/blob/master/CHANGELOG.md)
+- Major versions may require migration syntax changes
+- Update `diesel_cli` if using migrations: `cargo install diesel_cli --no-default-features --features postgres`
+- Test all database operations after upgrade
+
+##### Tokio (Async runtime)
+
+- Check [Tokio changelog](https://github.com/tokio-rs/tokio/blob/master/tokio/CHANGELOG.md)
+- Major versions may change async runtime APIs
+- Update related async crates together (reqwest, diesel-async, etc.)
+
+##### Reqwest (HTTP client)
+
+- Check [reqwest changelog](https://github.com/seanmonstar/reqwest/blob/main/CHANGELOG.md)
+- Major versions may change async runtime requirements
+- Update `tokio` if required by new reqwest version
+
+##### Serde (Serialization)
+
+- Check [Serde changelog](https://github.com/serde-rs/serde/blob/master/serde/CHANGELOG.md)
+- Usually backward compatible, but check for new features
+- Update `serde_json` and `serde` together
+
+**Rust dependency upgrade checklist:**
+
+- [ ] Review changelog for breaking changes
+- [ ] Update `Cargo.toml` with new version
+- [ ] Run `cargo update`
+- [ ] Build project: `cargo build`
+- [ ] Fix compilation errors
+- [ ] Run tests: `cargo test`
+- [ ] Test database migrations if Diesel updated
+- [ ] Test API endpoints manually
+- [ ] Update documentation if needed
+- [ ] Commit working state
+
+**Handling Rust breaking changes:**
+
+1. **Create a feature branch**:
+   ```bash
+   git checkout -b upgrade/rust-dependency-vX.X.X
+   ```
+
+2. **Update incrementally**:
+   - Upgrade one major dependency at a time
+   - Test after each upgrade
+   - Commit working state before next upgrade
+
+3. **Check compatibility**:
+   ```bash
+   cd server
+   cargo tree  # View dependency tree
+   cargo check # Check for conflicts
+   ```
+
+4. **Clean and rebuild**:
+   ```bash
+   cargo clean
+   cargo build --release
+   ```
+
+5. **Test database operations**:
+   ```bash
+   # Run migrations
+   diesel migration run
+   
+   # Test with actual database
+   cargo run
+   ```
+
+**Rollback Rust dependencies:**
+
+If an upgrade causes issues:
+
+```bash
+cd server
+# Revert Cargo.toml
+git checkout HEAD -- Cargo.toml
+# Revert Cargo.lock
+git checkout HEAD -- Cargo.lock
+# Or manually edit Cargo.toml and run:
+cargo update
+cargo build
+```
+
+**Staying up-to-date:**
+
+1. **Regular updates**:
+   ```bash
+   cd server
+   # Check for outdated packages
+   cargo outdated
+   
+   # Update to latest compatible versions
+   cargo update
+   ```
+
+2. **Security updates**:
+   - Monitor [RustSec Advisory Database](https://rustsec.org/advisories/)
+   - Use `cargo audit` to check for vulnerabilities: `cargo install cargo-audit && cargo audit`
+   - Update vulnerable dependencies immediately
+
+3. **Version pinning** (for production):
+   ```toml
+   # In Cargo.toml, pin exact versions for production stability
+   [dependencies]
+   axum = "0.7.5"  # Exact version
+   ```
+
+4. **Version ranges** (for development):
+   ```toml
+   # Use ranges for flexibility during development
+   [dependencies]
+   axum = "^0.7"  # Allows compatible updates
+   ```
+
+### Frontend Clients
+
+**Web Client (React UI):**
+
+```bash
+cd web
 pnpm dev          # defaults to http://localhost:3010, API http://localhost:3000
 
 # Or override ports / API URL explicitly
 pnpm dev -- --port 3010 --api-url http://localhost:3000
 ```
 
+**Client (Flutter - Mobile & Desktop):**
+
+The unified client supports both mobile and desktop platforms with automatic platform detection:
+
+**For Mobile (Android/iOS):**
+```bash
+cd client
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter run
+```
+
+**For Desktop (Windows/Linux/macOS):**
+```bash
+cd client
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+# Build Rust core (desktop only)
+cd native/t3chat_core && cargo build --release
+cd ../..
+flutter_rust_bridge_codegen generate
+flutter run -d windows  # or linux, macos
+```
+
+The client automatically detects the platform and uses:
+- **Mobile**: Dio HTTP client for API communication
+- **Desktop**: Rust FFI via flutter_rust_bridge for native performance
+
+See `client/README.md` for detailed setup instructions and architecture details.
+
 ### Other useful commands
 
 ```bash
-# Frontend only
-cd clients/web && pnpm dev
+# Web frontend
+cd web && pnpm dev
+cd web && pnpm build
 
-# Build frontend
-cd clients/web && pnpm build
+# Client (mobile or desktop)
+cd client && flutter run
+# For desktop: cd client && flutter run -d windows
 
 # Build Rust server for production
 cd server && cargo build --release
 ```
+
+## 📱🖥️ **Unified Client Architecture**
+
+The `client/` directory contains a unified Flutter codebase that supports both mobile (Android/iOS) and desktop (Windows/Linux/macOS) platforms. The architecture uses platform detection to automatically select the appropriate data layer implementation.
+
+### Platform-Aware Data Layer
+
+The client automatically detects the platform at runtime and selects the appropriate implementation:
+
+-   **Mobile Platforms (Android/iOS)**:
+    -   Uses **Dio HTTP client** for API communication
+    -   Uses `flutter_secure_storage` for secure token storage
+    -   No Rust dependencies required
+
+-   **Desktop Platforms (Windows/Linux/macOS)**:
+    -   Uses **Rust FFI** via `flutter_rust_bridge` for native performance
+    -   Uses platform keyring (Windows Credential Manager, macOS Keychain, Linux Secret Service) for secure token storage
+    -   Requires Rust core to be built: `cd native/t3chat_core && cargo build --release`
+
+### Architecture Benefits
+
+-   **Single Codebase**: One Flutter project for all platforms
+-   **Platform Optimization**: Native Rust performance on desktop, lightweight HTTP on mobile
+-   **Shared Domain Logic**: Common models, repositories, and business logic across platforms
+-   **Unified UI**: Same Flutter widgets work on all platforms with platform-specific adaptations
+
+### Repository Pattern
+
+The client uses a repository pattern with platform-aware providers:
+
+```dart
+// Platform detection automatically selects implementation
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    return AuthRepositoryRustImpl();  // Desktop: Rust FFI
+  } else {
+    return AuthRepositoryImpl(ref.watch(apiClientProvider));  // Mobile: Dio HTTP
+  }
+});
+```
+
+See `client/README.md` for detailed architecture documentation and setup instructions.
 
 ## 🤖 **AI Provider System**
 
@@ -625,33 +872,60 @@ T3Chat uses a trait-based abstraction system for AI providers, similar to LibreC
 -   `ai/model_catalog.rs` builds a provider/model catalog from `t3chat.yaml`
 -   Streaming support via Server-Sent Events (SSE) and typed chat request/response types in `ai/types.rs`
 
-**Frontend (React):**
+**Frontend Clients:**
 
--   Endpoint/model selectors for switching between providers and models
--   Settings panel for provider-specific parameters (temperature, max tokens, etc.)
--   Streaming message display driven by `/api/chat/stream`
+-   **Web**: Endpoint/model selectors for switching between providers and models, settings panel for provider-specific parameters (temperature, max tokens, etc.), streaming message display driven by `/api/chat/stream`
+-   **Client**: Unified Flutter-based client (mobile and desktop) with similar functionality, using Riverpod for state management. Platform-aware data layer automatically selects Dio HTTP (mobile) or Rust FFI (desktop) implementations.
 
 ### Adding a New Provider
 
 1. Create a new provider struct in `server/src/ai/providers/`
 2. Implement the `AIProvider` trait
 3. Add provider to the factory in `server/src/ai/factory.rs`
-4. Update frontend endpoint selector if needed
+4. Update frontend endpoint selectors if needed (web: `web/src/components/Endpoints/EndpointSelector.tsx`)
 
 📖 **For detailed implementation guide**, see [`plan.md`](plan.md) Phase 2A
 
 ## 📁 **Project Structure**
 
 ```
-├── clients/
-│   └── web/            # React frontend
-│       ├── src/
-│       │   ├── components/ # Chat UI, endpoints, presets, agents, files, ShadCN components
-│       │   ├── lib/        # API client, auth helpers, utilities
-│       │   ├── stores/     # State management (Zustand)
-│       │   ├── types/      # TypeScript type definitions
-│       │   └── pages/      # Route-level components
-│       └── package.json
+├── web/                # React web frontend
+│   ├── src/
+│   │   ├── components/ # Chat UI, endpoints, presets, agents, files, ShadCN components
+│   │   ├── lib/        # API client, auth helpers, utilities
+│   │   ├── stores/     # State management (Zustand)
+│   │   ├── types/      # TypeScript type definitions
+│   │   └── pages/      # Route-level components
+│   └── package.json
+├── client/             # Unified Flutter client (mobile & desktop)
+│   ├── lib/
+│   │   ├── core/       # Core infrastructure (config, network, error handling, logging)
+│   │   │   ├── config/  # App configuration
+│   │   │   ├── error/   # Error types
+│   │   │   ├── logging/ # Logging utilities
+│   │   │   ├── network/ # Dio API client (mobile)
+│   │   │   ├── providers/ # Platform-aware repository providers
+│   │   │   ├── router/  # Router with auth redirects
+│   │   │   └── rust/    # Rust bridge (desktop only)
+│   │   ├── domain/     # Domain models and repository interfaces
+│   │   ├── data/       # Data layer (both Dio and Rust implementations)
+│   │   │   └── repositories/ # Platform-aware repository implementations
+│   │   ├── features/   # Feature modules (auth, chat)
+│   │   ├── shared/     # Shared widgets
+│   │   └── main.dart   # Unified entry point
+│   ├── native/
+│   │   └── t3chat_core/ # Rust core for API communication (desktop only)
+│   │       └── src/
+│   │           ├── api/      # API client and modules
+│   │           ├── domain/    # Domain models and errors
+│   │           ├── ffi/      # FFI bindings for Flutter
+│   │           └── storage/   # Token storage
+│   ├── android/        # Android platform configuration
+│   ├── ios/            # iOS platform configuration
+│   ├── windows/        # Windows platform configuration
+│   ├── linux/          # Linux platform configuration
+│   ├── macos/          # macOS platform configuration
+│   └── pubspec.yaml
 ├── server/             # Rust API backend (Axum + Diesel)
 │   ├── src/
 │   │   ├── main.rs     # Application entry point & router
@@ -703,7 +977,7 @@ To add a new AI provider:
 
 3. Add provider to the factory in `server/src/ai/factory.rs`
 
-4. Update frontend endpoint selector in `clients/web/src/components/Endpoints/EndpointSelector.tsx`
+4. Update frontend endpoint selector in `web/src/components/Endpoints/EndpointSelector.tsx` (and mobile/desktop if needed)
 
 📖 **For detailed implementation guide**, see [`plan.md`](plan.md) Phase 2A
 
@@ -733,19 +1007,21 @@ See `[server/README.md](server/README.md)` for detailed guidance.
 
 ### UI Components
 
--   Add components in `clients/web/src/components/`
+**Web Client:**
 
+-   Add components in `web/src/components/`
 -   Use ShadCN/UI: Browse components at [ui.shadcn.com](https://ui.shadcn.com)
-
--   Install new components: `cd clients/web && npx shadcn-ui@latest add [component]`
-
-### Styling
-
--   Modify `clients/web/tailwind.config.js` for custom themes
-
--   Global styles in `clients/web/src/index.css`
-
+-   Install new components: `cd web && npx shadcn-ui@latest add [component]`
+-   Modify `web/tailwind.config.js` for custom themes
+-   Global styles in `web/src/index.css`
 -   Use Tailwind utility classes throughout
+
+**Client (Mobile/Desktop):**
+
+-   Flutter widgets in `client/lib/features/`
+-   Shared widgets in `client/lib/shared/`
+-   Platform-aware data layer automatically selects implementation (Dio for mobile, Rust FFI for desktop)
+-   See `client/README.md` for architecture details
 
 ## 🚀 **Deployment**
 
@@ -786,9 +1062,9 @@ cargo build --release
 
 2. **Build Settings**:
 
--   Build command: `pnpm run build`
+-   Build command: `cd web && pnpm run build -- --api-url https://api.yourdomain.com`
 
--   Build output: `clients/web/dist`
+-   Build output: `web/dist`
 
 1. **Deploy**: Automatic on every git push
 
@@ -804,8 +1080,9 @@ cargo build --release
 
 **Frontend build / API URL:**
 
--   Build with the correct API base URL:
-    -   `cd clients/web && pnpm run build -- --api-url https://api.example.com`
+-   **Web**: Build with the correct API base URL:
+    -   `cd web && pnpm run build -- --api-url https://api.example.com`
+-   **Client**: Update API base URL in the client's configuration file (see `client/README.md`)
 
 📖 **For complete environment variable documentation**, see [`variables.md`](variables.md)
 
@@ -1011,11 +1288,24 @@ diesel migration run
 
 **Frontend build errors:**
 
+**Web:**
+
 ```bash
-cd clients/web
+cd web
 # Clear cache and reinstall
 rm -rf node_modules .vite dist
 pnpm install
+```
+
+**Client:**
+
+```bash
+cd client
+flutter clean
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+# For desktop, also rebuild Rust core:
+# cd native/t3chat_core && cargo build --release && cd ../..
 ```
 
 ### Authentication Issues
@@ -1038,8 +1328,9 @@ pnpm install
 
 1. **Verify build succeeds locally**
 
--   Frontend: `cd clients/web && pnpm build`
-
+-   Web frontend: `cd web && pnpm build`
+-   Client mobile: `cd client && flutter build apk` (or `ios`)
+-   Client desktop: `cd client && flutter build windows` (or `linux`, `macos`)
 -   Backend: `cd server && cargo build --release`
 
 1. **Check environment variables** for both frontend (Cloudflare Pages) and backend (your hosting platform)
@@ -1079,7 +1370,7 @@ T3Chat follows a phased development approach to transform into a full LibreChat-
 
 2. **Set up the database**: Run migrations to create the normalized schema
 
-3. **Explore the code**: Start with `clients/web/src/App.tsx` and `server/src/main.rs`
+3. **Explore the code**: Start with `web/src/App.tsx` (web), `client/lib/main.dart` (client), and `server/src/main.rs` (backend)
 
 4. **Implement AI providers**: Follow Phase 2A in the development plan
 
@@ -1119,4 +1410,4 @@ See `[server/README.md](server/README.md)` for comprehensive documentation.
 
 **Happy coding!** 🚀
 
-Need help? Check the detailed documentation in each workspace (`server/README.md`, `clients/web/README.md`) or visit the [community discussions](https://github.com/VoloBuilds/create-volo-app/discussions).
+Need help? Check the detailed documentation in each workspace (`server/README.md`, `web/README.md`, `client/README.md`) or visit the [community discussions](https://github.com/VoloBuilds/create-volo-app/discussions).
