@@ -149,6 +149,7 @@ export function LoginForm() {
                                 </Label>
                                 <Input
                                     id="username"
+                                    name="username"
                                     type="text"
                                     placeholder="you@company.com or your username"
                                     value={username}
@@ -166,6 +167,7 @@ export function LoginForm() {
                                 </Label>
                                 <Input
                                     id="password"
+                                    name="password"
                                     type="password"
                                     placeholder="Enter your password"
                                     value={password}

@@ -2,15 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/error/exceptions.dart';
+import '../../../../../core/providers/repository_providers.dart';
 import '../../../../auth/providers/auth_provider.dart';
 import '../../providers/chat_list_provider.dart';
 import '../widgets/chat_list_item.dart';
 
-class ChatListScreen extends ConsumerWidget {
+class ChatListScreen extends ConsumerStatefulWidget {
   const ChatListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
+}
+
+class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+  double _sidebarWidth = 300.0;
+  bool _sidebarVisible = true;
+
+  Future<void> _handleNewChat() async {
+    try {
+      final repository = ref.read(chatRepositoryProvider);
+      // Use default model - you may want to get this from config or user preferences
+      final newChat = await repository.createChat(
+        title: 'New Chat',
+        modelProvider: 'openai', // Default provider
+        modelId: 'gpt-4', // Default model
+      );
+        // ignore: unused_result
+        ref.refresh(chatListProvider);
+      ref.read(selectedChatIdProvider.notifier).selectChat(newChat.id);
+      if (mounted) {
+        context.go('/app/chat/${newChat.id}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create chat: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final chatsAsync = ref.watch(chatListProvider);
     final selectedChatId = ref.watch(selectedChatIdProvider);
 
@@ -19,14 +55,15 @@ class ChatListScreen extends ConsumerWidget {
         child: Row(
           children: [
             // Sidebar with chat list
-            Container(
-              width: 300,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(color: Theme.of(context).dividerColor),
+            if (_sidebarVisible) ...[
+              Container(
+                width: _sidebarWidth,
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
                 ),
-              ),
-              child: Column(
+                child: Column(
                 children: [
                   // Header
                   Container(
@@ -40,12 +77,19 @@ class ChatListScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              // TODO: Create new chat
-                            },
+                            onPressed: _handleNewChat,
                             icon: const Icon(Icons.add),
                             label: const Text('New Chat'),
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.menu),
+                          onPressed: () {
+                            setState(() {
+                              _sidebarVisible = false;
+                            });
+                          },
+                          tooltip: 'Hide sidebar',
                         ),
                         IconButton(
                           icon: const Icon(Icons.logout),
@@ -137,12 +181,53 @@ class ChatListScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
+              ),
+              // Resize handle
+              MouseRegion(
+                cursor: SystemMouseCursors.resizeColumn,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (details) {
+                    setState(() {
+                      _sidebarWidth = (_sidebarWidth + details.delta.dx)
+                          .clamp(200.0, MediaQuery.of(context).size.width * 0.5);
+                    });
+                  },
+                  child: Container(
+                    width: 4,
+                    color: Colors.transparent,
+                    child: Center(
+                      child: Container(
+                        width: 2,
+                        color: Theme.of(context).dividerColor.withOpacity(0.3),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             // Main content area
             Expanded(
-              child: selectedChatId == null
-                  ? const Center(child: Text('Select a chat to start'))
-                  : const Center(child: Text('Chat detail will be shown here')),
+              child: Stack(
+                children: [
+                  selectedChatId == null
+                      ? const Center(child: Text('Select a chat to start'))
+                      : const Center(child: Text('Chat detail will be shown here')),
+                  // Sidebar toggle button when collapsed
+                  if (!_sidebarVisible)
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.menu),
+                        onPressed: () {
+                          setState(() {
+                            _sidebarVisible = true;
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),

@@ -38,23 +38,41 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                                 ol: ({ node, ...props }) => <ol className="list-decimal list-outside mb-3 space-y-1 pl-6" {...props} />,
                                 li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
                                 // Style code blocks and inline code
-                                code: ({ node, className, children, ...props }) => {
-                                    const isInline = !className;
+                                code: ({ node, className, children, ...props }: any) => {
+                                    const match = /language-(\w+)/.exec(className || "");
+                                    const isInline = !match;
+                                    const language = match ? match[1] : "";
+
                                     return isInline ? (
                                         <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
                                             {children}
                                         </code>
                                     ) : (
-                                        <code className={className} {...props}>
+                                        <code className={`${className} block w-full text-sm font-mono`} {...props}>
                                             {children}
                                         </code>
                                     );
                                 },
-                                pre: ({ node, children, ...props }) => (
-                                    <pre className="bg-muted p-3 rounded-md overflow-x-auto mb-3" {...props}>
-                                        {children}
-                                    </pre>
-                                ),
+                                pre: ({ node, children, ...props }: any) => {
+                                    // Check if this pre contains a code element with a language class
+                                    const codeElement = (node as any)?.children?.[0];
+                                    const codeClassName = codeElement?.properties?.className?.[0];
+                                    const match = /language-(\w+)/.exec(codeClassName || "");
+                                    const language = match ? match[1] : "";
+
+                                    return (
+                                        <div className="relative my-3">
+                                            {language && (
+                                                <div className="text-xs text-muted-foreground px-3 pt-2 pb-1 font-medium uppercase tracking-wide">
+                                                    {language}
+                                                </div>
+                                            )}
+                                            <pre className="bg-muted p-3 rounded-md overflow-x-auto mb-3" {...props}>
+                                                {children}
+                                            </pre>
+                                        </div>
+                                    );
+                                },
                                 // Style links
                                 a: ({ node, ...props }) => <a className="text-primary underline hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />,
                                 // Style blockquotes

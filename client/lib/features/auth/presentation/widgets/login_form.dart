@@ -61,6 +61,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               labelText: 'Username or Email',
               border: OutlineInputBorder(),
             ),
+            autofillHints: const [AutofillHints.username, AutofillHints.email],
+            textInputAction: TextInputAction.next,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your username or email';
@@ -76,6 +78,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               border: OutlineInputBorder(),
             ),
             obscureText: true,
+            autofillHints: const [AutofillHints.password],
+            textInputAction: TextInputAction.done,
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your password';

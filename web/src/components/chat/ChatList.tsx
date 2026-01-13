@@ -6,15 +6,20 @@ import { Plus, Search, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useChats } from "@/hooks/useChats";
+import { useModels } from "@/hooks/useModels";
+import { useConfig } from "@/stores/appStore";
 import { t3ChatClient } from "@/lib/t3-chat-client";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/utils";
 import { useStreamingContext } from "@/contexts/streaming-context";
 import { RadialProgress } from "@/components/ui/radial-progress";
-import type { Chat } from "@/types/chat";
+import type { Chat, AiProvider } from "@/types/chat";
+import type { AIModel } from "@/types/model";
 
 export function ChatList() {
     const { chats, loading, refresh } = useChats();
+    const { models: backendModels } = useModels();
+    const { config } = useConfig();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const chatId = searchParams.get("chatId");
@@ -22,6 +27,7 @@ export function ChatList() {
     const [query, setQuery] = useState("");
     const [deleteDialogChatId, setDeleteDialogChatId] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
 
     // Refresh chat list when chatId changes (e.g., when a new chat is created)
     useEffect(() => {
@@ -122,11 +128,108 @@ export function ChatList() {
         }));
     }, [filteredChats]);
 
+    // Get available models (similar to ChatView logic)
+    const availableModels = useMemo(() => {
+        const modelSpecs = config?.modelSpecs || [];
+        const useSpecs = modelSpecs.length > 0;
+
+        const specModels: AIModel[] = useSpecs
+            ? modelSpecs
+                  .filter((spec) => spec.preset?.endpoint && spec.preset?.model)
+                  .map((spec) => ({
+                      id: spec.name,
+                      provider: spec.preset.endpoint.toLowerCase() as AiProvider,
+                      modelId: spec.preset.model,
+                      displayName: spec.label,
+                      contextWindow: 128000,
+                      supportsStreaming: true,
+                      supportsImages: false,
+                      supportsFunctions: false,
+                      isActive: true,
+                      createdAt: "",
+                      updatedAt: "",
+                  }))
+            : [];
+
+        // Merge backend models + specs
+        const merged = new Map<string, AIModel>();
+        for (const m of backendModels) {
+            const cleaned = { ...m, displayName: m.displayName.replace(/\s+Default$/i, "") };
+            merged.set(`${cleaned.provider}:${cleaned.modelId}`, cleaned);
+        }
+        for (const m of specModels) {
+            merged.set(`${m.provider}:${m.modelId}`, m);
+        }
+        return Array.from(merged.values());
+    }, [backendModels, config]);
+
+    // Determine default model (similar to ChatView logic)
+    const getDefaultModel = (): AIModel | null => {
+        if (availableModels.length === 0) {
+            return null;
+        }
+
+        // Check for defaultModelSpec first
+        if (config?.interface?.defaultModelSpec) {
+            const defaultSpec = availableModels.find((m) => m.id === config.interface!.defaultModelSpec);
+            if (defaultSpec) {
+                return defaultSpec;
+            }
+        }
+
+        // Check for defaultProvider + defaultModel
+        if (config?.interface?.defaultProvider && config?.interface?.defaultModel) {
+            const defaultModel = availableModels.find(
+                (m) => m.provider === config.interface!.defaultProvider && m.modelId === config.interface!.defaultModel
+            );
+            if (defaultModel) {
+                return defaultModel;
+            }
+        }
+
+        // Fallback to first available model
+        return availableModels[0];
+    };
+
     const handleNewChat = async () => {
-        // Logic to simply navigate to the root chat page which shows "New Chat" view
-        // The actual creation happens when sending a message.
-        // Or if we want to force a blank state:
-        navigate("/");
+        if (isCreatingChat) {
+            return;
+        }
+
+        const selectedModel = getDefaultModel();
+        if (!selectedModel) {
+            toast.error("No models available", {
+                description: "Please configure at least one model before creating a chat.",
+            });
+            return;
+        }
+
+        setIsCreatingChat(true);
+        try {
+            const normalizedProvider = selectedModel.provider.toLowerCase() as AiProvider;
+
+            const newChat = await t3ChatClient.createChat({
+                title: "New Chat",
+                modelProvider: normalizedProvider,
+                modelId: selectedModel.modelId,
+            });
+
+            if (!newChat?.id) {
+                throw new Error("Failed to create chat: No chat ID returned");
+            }
+
+            // Refresh chat list to show the new chat
+            refresh();
+
+            // Navigate to the new chat
+            navigate(`/?chatId=${newChat.id}`);
+        } catch (err) {
+            toast.error("Failed to create new chat", {
+                description: getErrorMessage(err),
+            });
+        } finally {
+            setIsCreatingChat(false);
+        }
     };
 
     if (loading) {
@@ -136,9 +239,9 @@ export function ChatList() {
     return (
         <div className="flex h-full flex-col gap-2 py-2">
             <div className="px-3">
-                <Button onClick={handleNewChat} className="w-full justify-start gap-2" size="default">
+                <Button onClick={handleNewChat} className="w-full justify-start gap-2" size="default" disabled={isCreatingChat || availableModels.length === 0}>
                     <Plus className="h-4 w-4" />
-                    <span>New Chat</span>
+                    <span>{isCreatingChat ? "Creating..." : "New Chat"}</span>
                 </Button>
             </div>
 
