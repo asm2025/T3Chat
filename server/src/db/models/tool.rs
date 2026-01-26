@@ -88,6 +88,8 @@ pub struct ToolCall {
     pub output_file_ids: Option<Vec<Option<Uuid>>>,
 
     // Timestamps
+    pub started_at: Option<DateTime<Utc>>,
+    pub execution_time_ms: Option<i64>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
@@ -110,6 +112,10 @@ pub struct NewToolCall {
     pub result: Option<JsonValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_time_ms: Option<i64>,
 }
 
 /// Tool call update
@@ -124,6 +130,8 @@ pub struct UpdateToolCall {
     pub error_message: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_file_ids: Option<Vec<Option<Uuid>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_time_ms: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<DateTime<Utc>>,
     pub updated_at: DateTime<Utc>,

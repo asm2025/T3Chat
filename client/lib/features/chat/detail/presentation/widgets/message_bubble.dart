@@ -27,9 +27,7 @@ class MessageBubble extends StatelessWidget {
           ),
           child: Text(
             message.content,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
+            style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
           ),
         ),
       );
@@ -66,12 +64,14 @@ class MessageBubble extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
             code: TextStyle(
-              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontFamily: 'monospace',
             ),
             codeblockDecoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
             blockquote: TextStyle(

@@ -1035,6 +1035,8 @@ CREATE TABLE tool_calls (
     output_file_ids UUID[],
     
     -- Timestamps
+    started_at TIMESTAMPTZ,
+    execution_time_ms BIGINT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at TIMESTAMPTZ

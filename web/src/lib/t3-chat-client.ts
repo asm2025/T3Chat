@@ -2,6 +2,7 @@ import { ApiClient, type ApiClientError } from "./api-client";
 import type { ChatRequest, ChatResponse, CreateChatRequest, CreateMessageRequest as ApiCreateMessageRequest, CreateUserApiKeyRequest, UserApiKey } from "@/types/api";
 import type { AIModel } from "@/types/model";
 import type { Chat, ChatWithMessages, Message, AiProvider } from "@/types/chat";
+import type { AgentEvent, AgentEventType } from "@/types/agent-events";
 import type {
     Chat as LibreChat,
     ChatWithTags,
@@ -36,6 +37,8 @@ export interface PaginatedResponse<T> {
     page?: number;
     pageSize?: number;
 }
+
+const AGENT_EVENT_TYPES = new Set<AgentEventType>(["thinking", "tool_start", "tool_output", "tool_end", "text_delta", "message_complete", "error"]);
 
 // Backend API response types (matching Rust backend)
 interface BackendChatResponse {
@@ -211,7 +214,7 @@ export class T3ChatClient extends ApiClient {
         return this.post<ChatResponse>("/chat", data);
     }
 
-    async *streamChat(data: ChatRequest): AsyncGenerator<string, void, unknown> {
+    async *streamChat(data: ChatRequest): AsyncGenerator<AgentEvent, void, unknown> {
         const response = await this.stream("/chat/stream", { ...data, stream: true });
 
         if (!response.body) {
@@ -229,9 +232,9 @@ export class T3ChatClient extends ApiClient {
                 if (done) {
                     // Process any remaining buffered line
                     if (lineBuffer.trim()) {
-                        const content = this.processSSELine(lineBuffer);
-                        if (content !== null && content !== undefined) {
-                            yield content;
+                        const event = this.processSSELine(lineBuffer);
+                        if (event !== null && event !== undefined) {
+                            yield event;
                         }
                     }
                     break;
@@ -252,13 +255,13 @@ export class T3ChatClient extends ApiClient {
 
                     // Only process SSE data lines
                     if (line.startsWith("data: ")) {
-                        const content = this.processSSELine(line);
-                        if (content === null) {
+                        const event = this.processSSELine(line);
+                        if (event === null) {
                             // End-of-stream marker received, stop processing
                             return;
                         }
-                        if (content !== undefined) {
-                            yield content;
+                        if (event !== undefined) {
+                            yield event;
                         }
                     }
                 }
@@ -276,13 +279,13 @@ export class T3ChatClient extends ApiClient {
     private static readonly STREAM_END_MARKER = "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007";
 
     /**
-     * Process a single SSE data line and extract content.
+     * Process a single SSE data line and extract an agent event.
      * Returns:
-     * - string: content to yield
-     * - undefined: skip this line (empty delta, etc.)
+     * - AgentEvent: event to yield
+     * - undefined: skip this line
      * - null: stream is done (end marker received)
      */
-    private processSSELine(line: string): string | undefined | null {
+    private processSSELine(line: string): AgentEvent | undefined | null {
         if (!line.startsWith("data: ")) {
             return undefined;
         }
@@ -306,16 +309,14 @@ export class T3ChatClient extends ApiClient {
                 }
             }
 
-            // Extract content from delta or content field
-            let content: string | null = null;
-            if (typeof parsed?.content === "string") {
-                content = parsed.content;
-            } else if (typeof parsed?.delta === "string") {
-                content = parsed.delta;
+            if (parsed && typeof parsed === "object") {
+                const eventType = (parsed as { type?: unknown }).type;
+                if (typeof eventType === "string" && AGENT_EVENT_TYPES.has(eventType as AgentEventType)) {
+                    return parsed as AgentEvent;
+                }
             }
 
-            // Yield non-empty content (empty strings are filtered out)
-            return content || undefined;
+            return undefined;
         } catch (error) {
             // If it's an error we threw, re-throw it
             if (error instanceof Error) {

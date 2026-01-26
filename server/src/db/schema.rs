@@ -384,6 +384,8 @@ diesel::table! {
         status -> Nullable<Text>,
         error_message -> Nullable<Text>,
         output_file_ids -> Nullable<Array<Nullable<Uuid>>>,
+        started_at -> Nullable<Timestamptz>,
+        execution_time_ms -> Nullable<Int8>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
         completed_at -> Nullable<Timestamptz>,

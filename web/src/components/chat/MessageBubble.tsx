@@ -2,6 +2,7 @@ import type { Message } from "@/types/chat";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { ToolExecutionTimeline } from "./ToolExecutionTimeline";
 
 interface MessageBubbleProps {
     message: Message;
@@ -21,6 +22,11 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                 <div className="flex max-w-[80%] flex-col items-start text-left">
                     <span className="mb-1.5 text-xs uppercase tracking-[0.16em] text-muted-foreground">Assistant</span>
                     <div className="w-full max-w-none">
+                        {message.agentEvents && (
+                            <div className="mb-3">
+                                <ToolExecutionTimeline executions={message.agentEvents.toolExecutions} thinkingMessage={message.agentEvents.thinkingMessage} />
+                            </div>
+                        )}
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
@@ -41,7 +47,6 @@ export function MessageBubble({ message, streaming }: MessageBubbleProps) {
                                 code: ({ node, className, children, ...props }: any) => {
                                     const match = /language-(\w+)/.exec(className || "");
                                     const isInline = !match;
-                                    const language = match ? match[1] : "";
 
                                     return isInline ? (
                                         <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono" {...props}>

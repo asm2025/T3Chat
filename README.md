@@ -148,21 +148,23 @@ Before running or compiling the Rust server, make sure the following tooling is 
 The easiest way to get all prerequisites running is to use the provided Docker Compose file:
 
 ```bash
-# Start all prerequisites (PostgreSQL, Meilisearch, RAG API)
+# Start only required services (PostgreSQL)
 docker compose -f docker-compose.prerequisites.yml up -d
 
-# Or start only required services (PostgreSQL)
-docker compose -f docker-compose.prerequisites.yml up -d postgres
+# Start all services including optional ones (PostgreSQL, Meilisearch, RAG API)
+docker compose -f docker-compose.prerequisites.yml --profile optional up -d
 
 # Check service status
 docker compose -f docker-compose.prerequisites.yml ps
 ```
 
+**Note:** By default, only **PostgreSQL** starts. The optional services (Meilisearch and RAG API) use Docker Compose profiles and require the `--profile optional` flag to start.
+
 This will start:
 
--   **PostgreSQL 18 with pgvector** on port `5432` (required)
--   **Meilisearch** on port `7700` (optional, recommended)
--   **RAG API** on port `8000` (optional)
+-   **PostgreSQL 18 with pgvector** on port `5432` (required - starts by default)
+-   **Meilisearch** on port `7700` (optional, recommended - requires `--profile optional`)
+-   **RAG API** on port `8000` (optional - requires `--profile optional`)
 
 All data is persisted to `D:/Work/db/` (adjust paths in the compose file for your system).
 

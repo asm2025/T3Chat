@@ -69,6 +69,65 @@ pub struct TokenUsage {
     pub total_tokens: u32,
 }
 
+/// Agent execution event streamed to frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AgentEvent {
+    /// Agent is thinking/planning (e.g., "Analyzing user request...")
+    Thinking {
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<Value>,
+    },
+
+    /// Tool execution started
+    ToolStart {
+        tool_call_id: String,
+        tool_name: String,
+        tool_type: String, // "function", "web_search", "code_interpreter", etc.
+        arguments: Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        metadata: Option<Value>,
+    },
+
+    /// Tool execution progress/output (streamed incrementally)
+    ToolOutput {
+        tool_call_id: String,
+        tool_name: String,
+        output: Value, // Can be partial or complete
+        #[serde(skip_serializing_if = "Option::is_none")]
+        is_partial: Option<bool>,
+    },
+
+    /// Tool execution completed
+    ToolEnd {
+        tool_call_id: String,
+        tool_name: String,
+        status: String, // "completed", "failed"
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<Value>,
+    },
+
+    /// Text content delta (existing behavior)
+    TextDelta { delta: String },
+
+    /// Final message completion
+    MessageComplete {
+        content: String,
+        finish_reason: Option<String>,
+        usage: Option<TokenUsage>,
+    },
+
+    /// Error event
+    Error {
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        code: Option<String>,
+    },
+}
+
 /// Streaming response chunk
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponseChunk {

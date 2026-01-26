@@ -34,7 +34,7 @@ class LoginScreen extends ConsumerWidget {
               authConfigAsync.when(
                 data: (config) => LoginForm(oidcEnabled: config.oidcEnabled),
                 loading: () => const CircularProgressIndicator(),
-                error: (e, _) => LoginForm(oidcEnabled: false),
+                error: (e, _) => const LoginForm(oidcEnabled: false),
               ),
               authState.when(
                 data: (_) => const SizedBox.shrink(),
@@ -57,4 +57,3 @@ class LoginScreen extends ConsumerWidget {
     );
   }
 }
-

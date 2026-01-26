@@ -1,4 +1,5 @@
 import type { MessageRole } from "./librechat";
+import type { AgentEventsSnapshot } from "./agent-events";
 
 export interface Chat {
     id: string;
@@ -16,6 +17,7 @@ export interface Message {
     chatId: string;
     role: MessageRole;
     content: string;
+    agentEvents?: AgentEventsSnapshot;
     metadata?: Record<string, unknown>;
     parentMessageId?: string;
     sequenceNumber: number;

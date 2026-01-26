@@ -3,12 +3,13 @@ use crate::{
     ai::{
         manager::ProviderWrapper,
         providers::chatllm::ChatLLMProvider,
-        types::{ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
+        types::{AgentEvent, ChatMessage, ChatRequest as AIChatRequest, FeatureFlags, ModelParameters},
     },
-    db::models::{MessageRole, AiProvider},
+    db::models::{AiProvider, MessageRole, NewToolCall, UpdateMessageDto, UpdateToolCall},
     db::prelude::*,
     db::repositories::{
-        chat_repository::TChatRepository, user_api_key_repository::TUserApiKeyRepository,
+        chat_repository::TChatRepository, tool_call_repository::TToolCallRepository,
+        user_api_key_repository::TUserApiKeyRepository,
     },
     middleware::auth::AuthenticatedUser,
     utils::encryption,
@@ -24,7 +25,8 @@ use axum::{
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{convert::Infallible, sync::Arc};
+use chrono::Utc;
+use std::{collections::HashMap, convert::Infallible, sync::Arc, time::Instant};
 use utoipa::ToSchema;
 
 /// End-of-stream marker: sequence of non-printable control characters
@@ -531,14 +533,26 @@ pub async fn stream_chat(
         stream: true,
     };
 
-    // Get streaming response
-    let mut stream = ai_provider.stream_chat(ai_request).await.map_err(|e| {
-        tracing::error!("AI provider streaming error: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
-    })?;
+    // Resolve available tools for the chat's agent/assistant
+    let available_tools = state
+        .tool_executor
+        .get_available_tools(chat.agent_id, chat.assistant_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to resolve tools: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        })?;
+
+    // Get streaming response with tool support
+    let mut stream = ai_provider
+        .stream_chat_with_tools(ai_request, available_tools)
+        .await
+        .map_err(|e| {
+            tracing::error!("AI provider streaming error: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        })?;
 
     // Save user message
-    let chat_repo = state.chat_repository.clone();
     let chat_id = chat.id;
     let user_message_content = payload.message.clone();
 
@@ -548,7 +562,7 @@ pub async fn stream_chat(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
-    let user_msg = state
+    state
         .chat_repository
         .create_message(CreateMessageDto {
             chat_id,
@@ -562,84 +576,168 @@ pub async fn stream_chat(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
 
     // Create SSE stream
-    let mut full_response = String::new();
-    let mut _finish_reason: Option<String> = None;
     let model = payload.model_id.clone();
-    let user_msg_id = user_msg.id;
+    let user_id = user.0.id.clone();
+    let chat_repo = state.chat_repository.clone();
+    let tool_call_repo = state.tool_call_repository.clone();
 
     let event_stream = async_stream::stream! {
         let mut stream_complete = false;
-        
-        // Process all chunks and accumulate the full response
-        while let Some(chunk_result) = stream.next().await {
-            match chunk_result {
-                Ok(chunk) => {
-                    full_response.push_str(&chunk.delta);
-                    // Send chunk as SSE event
-                    let event = Event::default()
-                        .json_data(&chunk)
-                        .unwrap_or_else(|_| Event::default().data("error"));
+        let mut assistant_message_id: Option<uuid::Uuid> = None;
+        let mut full_response = String::new();
+        let mut usage: Option<crate::ai::types::TokenUsage> = None;
+        let mut tool_start_times: HashMap<String, Instant> = HashMap::new();
 
-                    yield Ok::<Event, Infallible>(event);
+        while let Some(event_result) = stream.next().await {
+            match event_result {
+                Ok(event) => {
+                    match &event {
+                        AgentEvent::TextDelta { delta } => {
+                            full_response.push_str(delta);
+                        }
+                        AgentEvent::MessageComplete { content, finish_reason: _reason, usage: event_usage } => {
+                            full_response = content.clone();
+                            usage = event_usage.clone();
+                            stream_complete = true;
+                        }
+                        AgentEvent::ToolStart { tool_call_id, tool_name, tool_type, arguments, .. } => {
+                            if assistant_message_id.is_none() {
+                                let assistant_seq = chat_repo
+                                    .get_next_sequence_number(chat_id)
+                                    .await
+                                    .unwrap_or(user_seq + 1);
 
-                    // Mark stream as complete when done, but don't save yet
-                    if chunk.done {
-                        stream_complete = true;
+                                if let Ok(msg) = chat_repo
+                                    .create_message(CreateMessageDto {
+                                        chat_id,
+                                        role: MessageRole::Assistant,
+                                        content: String::new(),
+                                        metadata: None,
+                                        parent_message_id: None,
+                                        sequence_number: assistant_seq,
+                                    })
+                                    .await
+                                {
+                                    assistant_message_id = Some(msg.id);
+                                }
+                            }
+
+                            if let Some(message_id) = assistant_message_id {
+                                tool_start_times.insert(tool_call_id.clone(), Instant::now());
+                                let new_tool_call = NewToolCall {
+                                    id: None,
+                                    message_id,
+                                    tool_call_id: tool_call_id.clone(),
+                                    tool_name: tool_name.clone(),
+                                    tool_type: Some(tool_type.clone()),
+                                    arguments: Some(arguments.clone()),
+                                    result: None,
+                                    status: Some("running".to_string()),
+                                    started_at: Some(Utc::now()),
+                                    execution_time_ms: None,
+                                };
+
+                                if let Err(e) = tool_call_repo.create(new_tool_call).await {
+                                    tracing::warn!("Failed to create tool call: {}", e);
+                                }
+                            }
+                        }
+                        AgentEvent::ToolEnd { tool_call_id, status, error, result, .. } => {
+                            if let Some(message_id) = assistant_message_id {
+                                let execution_time_ms = tool_start_times
+                                    .remove(tool_call_id)
+                                    .and_then(|start| i64::try_from(start.elapsed().as_millis()).ok());
+                                let update = UpdateToolCall {
+                                    result: result.clone(),
+                                    status: Some(status.clone()),
+                                    error_message: Some(error.clone()),
+                                    output_file_ids: None,
+                                    execution_time_ms,
+                                    completed_at: Some(Utc::now()),
+                                    updated_at: Utc::now(),
+                                };
+
+                                if let Err(e) = tool_call_repo
+                                    .update_by_tool_call_id(message_id, tool_call_id, update)
+                                    .await
+                                {
+                                    tracing::warn!("Failed to update tool call: {}", e);
+                                }
+                            }
+                        }
+                        _ => {}
                     }
+
+                    let json = serde_json::to_string(&event).unwrap_or_else(|_| "{\"type\":\"error\",\"message\":\"serialization_error\"}".to_string());
+                    let sse_event = Event::default().data(json);
+                    yield Ok::<Event, Infallible>(sse_event);
                 }
                 Err(e) => {
                     tracing::error!("Stream error: {}", e);
-
-                    // Match LibreChat's structured error format
-                    let error_payload = serde_json::json!({
-                        "error": true,
-                        "messageId": uuid::Uuid::new_v4().to_string(),
-                        "chatId": chat_id,
-                        "parentMessageId": user_msg_id,
-                        "sender": "Assistant",
-                        "text": format!("Error: {}", e),
-                        "final": true,
-                        "unfinished": false
-                    });
-
-                    let error_event = Event::default()
-                        .event("error")
-                        .data(error_payload.to_string());
-                    yield Ok(error_event);
+                    let error_event = AgentEvent::Error {
+                        message: format!("Error: {}", e),
+                        code: None,
+                    };
+                    let json = serde_json::to_string(&error_event).unwrap_or_else(|_| "{\"type\":\"error\",\"message\":\"stream_error\"}".to_string());
+                    yield Ok(Event::default().data(json));
                     break;
                 }
             }
         }
-        
-        // Save assistant message ONCE after all chunks are processed
-        if stream_complete && !full_response.is_empty() {
-            let assistant_seq = chat_repo
-                .get_next_sequence_number(chat_id)
-                .await
-                .unwrap_or(user_seq + 1);
 
-            let assistant_message = chat_repo
-                .create_message(CreateMessageDto {
-                    chat_id,
-                    role: MessageRole::Assistant,
-                    content: full_response.clone(),
-                    metadata: None,
-                    parent_message_id: None,
-                    sequence_number: assistant_seq,
-                })
-                .await;
+        if !stream_complete && !full_response.is_empty() {
+            let complete_event = AgentEvent::MessageComplete {
+                content: full_response.clone(),
+                finish_reason: None,
+                usage: usage.clone(),
+            };
+            let json = serde_json::to_string(&complete_event)
+                .unwrap_or_else(|_| "{\"type\":\"message_complete\",\"content\":\"\"}".to_string());
+            yield Ok(Event::default().data(json));
+            stream_complete = true;
+        }
+
+        if stream_complete && !full_response.is_empty() {
+            let assistant_message = if let Some(message_id) = assistant_message_id {
+                chat_repo
+                    .update_message(
+                        message_id,
+                        chat_id,
+                        &user_id,
+                        UpdateMessageDto {
+                            content: Some(full_response.clone()),
+                            metadata: None,
+                        },
+                    )
+                    .await
+            } else {
+                let assistant_seq = chat_repo
+                    .get_next_sequence_number(chat_id)
+                    .await
+                    .unwrap_or(user_seq + 1);
+
+                chat_repo
+                    .create_message(CreateMessageDto {
+                        chat_id,
+                        role: MessageRole::Assistant,
+                        content: full_response.clone(),
+                        metadata: None,
+                        parent_message_id: None,
+                        sequence_number: assistant_seq,
+                    })
+                    .await
+            };
 
             if let Ok(msg) = assistant_message {
-                // Update with model info if available
+                let tokens = usage.as_ref().map(|u| u.total_tokens as i32).unwrap_or(0);
                 let _ = chat_repo
-                    .update_tokens_used(msg.id, 0, &model)
+                    .update_tokens_used(msg.id, tokens, &model)
                     .await;
 
-                // Index in MeiliSearch (non-blocking)
                 let meili = state.meilisearch.clone();
                 let message_doc = crate::utils::meilisearch::MeiliDocument {
                     id: format!("message:{}", msg.id),
-                    user_id: user.0.id.clone(),
+                    user_id: user_id.clone(),
                     chat_id: msg.chat_id.to_string(),
                     r#type: "message".to_string(),
                     title: None,
@@ -657,8 +755,7 @@ pub async fn stream_chat(
                 });
             }
         }
-        
-        // Send final end-of-stream marker after all chunks are processed
+
         if stream_complete {
             let done_event = Event::default().data(STREAM_END_MARKER);
             yield Ok::<Event, Infallible>(done_event);

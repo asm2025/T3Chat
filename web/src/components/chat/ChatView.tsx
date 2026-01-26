@@ -30,7 +30,7 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
     const { chat, loading, error, refresh } = useChat(chatId);
     const { models: backendModels } = useModels();
     const { config } = useConfig();
-    const { sendMessage, streaming } = useStreamingChat();
+    const { sendMessage, streaming, agentEvents } = useStreamingChat();
     const { refresh: refreshChats } = useChats();
     const { setStreamingChatId } = useStreamingContext();
     const [messagesByChatId, setMessagesByChatId] = useState<Record<string, Message[]>>({
@@ -56,10 +56,26 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
         if (!streaming || !streamingMessageId) {
             return baseMessages;
         }
+        const agentSnapshot =
+            agentEvents.thinkingMessage || agentEvents.toolExecutions.length > 0
+                ? {
+                      thinkingMessage: agentEvents.thinkingMessage,
+                      toolExecutions: agentEvents.toolExecutions,
+                      textContent: agentEvents.textContent,
+                  }
+                : undefined;
         // Replace the streaming message with updated content from local state
         // streamingContent can be empty string initially, which is valid
-        return baseMessages.map((msg) => (msg.id === streamingMessageId ? { ...msg, content: streamingContent } : msg));
-    }, [baseMessages, streaming, streamingMessageId, streamingContent]);
+        return baseMessages.map((msg) =>
+            msg.id === streamingMessageId
+                ? {
+                      ...msg,
+                      content: streamingContent,
+                      agentEvents: agentSnapshot,
+                  }
+                : msg,
+        );
+    }, [baseMessages, streaming, streamingMessageId, streamingContent, agentEvents.thinkingMessage, agentEvents.toolExecutions, agentEvents.textContent]);
 
     const modelSpecs = config?.modelSpecs || [];
     const useSpecs = modelSpecs.length > 0;
@@ -343,9 +359,9 @@ export function ChatView({ chatId: chatIdProp }: ChatViewProps = {}) {
                     modelId,
                     stream: true,
                 },
-                (chunk) => {
+                (chunk, mode = "append") => {
                     // Update local state immediately for instant UI updates
-                    setStreamingContent((prev) => prev + chunk);
+                    setStreamingContent((prev) => (mode === "replace" ? chunk : prev + chunk));
                 },
                 async () => {
                     try {

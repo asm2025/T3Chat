@@ -17,18 +17,23 @@ This guide will help you get T3Chat up and running in under 10 minutes.
 The easiest way to get all prerequisites running is to use the provided Docker Compose file:
 
 ```bash
-# Start all prerequisites (PostgreSQL, Meilisearch, RAG API)
+# Start only required services (PostgreSQL)
+docker compose -f docker-compose.prerequisites.yml up -d
+
+# Start all services including optional ones (PostgreSQL, Meilisearch, RAG API)
 docker compose -f docker-compose.prerequisites.yml --profile optional up -d
 
-# Or start only PostgreSQL (required)
+# Or start only PostgreSQL explicitly
 docker compose -f docker-compose.prerequisites.yml up -d postgres
 ```
 
+**Important:** By default, only **PostgreSQL** starts. The optional services (Meilisearch and RAG API) use Docker Compose profiles and require the `--profile optional` flag to start.
+
 This will start:
 
--   **PostgreSQL 18 with pgvector** on port `5432` (required)
--   **Meilisearch** on port `7700` (optional, recommended for search)
--   **RAG API** on port `8000` (optional, for file-based semantic search)
+-   **PostgreSQL 18 with pgvector** on port `5432` (required - starts by default)
+-   **Meilisearch** on port `7700` (optional, recommended for search - requires `--profile optional`)
+-   **RAG API** on port `8000` (optional, for file-based semantic search - requires `--profile optional`)
 
 **Note:** Adjust the volume paths in `docker-compose.prerequisites.yml` to match your system (currently set to `D:/Work/db/`).
 

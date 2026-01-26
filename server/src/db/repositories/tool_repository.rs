@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::db::{
     DbPool,
     models::{Action, NewAction, NewTool, Tool, UpdateAction, UpdateTool},
-    schema::{actions, tools},
+    schema::{actions, agent_tools, assistant_tools, tools},
 };
 
 #[async_trait]
@@ -16,6 +16,8 @@ pub trait TToolRepository: Send + Sync {
     async fn create(&self, new_tool: NewTool) -> Result<Tool>;
     async fn get(&self, id: Uuid) -> Result<Option<Tool>>;
     async fn list_active(&self) -> Result<Vec<Tool>>;
+    async fn list_active_for_agent(&self, agent_id: Uuid) -> Result<Vec<Tool>>;
+    async fn list_active_for_assistant(&self, assistant_id: Uuid) -> Result<Vec<Tool>>;
     async fn update(&self, id: Uuid, update: UpdateTool) -> Result<Tool>;
     async fn delete(&self, id: Uuid) -> Result<bool>;
 
@@ -88,6 +90,45 @@ impl TToolRepository for ToolRepository {
             .load(&mut conn)
             .await
             .context("Failed to list tools")
+    }
+
+    /// List active tools available for a specific agent
+    async fn list_active_for_agent(&self, agent_id: Uuid) -> Result<Vec<Tool>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        tools::table
+            .inner_join(agent_tools::table.on(agent_tools::tool_id.eq(tools::id)))
+            .filter(agent_tools::agent_id.eq(agent_id))
+            .filter(agent_tools::is_enabled.eq(true).or(agent_tools::is_enabled.is_null()))
+            .filter(tools::is_active.eq(true).or(tools::is_active.is_null()))
+            .select(tools::all_columns)
+            .order(tools::display_name.asc())
+            .load(&mut conn)
+            .await
+            .context("Failed to list agent tools")
+    }
+
+    /// List active tools available for a specific assistant
+    async fn list_active_for_assistant(&self, assistant_id: Uuid) -> Result<Vec<Tool>> {
+        let mut conn = self
+            .pool
+            .get()
+            .await
+            .context("Failed to get DB connection")?;
+
+        tools::table
+            .inner_join(assistant_tools::table.on(assistant_tools::tool_id.eq(tools::id)))
+            .filter(assistant_tools::assistant_id.eq(assistant_id))
+            .filter(tools::is_active.eq(true).or(tools::is_active.is_null()))
+            .select(tools::all_columns)
+            .order(tools::display_name.asc())
+            .load(&mut conn)
+            .await
+            .context("Failed to list assistant tools")
     }
 
     /// Update tool

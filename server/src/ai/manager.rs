@@ -2,8 +2,8 @@ use crate::ai::providers::{
     AIProvider, anthropic::AnthropicProvider, chatllm::ChatLLMProvider,
     google::GoogleProvider, openai::OpenAIProvider,
 };
-use crate::ai::types::{ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
-use crate::db::models::AiProvider;
+use crate::ai::types::{AgentEvent, ChatRequest, ChatResponse, ChatResponseChunk, ModelInfo};
+use crate::db::models::{AiProvider, Tool};
 use anyhow::Result;
 use futures::Stream;
 use std::collections::HashMap;
@@ -54,6 +54,25 @@ impl ProviderWrapper {
             ProviderWrapper::DeepSeek(p) => p.stream_chat(request).await,
             ProviderWrapper::Ollama(p) => p.stream_chat(request).await,
             ProviderWrapper::ChatLLM(p) => p.stream_chat(request).await,
+        }
+    }
+
+    pub async fn stream_chat_with_tools(
+        &self,
+        request: ChatRequest,
+        available_tools: Vec<Tool>,
+    ) -> anyhow::Result<Pin<Box<dyn Stream<Item = anyhow::Result<AgentEvent>> + Send>>> {
+        match self {
+            ProviderWrapper::OpenAI(p) => p.stream_chat_with_tools(request, available_tools).await,
+            ProviderWrapper::Anthropic(p) => {
+                p.stream_chat_with_tools(request, available_tools).await
+            }
+            ProviderWrapper::Google(p) => p.stream_chat_with_tools(request, available_tools).await,
+            ProviderWrapper::DeepSeek(p) => {
+                p.stream_chat_with_tools(request, available_tools).await
+            }
+            ProviderWrapper::Ollama(p) => p.stream_chat_with_tools(request, available_tools).await,
+            ProviderWrapper::ChatLLM(p) => p.stream_chat_with_tools(request, available_tools).await,
         }
     }
 

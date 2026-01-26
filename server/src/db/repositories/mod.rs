@@ -12,6 +12,7 @@ pub mod preset_repository;
 pub mod project_repository;
 pub mod tag_repository;
 pub mod tool_repository;
+pub mod tool_call_repository;
 pub mod transaction_repository;
 
 pub mod user_feature_repository;

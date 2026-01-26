@@ -49,6 +49,8 @@ pub struct AppState {
     pub preset_repository: Arc<db::repositories::preset_repository::PresetRepository>,
     pub tag_repository: Arc<db::repositories::tag_repository::TagRepository>,
     pub tool_repository: Arc<db::repositories::tool_repository::ToolRepository>,
+    pub tool_call_repository: Arc<db::repositories::tool_call_repository::ToolCallRepository>,
+    pub tool_executor: Arc<ai::tool_executor::ToolExecutor>,
     pub oidc_client: Option<Arc<auth::OidcClient>>,
     pub jwks_cache: Option<Arc<auth::JwksCache>>,
     pub app_config: Arc<config::app_config::DerivedAppConfig>,
@@ -134,6 +136,13 @@ async fn run() -> Result<()> {
     let tool_repository = Arc::new(db::repositories::tool_repository::ToolRepository::new(
         pool.clone(),
     ));
+    let tool_call_repository =
+        Arc::new(db::repositories::tool_call_repository::ToolCallRepository::new(
+            pool.clone(),
+        ));
+    let tool_executor = Arc::new(ai::tool_executor::ToolExecutor::new(
+        tool_repository.clone(),
+    ));
 
     // Initialize OIDC client and JWKS cache (optional)
     let (oidc_client, jwks_cache) = if env::is_oidc_configured() {
@@ -208,6 +217,8 @@ async fn run() -> Result<()> {
         preset_repository,
         tag_repository,
         tool_repository,
+        tool_call_repository,
+        tool_executor,
         oidc_client,
         jwks_cache,
         app_config,

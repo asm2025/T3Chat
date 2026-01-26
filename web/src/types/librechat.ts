@@ -1,3 +1,5 @@
+import type { AgentEventsSnapshot } from "./agent-events";
+
 export type Endpoint = "openai" | "anthropic" | "google" | "custom" | "bedrock";
 
 export interface ModelParameters {
@@ -96,6 +98,7 @@ export interface Message {
     role: MessageRole;
     text?: string;
     isCreatedByUser: boolean;
+    agentEvents?: AgentEventsSnapshot;
 
     // AI/Model info (stored for historical accuracy)
     model?: string;

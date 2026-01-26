@@ -1,6 +1,5 @@
 import '../models/chat.dart';
 import '../models/message.dart';
-import '../models/message.dart';
 
 abstract class ChatRepository {
   Future<List<Chat>> listChats({int? page, int? pageSize});
@@ -26,4 +25,3 @@ abstract class ChatRepository {
     required String modelId,
   });
 }
-
