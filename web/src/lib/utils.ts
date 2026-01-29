@@ -8,6 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Extracts a meaningful error message from an unknown error value.
  * Tries multiple strategies to get the actual error message instead of generic fallbacks.
+ * Handles nested error structures from the backend: { error: { code, message, details } }
  */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -19,12 +20,39 @@ export function getErrorMessage(error: unknown): string {
   // Try to extract message from error objects
   if (error && typeof error === "object") {
     const errObj = error as Record<string, unknown>;
+    
+    // Handle nested error structure from backend: { error: { code, message, details } }
+    if (errObj.error && typeof errObj.error === "object") {
+      const errorDetail = errObj.error as Record<string, unknown>;
+      if (typeof errorDetail.message === "string" && errorDetail.message) {
+        let message = errorDetail.message;
+        // Include error code if available
+        if (typeof errorDetail.code === "string" && errorDetail.code) {
+          message = `[${errorDetail.code}] ${message}`;
+        }
+        // Include details if available for better debugging
+        if (errorDetail.details) {
+          try {
+            const detailsStr = JSON.stringify(errorDetail.details, null, 2);
+            if (detailsStr && detailsStr !== "{}" && detailsStr !== "null") {
+              message = `${message}\n\nDetails:\n${detailsStr}`;
+            }
+          } catch {
+            // Ignore JSON stringify errors for details
+          }
+        }
+        return message;
+      }
+    }
+    
+    // Fallback: try top-level fields
     if (typeof errObj.message === "string" && errObj.message) {
       return errObj.message;
     }
     if (typeof errObj.error === "string" && errObj.error) {
       return errObj.error;
     }
+    
     // Try to stringify for debugging
     try {
       const stringified = String(error);
@@ -37,7 +65,7 @@ export function getErrorMessage(error: unknown): string {
   }
   // Last resort: try JSON stringify
   try {
-    return JSON.stringify(error);
+    return JSON.stringify(error, null, 2);
   } catch {
     // If all else fails, return a generic message
     return "An error occurred";

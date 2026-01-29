@@ -72,7 +72,7 @@ interface:
     # defaultModelSpec: "claude-sonnet"
     # Option 2: Specify by provider and model
     defaultProvider: "chatllm"
-    defaultModel: "routellm"
+    defaultModel: "default"
     # peoplePicker:
     #   users: true
     #   groups: true
@@ -353,7 +353,7 @@ endpoints:
           baseURL: "https://routellm.abacus.ai/v1"
           models:
               fetch: false
-              default: ["RouteLLM"]
+              default: ["default"]
           modelDisplayLabel: "ChatLLM"
 
         # AWS Bedrock Example

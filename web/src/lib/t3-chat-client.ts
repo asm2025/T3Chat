@@ -303,6 +303,41 @@ export class T3ChatClient extends ApiClient {
             // Handle error responses
             if (parsed && typeof parsed === "object") {
                 const maybeError = parsed as Record<string, unknown>;
+                
+                // Check for error event type
+                if (maybeError.type === "error") {
+                    let message = "Streaming request failed";
+                    if (typeof maybeError.message === "string" && maybeError.message) {
+                        message = maybeError.message;
+                    } else if (typeof maybeError.text === "string" && maybeError.text) {
+                        message = maybeError.text;
+                    } else if (typeof maybeError.error === "string" && maybeError.error) {
+                        message = maybeError.error;
+                    }
+                    // Handle nested error structure if present
+                    if (maybeError.error && typeof maybeError.error === "object") {
+                        const errorDetail = maybeError.error as Record<string, unknown>;
+                        if (typeof errorDetail.message === "string" && errorDetail.message) {
+                            message = errorDetail.message;
+                            if (typeof errorDetail.code === "string" && errorDetail.code) {
+                                message = `[${errorDetail.code}] ${message}`;
+                            }
+                            if (errorDetail.details) {
+                                try {
+                                    const detailsStr = JSON.stringify(errorDetail.details, null, 2);
+                                    if (detailsStr && detailsStr !== "{}" && detailsStr !== "null") {
+                                        message = `${message}\n\nDetails:\n${detailsStr}`;
+                                    }
+                                } catch {
+                                    // Ignore JSON stringify errors
+                                }
+                            }
+                        }
+                    }
+                    throw new Error(message);
+                }
+                
+                // Legacy error format: { error: true, text: "..." }
                 if (maybeError.error === true) {
                     const message = (typeof maybeError.text === "string" && maybeError.text) || (typeof maybeError.error === "string" && maybeError.error) || "Streaming request failed";
                     throw new Error(message);

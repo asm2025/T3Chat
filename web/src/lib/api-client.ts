@@ -146,14 +146,44 @@ export class ApiClient {
             // Try to extract error details from JSON response
             if (responseBody && typeof responseBody === "object") {
                 const errorData = responseBody as Record<string, unknown>;
-                if (typeof errorData.message === "string") {
-                    apiError.message = errorData.message;
-                } else if (typeof errorData.error === "string") {
-                    apiError.message = errorData.error;
+                
+                // Handle nested error structure: { error: { code, message, details } }
+                if (errorData.error && typeof errorData.error === "object") {
+                    const errorDetail = errorData.error as Record<string, unknown>;
+                    if (typeof errorDetail.message === "string" && errorDetail.message) {
+                        let message = errorDetail.message;
+                        // Include error code if available
+                        if (typeof errorDetail.code === "string" && errorDetail.code) {
+                            message = `[${errorDetail.code}] ${message}`;
+                            apiError.code = errorDetail.code;
+                        }
+                        // Include details in the error message if available for better debugging
+                        if (errorDetail.details) {
+                            try {
+                                const detailsStr = JSON.stringify(errorDetail.details, null, 2);
+                                if (detailsStr && detailsStr !== "{}" && detailsStr !== "null") {
+                                    message = `${message}\n\nDetails:\n${detailsStr}`;
+                                }
+                            } catch {
+                                // Ignore JSON stringify errors for details
+                            }
+                        }
+                        apiError.message = message;
+                    } else if (typeof errorDetail.code === "string") {
+                        apiError.code = errorDetail.code;
+                    }
+                } else {
+                    // Fallback: try top-level fields (for backwards compatibility)
+                    if (typeof errorData.message === "string") {
+                        apiError.message = errorData.message;
+                    } else if (typeof errorData.error === "string") {
+                        apiError.message = errorData.error;
+                    }
+                    if (typeof errorData.code === "string") {
+                        apiError.code = errorData.code;
+                    }
                 }
-                if (typeof errorData.code === "string") {
-                    apiError.code = errorData.code;
-                }
+                
                 if (typeof errorData.userId === "string") {
                     apiError.userId = errorData.userId;
                 } else if (typeof errorData.user_id === "string") {
@@ -244,7 +274,28 @@ export class ApiClient {
                 try {
                     const data = (await response.json()) as Record<string, unknown>;
                     if (data && typeof data === "object") {
-                        if ("message" in data && typeof data.message === "string") {
+                        // Handle nested error structure: { error: { code, message, details } }
+                        if (data.error && typeof data.error === "object") {
+                            const errorDetail = data.error as Record<string, unknown>;
+                            if (typeof errorDetail.message === "string" && errorDetail.message) {
+                                message = errorDetail.message;
+                                // Include error code if available
+                                if (typeof errorDetail.code === "string" && errorDetail.code) {
+                                    message = `[${errorDetail.code}] ${message}`;
+                                }
+                                // Include details if available
+                                if (errorDetail.details) {
+                                    try {
+                                        const detailsStr = JSON.stringify(errorDetail.details, null, 2);
+                                        if (detailsStr && detailsStr !== "{}" && detailsStr !== "null") {
+                                            message = `${message}\n\nDetails:\n${detailsStr}`;
+                                        }
+                                    } catch {
+                                        // Ignore JSON stringify errors
+                                    }
+                                }
+                            }
+                        } else if ("message" in data && typeof data.message === "string") {
                             message = data.message;
                         } else if ("error" in data && typeof data.error === "string") {
                             message = data.error;
